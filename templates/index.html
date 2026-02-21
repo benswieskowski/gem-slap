@@ -282,13 +282,12 @@
 
         /* ── tier badge ── */
         .ef-tier-badge {
-            font-size: 1.05rem; font-weight: 700; letter-spacing: 0.22em;
-            text-transform: uppercase; line-height: 1;
+            font-size: 1.6rem; line-height: 1;
         }
-        .ef-tier-badge.c-gold { color: #F9DB6D; text-shadow: 0 0 20px rgba(249,219,109,0.3); }
-        .ef-tier-badge.c-silver { color: #4ECDC4; text-shadow: 0 0 16px rgba(78,205,196,0.25); }
-        .ef-tier-badge.c-bronze { color: #7EC8F0; text-shadow: 0 0 12px rgba(126,200,240,0.2); }
-        .ef-tier-badge.c-none { color: rgba(255,255,255,0.18); }
+        .ef-tier-badge.c-gold { filter: drop-shadow(0 0 8px rgba(249,219,109,0.5)); }
+        .ef-tier-badge.c-silver { filter: drop-shadow(0 0 6px rgba(78,205,196,0.4)); }
+        .ef-tier-badge.c-bronze { filter: drop-shadow(0 0 5px rgba(126,200,240,0.3)); }
+        .ef-tier-badge.c-none { opacity: 0.3; }
 
         .ef-time {
             font-size: 1.1rem; font-weight: 200; line-height: 1;
@@ -573,15 +572,12 @@
         .medal-cell {
             aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
         }
-        .medal-diamond {
-            width: 70%; height: 70%;
-            clip-path: polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+        .medal-emoji {
+            font-size: 0.85rem; line-height: 1; display: flex;
+            align-items: center; justify-content: center;
         }
-        .medal-diamond.gold   { background: #F9DB6D; box-shadow: 0 0 6px rgba(249,219,109,0.5); }
-        .medal-diamond.silver { background: #4ECDC4; box-shadow: 0 0 5px rgba(78,205,196,0.4); }
-        .medal-diamond.bronze { background: #7EC8F0; box-shadow: 0 0 4px rgba(126,200,240,0.3); }
-        .medal-diamond.cleared { background: rgba(255,255,255,0.15); }
-        .medal-diamond.locked  { background: rgba(255,255,255,0.05); }
+        .medal-emoji.cleared { opacity: 0.18; font-size: 0.6rem; }
+        .medal-emoji.locked  { opacity: 0.07; font-size: 0.5rem; }
         .medal-batch-label {
             font-size: 0.42rem; letter-spacing: 0.14em; text-transform: uppercase;
             color: rgba(255,255,255,0.2); margin-bottom: 0.35rem; margin-top: 0.7rem;
@@ -624,25 +620,193 @@
         }
         .ach-item:not(.locked) .ach-check { opacity: 1; }
 
-        /* Footer: reset button */
+        /* Footer: level select button */
         .menu-footer {
             flex-shrink: 0; padding: 0.8rem 1.4rem;
             padding-bottom: max(0.8rem, env(safe-area-inset-bottom, 0px));
             border-top: 1px solid rgba(255,255,255,0.05);
         }
-        .menu-reset-btn {
-            width: 100%; padding: 0.7rem; font-size: 0.62rem; font-weight: 600;
+        .ls-open-btn {
+            width: 100%; padding: 0.75rem; font-size: 0.66rem; font-weight: 700;
+            letter-spacing: 0.14em; text-transform: uppercase;
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 2rem;
+            background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.75);
+            cursor: pointer; transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ls-open-btn:active { background: rgba(255,255,255,0.1); transform: scale(0.98); }
+
+        /* ══════════════════════════════════════════════
+           LEVEL SELECT SHEET
+        ══════════════════════════════════════════════ */
+        .ls-overlay {
+            position: absolute; inset: 0; z-index: 850;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+        .ls-overlay.show { opacity: 1; pointer-events: auto; }
+
+        .ls-panel {
+            position: absolute; left: 0; right: 0; bottom: 0;
+            z-index: 851; height: 92%;
+            background: rgba(4,3,14,0.98);
+            backdrop-filter: blur(32px); -webkit-backdrop-filter: blur(32px);
+            border-top: 1px solid rgba(255,255,255,0.07);
+            border-radius: 1.4rem 1.4rem 0 0;
+            box-shadow: inset 0 1px 0 rgba(168,247,244,0.15), 0 -8px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            transform: translateY(100%);
+            transition: transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94);
+            pointer-events: none;
+        }
+        .ls-panel.show { transform: translateY(0); pointer-events: auto; }
+
+        .ls-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1.1rem 1.4rem 0.9rem; flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .ls-title {
+            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.22em;
+            text-transform: uppercase; color: rgba(255,255,255,0.7);
+        }
+        .ls-close {
+            width: 28px; height: 28px; border-radius: 8px;
+            background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.5); font-size: 0.7rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ls-close:active { background: rgba(255,255,255,0.14); }
+
+        .ls-scroll {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 0 1rem 1rem;
+        }
+
+        .ls-batch-label {
+            position: sticky; top: 0;
+            font-size: 0.44rem; letter-spacing: 0.2em; text-transform: uppercase;
+            color: rgba(255,255,255,0.25);
+            padding: 0.7rem 0 0.4rem;
+            background: rgba(4,3,14,0.98);
+            z-index: 2;
+        }
+
+        .ls-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .ls-card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 0.75rem; padding: 0.7rem 0.75rem 0.6rem;
+            cursor: pointer; transition: background 0.15s, border-color 0.15s;
+            display: flex; flex-direction: column; gap: 0.25rem;
+            min-height: 78px; position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ls-card:active { background: rgba(255,255,255,0.07); }
+        .ls-card.locked { opacity: 0.28; cursor: default; }
+        .ls-card.current {
+            border-color: rgba(192,132,252,0.45);
+            background: rgba(192,132,252,0.06);
+        }
+
+        .ls-card-top {
+            display: flex; align-items: flex-start; justify-content: space-between;
+        }
+        .ls-card-num {
+            font-size: 0.56rem; font-weight: 600; letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.28); line-height: 1;
+        }
+        .ls-medal-icon { font-size: 0.9rem; line-height: 1; flex-shrink: 0; }
+        .ls-medal-dot {
+            width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+            background: rgba(255,255,255,0.12);
+        }
+        .ls-medal-dot.cleared { background: rgba(255,255,255,0.12); }
+        .ls-medal-dot.locked  { background: rgba(255,255,255,0.05); }
+
+        .ls-card-name {
+            font-size: 0.66rem; font-weight: 600; color: rgba(255,255,255,0.82);
+            line-height: 1.25; flex: 1;
+            overflow: hidden; display: -webkit-box;
+            -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .ls-card-name.unknown { color: rgba(255,255,255,0.25); font-style: italic; font-weight: 400; }
+
+        .ls-card-time {
+            font-size: 0.52rem; font-variant-numeric: tabular-nums;
+            color: rgba(255,255,255,0.35); text-align: right; line-height: 1;
+            margin-top: auto;
+        }
+        .ls-card-time.gold   { color: rgba(249,219,109,0.7); }
+        .ls-card-time.silver { color: rgba(78,205,196,0.7); }
+        .ls-card-time.bronze { color: rgba(126,200,240,0.7); }
+
+        /* Reset at bottom of sheet */
+        .ls-reset-wrap {
+            padding: 1.4rem 1rem 0.5rem;
+            display: flex; justify-content: center;
+        }
+        .ls-reset-btn {
+            padding: 0.6rem 2rem; font-size: 0.54rem; font-weight: 600;
             letter-spacing: 0.16em; text-transform: uppercase;
-            border: 1px solid rgba(255,80,80,0.2); border-radius: 2rem;
-            background: transparent; color: rgba(255,100,100,0.5);
+            border: 1px solid rgba(255,80,80,0.18); border-radius: 2rem;
+            background: transparent; color: rgba(255,100,100,0.35);
             cursor: pointer; transition: all 0.25s ease;
             -webkit-tap-highlight-color: transparent;
         }
-        .menu-reset-btn.confirming {
+        .ls-reset-btn.confirming {
             border-color: rgba(255,80,80,0.7); color: rgba(255,120,120,0.9);
             background: rgba(255,50,50,0.08);
         }
-        .menu-reset-btn:active { transform: scale(0.97); }
+        .ls-reset-btn:active { transform: scale(0.97); }
+
+        /* Selected card */
+        .ls-card.selected {
+            border-color: rgba(168,247,244,0.5);
+            background: rgba(168,247,244,0.07);
+        }
+
+        /* Sticky footer play bar */
+        .ls-footer {
+            flex-shrink: 0;
+            display: flex; align-items: center; gap: 0.8rem;
+            padding: 0.75rem 1rem;
+            padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+            border-top: 1px solid rgba(255,255,255,0.08);
+            background: rgba(4,3,14,0.98);
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
+        }
+        .ls-footer.show { transform: translateY(0); }
+        .ls-footer-info { flex: 1; min-width: 0; }
+        .ls-footer-name {
+            font-size: 0.72rem; font-weight: 700; color: rgba(255,255,255,0.9);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            margin-bottom: 0.2rem;
+        }
+        .ls-footer-meta {
+            font-size: 0.56rem; color: rgba(255,255,255,0.4);
+            letter-spacing: 0.06em;
+        }
+        .ls-play-btn {
+            flex-shrink: 0;
+            padding: 0.7rem 1.4rem; font-size: 0.68rem; font-weight: 700;
+            letter-spacing: 0.14em; text-transform: uppercase;
+            border: none; border-radius: 2rem; cursor: pointer;
+            background: linear-gradient(120deg, #A8F7F4 0%, #B3C6FF 50%, #D4A7FF 100%);
+            color: rgba(10,5,25,0.9);
+            box-shadow: 0 2px 16px rgba(192,132,252,0.3);
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ls-play-btn:active { transform: scale(0.96); box-shadow: 0 1px 8px rgba(192,132,252,0.2); }
     </style>
 </head>
 <body>
@@ -767,9 +931,9 @@
                     </div>
                     <div class="mpane-label">Personal Bests</div>
                     <div class="stat-grid">
-                        <div class="stat-cell"><div class="stat-val" id="ms-gold">0</div><div class="stat-lbl">Gold Medals</div></div>
-                        <div class="stat-cell"><div class="stat-val" id="ms-silver">0</div><div class="stat-lbl">Silver Medals</div></div>
-                        <div class="stat-cell"><div class="stat-val" id="ms-bronze">0</div><div class="stat-lbl">Bronze Medals</div></div>
+                        <div class="stat-cell"><div class="stat-val" id="ms-gold">0</div><div class="stat-lbl">🥇 Gold</div></div>
+                        <div class="stat-cell"><div class="stat-val" id="ms-silver">0</div><div class="stat-lbl">🥈 Silver</div></div>
+                        <div class="stat-cell"><div class="stat-val" id="ms-bronze">0</div><div class="stat-lbl">🥉 Bronze</div></div>
                         <div class="stat-cell"><div class="stat-val" id="ms-best-time">—</div><div class="stat-lbl">Fastest Level</div></div>
                     </div>
                 </div>
@@ -779,7 +943,24 @@
                 </div>
             </div>
             <div class="menu-footer">
-                <button class="menu-reset-btn" id="menu-reset-btn">Start from Level 1</button>
+                <button class="ls-open-btn" id="menu-reset-btn">Level Select</button>
+            </div>
+        </div>
+
+        <!-- ── LEVEL SELECT — inside game-wrap for correct positioning ── -->
+        <div class="ls-overlay" id="ls-overlay"></div>
+        <div class="ls-panel" id="ls-panel">
+            <div class="ls-header">
+                <div class="ls-title">Level Select</div>
+                <button class="ls-close" id="ls-close">✕</button>
+            </div>
+            <div class="ls-scroll" id="ls-scroll"></div>
+            <div class="ls-footer" id="ls-footer">
+                <div class="ls-footer-info" id="ls-footer-info">
+                    <div class="ls-footer-name" id="ls-footer-name"></div>
+                    <div class="ls-footer-meta" id="ls-footer-meta"></div>
+                </div>
+                <button class="ls-play-btn" id="ls-play-btn">Play From This Level</button>
             </div>
         </div>
     </div>
@@ -1055,12 +1236,11 @@
         return { time, target };
     }
     function getTier(time, target) {
-        // target = gold threshold; state also carries silverTime and bronzeTime
         const silver = state.silverTime != null ? state.silverTime : target * 1.5;
         const bronze = state.bronzeTime != null ? state.bronzeTime : target * 2.0;
-        if (time <= target) return { tier: 'gold',   text: 'GOLD' };
-        if (time <= silver) return { tier: 'silver', text: 'SILVER' };
-        if (time <= bronze) return { tier: 'bronze', text: 'BRONZE' };
+        if (time <= target) return { tier: 'gold',   text: '🥇' };
+        if (time <= silver) return { tier: 'silver', text: '🥈' };
+        if (time <= bronze) return { tier: 'bronze', text: '🥉' };
         return { tier: 'none', text: '—' };
     }
 
@@ -1533,6 +1713,12 @@
             state.patternName = data.patternName || '';
             state.batchName = data.batchName || '';
             state.levelInSet = data.levelInSet || ((state.level - 1) % 10) + 1;
+            // Store level name for level select
+            if (state.patternName) {
+                const _lnp = loadProgress();
+                const levelNames = _lnp.levelNames || {};
+                if (!levelNames[n]) { levelNames[n] = state.patternName; saveProgress({ levelNames }); }
+            }
 
             $('h-time').textContent = '0.0s';
             $('h-time').style.color = 'rgba(255,255,255,0.5)';
@@ -1809,6 +1995,8 @@
 
     function getMenuProgress() { return loadProgress(); }
 
+    const BATCH_NAMES = ['Awakening','Emergence','Ascension','Transcendence','Infinity','Revelation','Zenith','Eclipse','Nexus','Apex'];
+
     function buildMedalGrid(p) {
         const container = document.getElementById('mp-medal-grid');
         container.innerHTML = '';
@@ -1816,7 +2004,6 @@
         const tiers = p.bestTiers || {};
         // Show up to highest level reached + a few locked, grouped in batches of 10
         const showUpTo = Math.ceil(highest / 10) * 10;
-        const BATCH_NAMES = ['Awakening','Emergence','Ascension','Transcendence','Infinity'];
         for (let batch = 0; batch < Math.ceil(showUpTo / 10); batch++) {
             const lbl = document.createElement('div');
             lbl.className = 'medal-batch-label';
@@ -1828,12 +2015,15 @@
                 const lvl = batch * 10 + i + 1;
                 const cell = document.createElement('div');
                 cell.className = 'medal-cell';
-                const diamond = document.createElement('div');
+                const em = document.createElement('div');
                 const tier = tiers[lvl];
-                if (lvl > highest) diamond.className = 'medal-diamond locked';
-                else if (!tier || tier === 'none') diamond.className = 'medal-diamond cleared';
-                else diamond.className = `medal-diamond ${tier}`;
-                cell.appendChild(diamond);
+                if (lvl > highest) { em.className = 'medal-emoji locked'; em.textContent = '◆'; }
+                else if (!tier || tier === 'none') { em.className = 'medal-emoji cleared'; em.textContent = '◆'; }
+                else {
+                    em.className = 'medal-emoji';
+                    em.textContent = tier === 'gold' ? '🥇' : tier === 'silver' ? '🥈' : '🥉';
+                }
+                cell.appendChild(em);
                 grid.appendChild(cell);
             }
             container.appendChild(grid);
@@ -1886,11 +2076,7 @@
         buildAchievements(p);
         document.getElementById('menu-overlay').classList.add('show');
         document.getElementById('menu-panel').classList.add('show');
-        // Reset confirm state
-        const resetBtn = document.getElementById('menu-reset-btn');
-        resetBtn.textContent = 'Start from Level 1';
-        resetBtn.classList.remove('confirming');
-        resetBtn._confirming = false;
+        // (level select button needs no reset state)
     }
 
     function closeMenu() {
@@ -1921,29 +2107,171 @@
     document.getElementById('menu-overlay').addEventListener('click', closeMenu);
     document.getElementById('menu-close').addEventListener('click', closeMenu);
 
-    // Reset button — two-tap confirm
-    document.getElementById('menu-reset-btn').addEventListener('click', function() {
-        if (!this._confirming) {
-            this._confirming = true;
-            this.classList.add('confirming');
-            this.textContent = 'Tap again to confirm reset';
-            this._confirmTimer = setTimeout(() => {
-                this._confirming = false;
-                this.classList.remove('confirming');
-                this.textContent = 'Start from Level 1';
-            }, 3000);
-        } else {
-            clearTimeout(this._confirmTimer);
-            // Wipe progress, close menu, restart from level 1
-            try { localStorage.removeItem('gs_progress'); } catch {}
-            closeMenu();
-            // Brief delay so panel animates out before level reloads
-            setTimeout(async () => {
-                await loadLevel(1);
-                startCountdown();
-            }, 400);
+    // ── LEVEL SELECT ──────────────────────────────────────────────────────────
+    let _lsSelectedLevel = null;
+
+    function medalEmoji(tier) {
+        return tier === 'gold' ? '🥇' : tier === 'silver' ? '🥈' : tier === 'bronze' ? '🥉' : null;
+    }
+
+    function openLevelSelect() {
+        _lsSelectedLevel = null;
+        // Fully reset state before building
+        document.getElementById('ls-footer').classList.remove('show');
+        document.getElementById('ls-scroll').innerHTML = '';
+        buildLevelSelect();
+        document.getElementById('ls-overlay').classList.add('show');
+        document.getElementById('ls-panel').classList.add('show');
+        // Scroll to current level after panel animates in
+        setTimeout(() => {
+            const cur = document.querySelector('.ls-card.current');
+            if (cur) cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }, 460);
+    }
+
+    function closeLevelSelect() {
+        _lsSelectedLevel = null;
+        document.getElementById('ls-overlay').classList.remove('show');
+        document.getElementById('ls-panel').classList.remove('show');
+        document.getElementById('ls-footer').classList.remove('show');
+        // Clear scroll after animation so no stale cards/selections persist
+        setTimeout(() => {
+            if (!document.getElementById('ls-panel').classList.contains('show')) {
+                document.getElementById('ls-scroll').innerHTML = '';
+            }
+        }, 450);
+    }
+
+    function selectLsCard(lvl, cardEl) {
+        // Deselect previous
+        document.querySelectorAll('.ls-card.selected').forEach(c => c.classList.remove('selected'));
+        _lsSelectedLevel = lvl;
+        cardEl.classList.add('selected');
+
+        // Populate footer
+        const p = loadProgress();
+        const name  = (p.levelNames || {})[lvl] || `Level ${lvl}`;
+        const tier  = (p.bestTiers || {})[lvl] || null;
+        const time  = (p.bestTimes || {})[lvl] || null;
+        const medal = tier && tier !== 'none' ? medalEmoji(tier) : null;
+
+        document.getElementById('ls-footer-name').textContent = `Level ${lvl}: ${name}`;
+        let meta = '';
+        if (medal && time != null) meta = `${medal} Best: ${time.toFixed(1)}s`;
+        else if (time != null) meta = `Best: ${time.toFixed(1)}s`;
+        else meta = 'Not yet completed';
+        document.getElementById('ls-footer-meta').textContent = meta;
+        document.getElementById('ls-footer').classList.add('show');
+    }
+
+    function buildLevelSelect() {
+        const p = loadProgress();
+        const highest = p.highestLevel || 1;
+        const tiers   = p.bestTiers || {};
+        const times   = p.bestTimes || {};
+        const names   = p.levelNames || {};
+        const current = state.level || 1;
+
+        const showUpTo = Math.max(10, Math.ceil(highest / 10) * 10);
+        const scroll = document.getElementById('ls-scroll');
+        scroll.innerHTML = '';
+
+        for (let batch = 0; batch < Math.ceil(showUpTo / 10); batch++) {
+            const lbl = document.createElement('div');
+            lbl.className = 'ls-batch-label';
+            lbl.textContent = BATCH_NAMES[batch] || `Batch ${batch + 1}`;
+            scroll.appendChild(lbl);
+
+            const grid = document.createElement('div');
+            grid.className = 'ls-grid';
+
+            for (let i = 0; i < 10; i++) {
+                const lvl    = batch * 10 + i + 1;
+                const locked = lvl > highest;
+                const tier   = tiers[lvl] || null;
+                const time   = times[lvl] || null;
+                const name   = names[lvl] || null;
+                const medal  = tier && tier !== 'none' ? medalEmoji(tier) : null;
+
+                const card = document.createElement('div');
+                card.className = 'ls-card'
+                    + (locked  ? ' locked'  : '')
+                    + (lvl === current ? ' current' : '');
+                card.dataset.level = lvl;
+
+                // Medal indicator: emoji or dim dot
+                const medalEl = medal
+                    ? `<span class="ls-medal-icon">${medal}</span>`
+                    : `<span class="ls-medal-dot ${locked ? 'locked' : (tier === 'none' || !tier) ? 'cleared' : ''}"></span>`;
+
+                card.innerHTML = `
+                    <div class="ls-card-top">
+                        <div class="ls-card-num">Level ${lvl}</div>
+                        ${medalEl}
+                    </div>
+                    <div class="ls-card-name${name ? '' : ' unknown'}">${name || (locked ? '🔒' : '—')}</div>
+                    <div class="ls-card-time${medal ? ' ' + tier : ''}">${time != null ? time.toFixed(1) + 's' : ''}</div>`;
+
+                if (!locked) {
+                    card.addEventListener('click', () => selectLsCard(lvl, card));
+                }
+                grid.appendChild(card);
+            }
+            scroll.appendChild(grid);
         }
+
+        // Reset button at very bottom
+        const resetWrap = document.createElement('div');
+        resetWrap.className = 'ls-reset-wrap';
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'ls-reset-btn';
+        resetBtn.textContent = 'Reset All Progress';
+        resetBtn._confirming = false;
+        resetBtn.addEventListener('click', function() {
+            if (!this._confirming) {
+                this._confirming = true;
+                this.classList.add('confirming');
+                this.textContent = 'Tap again to confirm';
+                this._confirmTimer = setTimeout(() => {
+                    this._confirming = false;
+                    this.classList.remove('confirming');
+                    this.textContent = 'Reset All Progress';
+                }, 3000);
+            } else {
+                clearTimeout(this._confirmTimer);
+                try { localStorage.removeItem('gs_progress'); } catch {}
+                closeLevelSelect(); closeMenu();
+                setTimeout(async () => { await loadLevel(1); startCountdown(); }, 400);
+            }
+        });
+        resetWrap.appendChild(resetBtn);
+        scroll.appendChild(resetWrap);
+    }
+
+    // Play button — handles both: game already running, and launching from home screen
+    document.getElementById('ls-play-btn').addEventListener('click', async () => {
+        if (!_lsSelectedLevel) return;
+        const lvl = _lsSelectedLevel;
+        closeLevelSelect();
+        closeMenu();
+        if (!state.started) {
+            // Game hasn't started yet — full startup path
+            state.started = true;
+            introState.running = false;
+            await audio.init();
+            resize();
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('intro-menu-btn').style.display = 'none';
+        } else {
+            audio.stopBeat();
+        }
+        await loadLevel(lvl);
+        startCountdown();
     });
+
+    document.getElementById('menu-reset-btn').addEventListener('click', openLevelSelect);
+    document.getElementById('ls-close').addEventListener('click', closeLevelSelect);
+    document.getElementById('ls-overlay').addEventListener('click', closeLevelSelect);
 
     document.getElementById('intro-menu-btn').style.display = 'block';
     resize(); draw();
