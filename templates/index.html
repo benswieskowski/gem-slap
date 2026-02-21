@@ -55,7 +55,7 @@
         .footer-timer { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.9rem; font-weight: 400; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.5); line-height: 1; pointer-events: none; }
         .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; }
         .beat-dot.active { background: rgba(255,255,255,0.7); transform: scale(1.4); }
-        .mute-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
+        .mute-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
         .mute-btn:hover { background: rgba(255,255,255,0.1); }
         .mute-btn.muted { opacity: 0.3; }
 
@@ -459,7 +459,7 @@
 
         /* Small menu button — reused on intro + ef-card */
         .menu-btn-sm {
-            width: 28px; height: 28px; border-radius: 50%;
+            width: 28px; height: 28px; border-radius: 8px;
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
             color: rgba(255,255,255,0.45); font-size: 0.7rem; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
@@ -470,7 +470,7 @@
 
         /* Menu button in footer (lower-right) */
         .menu-btn {
-            width: 34px; height: 34px; border-radius: 50%;
+            width: 34px; height: 34px; border-radius: 8px;
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
             color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
@@ -516,7 +516,7 @@
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
         .menu-close {
-            width: 28px; height: 28px; border-radius: 50%;
+            width: 28px; height: 28px; border-radius: 8px;
             background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
             color: rgba(255,255,255,0.5); font-size: 0.7rem; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
@@ -841,7 +841,7 @@
     //  GAME STATE
     // ═══════════════════════════════════════
     const state = {
-        level: 1, orbs: [], allOrbs: [], bpm: 90, speed: 0.2, targetTime: 7,
+        level: 1, orbs: [], allOrbs: [], bpm: 90, speed: 0.2, targetTime: 7, silverTime: null, bronzeTime: null,
         timing: { perfect: 100, great: 200, good: 350 },
         points: { perfect: 100, great: 60, good: 30, miss: 10 },
         score: 0, melody: [],
@@ -1055,9 +1055,12 @@
         return { time, target };
     }
     function getTier(time, target) {
-        if (time <= target) return { tier: 'gold', text: 'GOLD' };
-        if (time <= target * 1.5) return { tier: 'silver', text: 'SILVER' };
-        if (time <= target * 2.0) return { tier: 'bronze', text: 'BRONZE' };
+        // target = gold threshold; state also carries silverTime and bronzeTime
+        const silver = state.silverTime != null ? state.silverTime : target * 1.5;
+        const bronze = state.bronzeTime != null ? state.bronzeTime : target * 2.0;
+        if (time <= target) return { tier: 'gold',   text: 'GOLD' };
+        if (time <= silver) return { tier: 'silver', text: 'SILVER' };
+        if (time <= bronze) return { tier: 'bronze', text: 'BRONZE' };
         return { tier: 'none', text: '—' };
     }
 
@@ -1522,8 +1525,10 @@
             state.targets = data.targets.map(t => ({ ...t, alive: true, destroyTime: null }));
             state.totalTargets = state.targets.length;
             state.targetsDestroyed = 0;
-            // Gold = 2s + 2s per crystal; silver = gold×1.5; bronze = gold×2.0
-            state.targetTime = 2 + 2 * state.totalTargets;
+            // Gold = 5s + 1s per crystal; silver adds 1s/crystal; bronze adds another 1s/crystal
+            state.targetTime = 5 + 1 * state.totalTargets;   // gold threshold
+            state.silverTime = 5 + 2 * state.totalTargets;   // silver threshold
+            state.bronzeTime = 5 + 3 * state.totalTargets;   // bronze threshold
             state.targetDestroyRadius = data.targetDestroyRadius;
             state.patternName = data.patternName || '';
             state.batchName = data.batchName || '';
