@@ -82,21 +82,33 @@
         @keyframes cd-wrap-in  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes cd-wrap-out { from { opacity: 1; } to { opacity: 0; } }
 
+        /* Frosted glass panel — sits behind the level label + name only */
+        .cd-panel {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 1.1rem 2.2rem 1.2rem;
+            margin-bottom: 1.8rem;
+            background: rgba(4, 3, 12, 0.68);
+            backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
+            border-radius: 1.2rem;
+            border: 1px solid rgba(255,255,255,0.07);
+            /* Prismatic top accent matching the logo */
+            box-shadow: inset 0 1px 0 rgba(192,132,252,0.18),
+                        0 8px 32px rgba(0,0,0,0.35);
+        }
         .cd-level-num {
-            font-size: 0.58rem; font-weight: 600; letter-spacing: 0.28em;
-            text-transform: uppercase; color: rgba(255,255,255,0.3);
-            margin-bottom: 0.35rem;
+            font-size: 0.52rem; font-weight: 600; letter-spacing: 0.3em;
+            text-transform: uppercase; color: rgba(255,255,255,0.38);
+            margin-bottom: 0.3rem;
         }
         .cd-level-name {
-            font-size: clamp(1.4rem, 6.5vw, 2rem); font-weight: 800;
+            font-size: clamp(1.3rem, 6vw, 1.9rem); font-weight: 800;
             letter-spacing: 0.12em; line-height: 1.1; text-align: center;
             white-space: nowrap;
             background: linear-gradient(120deg, #A8F7F4 0%, #B3C6FF 35%, #D4A7FF 65%, #FFA7D4 100%);
             background-size: 250% 250%;
             animation: gem-grad 5s ease infinite;
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 12px rgba(192,132,252,0.4));
-            margin-bottom: 2rem;
+            filter: drop-shadow(0 0 10px rgba(192,132,252,0.3));
         }
         .cd-number {
             font-size: 4.5rem; font-weight: 100; line-height: 1;
@@ -396,6 +408,29 @@
         .ec-inner { opacity: 0; }
         .ec-inner.show { opacity: 1; transition: opacity 0.35s ease; }
         .ver { position: absolute; bottom: 2px; left: 4px; font-size: 7px; opacity: 0.15; }
+
+        /* ── Offline error screen ── */
+        .offline-screen {
+            position: absolute; inset: 0; z-index: 600;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 1rem; background: rgba(3,3,8,0.96);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+        }
+        .offline-screen.show { opacity: 1; pointer-events: auto; }
+        .offline-icon { font-size: 2.5rem; opacity: 0.4; }
+        .offline-msg {
+            font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase;
+            color: rgba(255,255,255,0.45); text-align: center; line-height: 1.6;
+        }
+        .offline-retry {
+            margin-top: 0.5rem; padding: 0.7rem 2rem;
+            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+            border: 1px solid rgba(192,132,252,0.35); border-radius: 2rem;
+            background: rgba(192,132,252,0.08); color: rgba(212,167,255,0.9);
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .offline-retry:active { transform: scale(0.96); }
     </style>
 </head>
 <body>
@@ -474,6 +509,11 @@
             </div>
         </div>
         <div class="ver">v65</div>
+        <div class="offline-screen" id="offline-screen">
+            <div class="offline-icon">✦</div>
+            <div class="offline-msg">No connection<br>Level not available offline</div>
+            <button class="offline-retry" id="offline-retry">Retry</button>
+        </div>
     </div>
 
     <!-- Engine: Audio, particles, draw functions, constants -->
@@ -1122,7 +1162,24 @@
     // ═══════════════════════════════════════
     //  GAME FLOW
     // ═══════════════════════════════════════
+    // ── Level pre-fetch: cache next 20 levels in background ─────────────────
+    function prefetchLevels(fromLevel) {
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
+        for (let i = 1; i <= 20; i++) {
+            const n = fromLevel + i;
+            // Stagger requests 250ms apart so we don't burst all 20 at once
+            setTimeout(() => {
+                const bassParam = state.favBassStyle !== null ? state.favBassStyle : (n - 1) % 10;
+                const url = `/api/level/${n}/bass/${bassParam}`;
+                navigator.serviceWorker.controller.postMessage({ type: 'CACHE_LEVEL', url });
+            }, i * 250);
+        }
+    }
+
     async function loadLevel(n) {
+        // Hide offline screen if showing
+        $('offline-screen').classList.remove('show');
+
         try {
             state.orbs = []; state.allOrbs = [];
             state.playing = false; state.complete = false; state.freePlay = false; state.freePlayData = null;
@@ -1131,8 +1188,13 @@
 
             const bassParam = state.favBassStyle !== null ? state.favBassStyle : (n - 1) % 10;
             const url = `/api/level/${n}/bass/${bassParam}`;
-            const res = await fetch(url); if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
+
+            // If SW returned offline error JSON, treat as failure
+            if (data.error === 'offline') throw new Error('offline');
+
             state.level = n;
             state.allOrbs = data.orbs.map(o => ({ ...o, hit: false, fade: 0, spawned: false }));
             state.orbs = [];
@@ -1162,7 +1224,20 @@
             $('h-orbs-total').textContent = `/${state.totalOrbs}`;
             $('prog-fill').style.width = '0%';
             buildCrystalDots();
-        } catch (err) { console.error('Failed to load level:', err); }
+
+            // Kick off background pre-fetch of next 20 levels
+            prefetchLevels(n);
+
+        } catch (err) {
+            console.error('Failed to load level:', err);
+            // Show offline screen with retry wired to re-attempt this level
+            $('offline-screen').classList.add('show');
+            $('offline-retry').onclick = async () => {
+                $('offline-screen').classList.remove('show');
+                await loadLevel(n);
+                if (!$('offline-screen').classList.contains('show')) startCountdown();
+            };
+        }
     }
 
     function spawnInitialOrbs() {
@@ -1206,20 +1281,26 @@
         const wrap = document.createElement('div');
         wrap.className = 'cd-wrap';
 
+        const panel = document.createElement('div');
+        panel.className = 'cd-panel';
+
         const levelNum  = document.createElement('div');
         levelNum.className = 'cd-level-num';
         levelNum.textContent = `Level ${state.level || 1}`;
+        panel.appendChild(levelNum);
 
-        const levelName = document.createElement('div');
-        levelName.className = 'cd-level-name';
-        levelName.textContent = state.patternName || '';
+        if (state.patternName) {
+            const levelName = document.createElement('div');
+            levelName.className = 'cd-level-name';
+            levelName.textContent = state.patternName;
+            panel.appendChild(levelName);
+        }
 
         const numEl = document.createElement('div');
         numEl.className = 'cd-number c1';
         numEl.textContent = '3';
 
-        wrap.appendChild(levelNum);
-        if (state.patternName) wrap.appendChild(levelName);
+        wrap.appendChild(panel);
         wrap.appendChild(numEl);
         document.querySelector('.game-wrap').appendChild(wrap);
 
@@ -1399,6 +1480,13 @@
     // touchstart as final safety net: catches hard lock/unlock on iOS
     // where visibilitychange and pageshow both misfire after long sleep
     document.addEventListener('touchstart', _resurrectLoop, { passive: true });
+    </script>
+    <script>
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+            .catch(err => console.warn('SW registration failed:', err));
+    }
     </script>
 </body>
 </html>
