@@ -52,9 +52,10 @@
         #canvas { position: absolute; }
 
         .footer { position: absolute; bottom: 0; left: 0; right: 0; height: 36px; padding-bottom: env(safe-area-inset-bottom, 0px); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 100; }
+        .footer-timer { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.9rem; font-weight: 400; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.5); line-height: 1; pointer-events: none; }
         .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; }
         .beat-dot.active { background: rgba(255,255,255,0.7); transform: scale(1.4); }
-        .mute-btn { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
+        .mute-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
         .mute-btn:hover { background: rgba(255,255,255,0.1); }
         .mute-btn.muted { opacity: 0.3; }
 
@@ -469,11 +470,10 @@
 
         /* Menu button in footer (lower-right) */
         .menu-btn {
-            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
             width: 34px; height: 34px; border-radius: 50%;
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
             color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer;
-            z-index: 101; display: flex; align-items: center; justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             -webkit-tap-highlight-color: transparent;
             transition: background 0.15s;
         }
@@ -649,23 +649,22 @@
     <div class="game-wrap">
         <div class="header">
             <div class="h-section left">
-                <div class="h-val" id="h-time" style="font-variant-numeric:tabular-nums;">0.0s</div>
-                <div class="h-lbl">Time</div>
+                <div class="h-val"><span id="h-orbs" style="font-variant-numeric:tabular-nums;">0</span><span id="h-orbs-total" style="opacity:0.2;font-size:0.55rem;font-variant-numeric:tabular-nums;"></span></div>
+                <div class="h-lbl">Orbs Left</div>
             </div>
             <div class="h-section center">
                 <div class="gs-logo" id="gs-logo">GEM SLAP</div>
             </div>
-            <div class="h-section right" style="position:relative;padding-right:0;">
-                <div class="h-val"><span id="h-orbs" style="font-variant-numeric:tabular-nums;">0</span><span id="h-orbs-total" style="opacity:0.2;font-size:0.55rem;font-variant-numeric:tabular-nums;"></span></div>
-                <div class="h-lbl">Orbs Left</div>
+            <div class="h-section right" style="align-items:flex-end;">
+                <button class="menu-btn" id="menu-btn">☰</button>
             </div>
         </div>
         <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
         <canvas id="canvas"></canvas>
         <div class="footer">
-            <button class="mute-btn" id="mute-btn">♫</button>
+            <div class="footer-timer" id="h-time">0.0s</div>
             <div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div>
-            <button class="menu-btn" id="menu-btn">☰</button>
+            <button class="mute-btn" id="mute-btn">♫</button>
         </div>
 
         <!-- Intro menu button sits OUTSIDE start-screen so its clicks never bubble into it -->
@@ -1078,7 +1077,7 @@
         const { time, target } = calcScore();
         const { tier } = getTier(time, target);
         $('h-time').textContent = `${time.toFixed(1)}s`;
-        $('h-time').style.color = tier === 'gold' ? '#F9DB6D' : tier === 'silver' ? '#4ECDC4' : tier === 'bronze' ? '#7EC8F0' : 'rgba(255,255,255,0.5)';
+        $('h-time').style.color = tier === 'gold' ? '#F9DB6D' : tier === 'silver' ? '#4ECDC4' : tier === 'bronze' ? '#7EC8F0' : 'rgba(210,70,70,0.85)';
         const orbsLeft = state.totalOrbs - state.orbsHit;
         const crystalsLeft = state.totalTargets - state.targetsDestroyed;
         const orbEl = $('h-orbs');
@@ -1523,6 +1522,8 @@
             state.targets = data.targets.map(t => ({ ...t, alive: true, destroyTime: null }));
             state.totalTargets = state.targets.length;
             state.targetsDestroyed = 0;
+            // Gold = 2s + 2s per crystal; silver = gold×1.5; bronze = gold×2.0
+            state.targetTime = 2 + 2 * state.totalTargets;
             state.targetDestroyRadius = data.targetDestroyRadius;
             state.patternName = data.patternName || '';
             state.batchName = data.batchName || '';
