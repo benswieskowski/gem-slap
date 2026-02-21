@@ -71,11 +71,63 @@
         .pop.crystal-clear { color: #D6F0FF; font-size: 1.1rem !important; text-shadow: 0 0 20px rgba(126,224,240,0.7); animation: crystal-pop 0.8s ease-out forwards; }
         @keyframes crystal-pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); } 30% { transform: translate(-50%, -55%) scale(1.0); } 100% { opacity: 0; transform: translate(-50%, -80%); } }
 
-        .countdown { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 5rem; font-weight: 100; letter-spacing: 0.1em; color: rgba(255,255,255,0.9); z-index: 300; pointer-events: none; animation: count-pop 0.48s ease-out forwards; text-shadow: 0 0 40px rgba(255,255,255,0.3); }
-        .countdown-level { position: absolute; top: calc(50% + 3.6rem); left: 50%; transform: translateX(-50%); font-size: 0.72rem; font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.55); z-index: 300; pointer-events: none; white-space: nowrap; transition: opacity 0.4s ease; }
-        .countdown-level.fade-out { opacity: 0; }
-        .countdown.final { font-size: 5.5rem; color: #fff; text-shadow: 0 0 50px rgba(126,200,240,0.5), 0 0 100px rgba(77,168,218,0.3); }
-        @keyframes count-pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(0.97); } 60% { opacity: 1; transform: translate(-50%, -50%) scale(1.0); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.88); } }
+        /* ── Countdown sequence ── */
+        .cd-wrap {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 300; pointer-events: none;
+            animation: cd-wrap-in 0.4s ease-out forwards;
+        }
+        .cd-wrap.fade-out { animation: cd-wrap-out 0.45s ease-in forwards; }
+        @keyframes cd-wrap-in  { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes cd-wrap-out { from { opacity: 1; } to { opacity: 0; } }
+
+        .cd-level-num {
+            font-size: 0.58rem; font-weight: 600; letter-spacing: 0.28em;
+            text-transform: uppercase; color: rgba(255,255,255,0.3);
+            margin-bottom: 0.35rem;
+        }
+        .cd-level-name {
+            font-size: clamp(1.4rem, 6.5vw, 2rem); font-weight: 800;
+            letter-spacing: 0.12em; line-height: 1.1; text-align: center;
+            white-space: nowrap;
+            background: linear-gradient(120deg, #A8F7F4 0%, #B3C6FF 35%, #D4A7FF 65%, #FFA7D4 100%);
+            background-size: 250% 250%;
+            animation: gem-grad 5s ease infinite;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 12px rgba(192,132,252,0.4));
+            margin-bottom: 2rem;
+        }
+        .cd-number {
+            font-size: 4.5rem; font-weight: 100; line-height: 1;
+            letter-spacing: 0.05em; color: rgba(255,255,255,0.9);
+            animation: cd-num-pop 0.5s cubic-bezier(0.22,1,0.36,1) forwards;
+            text-shadow: 0 0 30px rgba(255,255,255,0.2);
+            min-height: 5rem; display: flex; align-items: center; justify-content: center;
+        }
+        .cd-number.c1 { /* aqua */
+            background: linear-gradient(135deg, #A8F7F4, #7EC8F0);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 16px rgba(127,244,240,0.5));
+        }
+        .cd-number.c2 { /* violet */
+            background: linear-gradient(135deg, #D4A7FF, #B3C6FF);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 16px rgba(192,132,252,0.5));
+        }
+        .cd-number.c3 { /* rose */
+            background: linear-gradient(135deg, #FFA7D4, #D4A7FF);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 16px rgba(255,167,212,0.5));
+        }
+
+        @keyframes cd-num-pop {
+            0%   { opacity: 0; transform: scale(1.6); }
+            18%  { opacity: 1; transform: scale(0.95); }
+            45%  { transform: scale(1.0); }
+            80%  { opacity: 1; }
+            100% { opacity: 0; transform: scale(0.82); }
+        }
 
         .overlay { position: absolute; inset: 0; z-index: 500; transition: opacity 0.5s ease, visibility 0.5s; }
         .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -1148,31 +1200,55 @@
         audio.stopBeat();
         state.countdown = 3; state.countdownStart = performance.now(); state.playing = false;
         const countMs = 550;
-        // Show level name as subtitle — fades out with the countdown
-        showLevelName(3 * countMs);
-        ['3', '2', '1'].forEach((num, i) => { setTimeout(() => { audio.countClick(i === 2); showCountNumber(num); }, i * countMs); });
+        const totalMs = 3 * countMs;
+
+        // Build the whole sequence wrapper once
+        const wrap = document.createElement('div');
+        wrap.className = 'cd-wrap';
+
+        const levelNum  = document.createElement('div');
+        levelNum.className = 'cd-level-num';
+        levelNum.textContent = `Level ${state.level || 1}`;
+
+        const levelName = document.createElement('div');
+        levelName.className = 'cd-level-name';
+        levelName.textContent = state.patternName || '';
+
+        const numEl = document.createElement('div');
+        numEl.className = 'cd-number c1';
+        numEl.textContent = '3';
+
+        wrap.appendChild(levelNum);
+        if (state.patternName) wrap.appendChild(levelName);
+        wrap.appendChild(numEl);
+        document.querySelector('.game-wrap').appendChild(wrap);
+
+        // Tick through 3 → 2 → 1
+        // Each tick replaces the number element to re-trigger CSS animation
+        const colors = ['c1', 'c2', 'c3'];
+        const labels = ['3', '2', '1'];
+        [0, 1, 2].forEach(i => {
+            setTimeout(() => {
+                audio.countClick(i === 2);
+                const old = wrap.querySelector('.cd-number');
+                const n = document.createElement('div');
+                n.className = `cd-number ${colors[i]}`;
+                n.textContent = labels[i];
+                if (old) wrap.replaceChild(n, old);
+                else wrap.appendChild(n);
+            }, i * countMs);
+        });
+
+        // Fade out wrapper then start play
+        setTimeout(() => wrap.classList.add('fade-out'), totalMs - 380);
         setTimeout(() => {
+            wrap.remove();
             state.countdown = 0; spawnInitialOrbs();
             const beatMs = (60000 / state.bpm);
             const leadIn = beatMs * 0.75;
             audio.startBeat(state.bpm, t => { state.beatTime = t + leadIn; state.startTime = t; });
             state.playing = true;
-        }, 3 * countMs);
-    }
-
-    function showCountNumber(num) { const el = document.createElement('div'); el.className = `countdown${num === '1' ? ' final' : ''}`; el.textContent = num; document.querySelector('.game-wrap').appendChild(el); setTimeout(() => el.remove(), 480); }
-
-    function showLevelName(totalMs) {
-        const name = state.patternName || '';
-        const num  = state.level || 1;
-        const text = name ? `Level ${num}: ${name}` : `Level ${num}`;
-        const el = document.createElement('div');
-        el.className = 'countdown-level';
-        el.textContent = text;
-        document.querySelector('.game-wrap').appendChild(el);
-        // Fade out over last 400ms of countdown
-        setTimeout(() => el.classList.add('fade-out'), totalMs - 400);
-        setTimeout(() => el.remove(), totalMs + 100);
+        }, totalMs + 80);
     }
 
     function showFloatingEnd() {
