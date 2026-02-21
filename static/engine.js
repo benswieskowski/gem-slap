@@ -1,0 +1,1382 @@
+// ═══════════════════════════════════════════════════════════════
+//  engine.js — AURA stable rendering, audio & utility layer
+//  Globals referenced at call-time from index.html:
+//    ctx, canvasW, canvasH, orbScale, state
+// ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════
+function rgba(r, g, b, a) { return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`; }
+
+function hexToRgb(hex) {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r ? { r: parseInt(r[1], 16), g: parseInt(r[2], 16), b: parseInt(r[3], 16) } : { r: 167, g: 139, b: 250 };
+}
+
+function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+function toScreen(orb) { return { x: (orb.x / 100) * canvasW, y: (orb.y / 100) * canvasH }; }
+
+function getBrightness(orb, time) {
+    if (!state.measureMs || state.measureMs <= 0) return { brightness: 0.15, dist: 500 };
+    const measureMs = state.measureMs, beatMs = measureMs / 4;
+    const phraseBeat = orb.phraseBeat || 1, targetMs = (phraseBeat - 1) * beatMs;
+    const elapsed = ((time - state.beatTime) % measureMs + measureMs) % measureMs;
+    let dist = elapsed - targetMs;
+    if (dist > measureMs / 2) dist -= measureMs;
+    if (dist < -measureMs / 2) dist += measureMs;
+    const distAbs = Math.abs(dist), sigma = beatMs * 0.5;
+    const gaussian = Math.exp(-(distAbs * distAbs) / (2 * sigma * sigma));
+    return { brightness: 0.12 + 0.88 * gaussian, dist: distAbs };
+}
+
+// ═══════════════════════════════════════
+//  PENTATONIC HARMONY SYSTEM
+// ═══════════════════════════════════════
+const PENTATONIC = [0, 3, 5, 7, 10]; // C minor pentatonic: C Eb F G Bb
+
+function snapToPentatonic(note) {
+    const octave = Math.floor(note / 12);
+    const degree = ((note % 12) + 12) % 12;
+    let closest = PENTATONIC[0], minDist = 99;
+    for (const p of PENTATONIC) {
+        const d = Math.min(Math.abs(degree - p), 12 - Math.abs(degree - p));
+        if (d < minDist) { minDist = d; closest = p; }
+    }
+    let result = octave * 12 + closest;
+    if (note < 0 && closest > 6) result -= 12;
+    return result;
+}
+
+const PENTATONIC_SCALE = [];
+for (let oct = -1; oct <= 4; oct++) {
+    for (const p of PENTATONIC) PENTATONIC_SCALE.push(oct * 12 + p);
+}
+
+// ═══════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════
+
+// White diamond palette — crystals look like cut diamonds, not blue gems.
+// main = slightly warm white face; light = pure white; dark = cool-silver shadow.
+const CRYSTAL_PALETTE = [
+    { main: '#E8F2FF', light: '#FFFFFF', mid: '#F4F8FF', dark: '#B0C8E8', glow: '#FFFFFF' },
+    { main: '#EAF0FF', light: '#FFFFFF', mid: '#F6F9FF', dark: '#B4CCEC', glow: '#FFFFFF' },
+    { main: '#E6EEFF', light: '#FFFFFF', mid: '#F2F6FF', dark: '#ACBEE0', glow: '#FFFFFF' },
+    { main: '#ECF2FF', light: '#FFFFFF', mid: '#F6F9FF', dark: '#B8CCEC', glow: '#FFFFFF' },
+    { main: '#E4F0FF', light: '#FFFFFF', mid: '#F0F6FF', dark: '#ACCAE8', glow: '#FFFFFF' },
+    { main: '#EEF4FF', light: '#FFFFFF', mid: '#F8FBFF', dark: '#BCCEF0', glow: '#FFFFFF' },
+    { main: '#E2ECFF', light: '#FFFFFF', mid: '#F0F6FF', dark: '#A8C0E0', glow: '#FFFFFF' },
+];
+
+// Jewel-tone spectral colors for shard explosions.
+// Crystals are white diamonds while alive; they BURST into rainbow on death.
+const SHARD_COLORS = [
+    { main: '#FF2840', light: '#FF90A0' },   // ruby red
+    { main: '#FF6018', light: '#FFB070' },   // fire opal
+    { main: '#F5C800', light: '#FFE870' },   // canary yellow
+    { main: '#28C858', light: '#80EEA8' },   // emerald
+    { main: '#18C8E0', light: '#80EEF8' },   // aquamarine
+    { main: '#A020E0', light: '#D080F8' },   // amethyst
+    { main: '#E018A0', light: '#F880CC' },   // pink tourmaline
+    { main: '#F07820', light: '#FFB870' },   // amber
+];
+
+const WARM_RELEASE = ['#C41E3A','#D4380D','#E86420','#F07B18','#FAAB0C','#FFC107','#FFD43B','#FFF5C0'];
+const BASS_NAMES = ["Fourside Funk","Hyrule March","Snake Slither","Guardia Festival","Gemini Mirror","Bright Flash","Pharaoh Rush","Sky World","Wily's Resolve","Hard Corps"];
+
+// ═══════════════════════════════════════
+//  AUDIO ENGINE
+// ═══════════════════════════════════════
+class Audio {
+    constructor() {
+        this.ctx = null; this.ready = false; this.beatOn = true;
+        this.beatInt = null; this.beat = 0; this.bassStyle = 0;
+        this.bassFilter = null; this.bassGain = null;
+        this.master = null;
+        this._distCurve = null;
+        this._activeNodes = 0;
+        this._MAX_ACTIVE = 150;
+        this._beatBpm = 0;
+        this._beatCb = null;
+        // _intentPlaying: set by startBeat(), cleared ONLY by explicit stopBeat().
+        // Survives phone lock / visibilitychange not firing. Unlike _wasPlaying,
+        // it does not depend on any background event firing correctly.
+        this._intentPlaying = false;
+        this._needsResume = false;
+    }
+
+    async init() {
+        if (this.ready) return;
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') await this.ctx.resume();
+
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.78;
+        this.master.connect(this.ctx.destination);
+
+        this.bassFilter = this.ctx.createBiquadFilter();
+        this.bassFilter.type = 'lowpass'; this.bassFilter.frequency.value = 500; this.bassFilter.Q.value = 0.7;
+        this.bassGain = this.ctx.createGain(); this.bassGain.gain.value = 0.44;
+        this.bassFilter.connect(this.bassGain); this.bassGain.connect(this.master);
+
+        this.drumGain = this.ctx.createGain(); this.drumGain.gain.value = 0.38;
+        this.drumGain.connect(this.master);
+
+        this.hihatGain = this.ctx.createGain(); this.hihatGain.gain.value = 0.26;
+        this.hihatGain.connect(this.master);
+
+        this.chordFilter = this.ctx.createBiquadFilter();
+        this.chordFilter.type = 'lowpass'; this.chordFilter.frequency.value = 1500; this.chordFilter.Q.value = 0.7;
+        this.chordGain = this.ctx.createGain(); this.chordGain.gain.value = 0.38;
+        this.chordFilter.connect(this.chordGain); this.chordGain.connect(this.master);
+
+        this.texGain = this.ctx.createGain(); this.texGain.gain.value = 0.10;
+        this.texGain.connect(this.master);
+
+        this._distCurve = this._makeDistCurve(20);
+
+        const b = this.ctx.createBuffer(1, 1, 22050);
+        const s = this.ctx.createBufferSource(); s.buffer = b;
+        s.connect(this.ctx.destination); s.start(0);
+
+        this._setupVisibilityHandler();
+        this.ready = true;
+    }
+
+    _setupVisibilityHandler() {
+        // ── What we DON'T do ──────────────────────────────────────────────────
+        // We do NOT call ctx.resume() from visibilitychange, pageshow, or focus.
+        // iOS Safari silently ignores resume() outside a real user gesture.
+        //
+        // ── The core problem with _wasPlaying ────────────────────────────────
+        // The old approach stored _wasPlaying = !!beatInt inside visibilitychange.
+        // If that event misfires (common on hard phone lock in iOS Safari), the
+        // flag stays false and sound never comes back after unlock.
+        //
+        // ── The fix: _intentPlaying ──────────────────────────────────────────
+        // _intentPlaying is set by startBeat() and cleared only by stopBeat().
+        // It is never touched by background/foreground events, so it is immune
+        // to unreliable system events. If music was playing when the phone locked,
+        // _intentPlaying is still true when the user next taps the screen.
+
+        // On hide: stop the beat interval to prevent ghost ticks while suspended,
+        // but leave _intentPlaying alone — we want to resume on return.
+        document.addEventListener('visibilitychange', () => {
+            if (!this.ctx || !document.hidden) return;
+            if (this.beatInt) { clearInterval(this.beatInt); this.beatInt = null; }
+        });
+
+        // Mark that we should attempt a resume on the next user gesture.
+        // Multiple events cover the different ways iOS returns to foreground:
+        //   visibilitychange visible — most reliable path
+        //   pageshow            — bfcache restore / some lock-screen returns
+        //   window focus        — tab regains focus
+        const markNeedsResume = () => { this._needsResume = true; };
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) markNeedsResume(); });
+        window.addEventListener('pageshow', markNeedsResume);
+        window.addEventListener('focus', markNeedsResume);
+
+        // ── The one reliable resume point: user gesture ───────────────────────
+        // ctx.resume() only works here. We check every possible failure state:
+        //   suspended   — normal iOS background/lock suspend
+        //   interrupted — iOS audio session interrupt (phone call etc.)
+        //   running + beat dead — zombie state: context alive but interval died
+        const gestureResume = () => {
+            if (!this.ctx) return;
+
+            const afterResume = () => {
+                // Restart if the user intended music to be playing and it's not
+                if (this._intentPlaying && this._beatBpm > 0 && !this.beatInt) {
+                    this._restartBeat();
+                }
+                this._needsResume = false;
+            };
+
+            if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
+                this.ctx.resume().then(afterResume).catch(() => {});
+            } else if (this.ctx.state === 'running') {
+                // Context is alive — check if beat needs restart (zombie state
+                // or visibilitychange+return without a suspend cycle)
+                if (this._intentPlaying && this._beatBpm > 0 && !this.beatInt) {
+                    afterResume();
+                } else if (this._needsResume) {
+                    // Not playing, but flag was set — just clear it
+                    this._needsResume = false;
+                }
+            }
+        };
+
+        document.addEventListener('touchstart', gestureResume, { passive: true });
+        document.addEventListener('click', gestureResume);
+    }
+
+    _restartBeat() {
+        if (!this.ready || this.beatInt) return;
+        const ms = (60000 / this._beatBpm) / 4;
+        this.beatInt = setInterval(() => { this.beat = (this.beat + 1) % 32; this.playStep(this.beat); }, ms);
+    }
+
+    async unlock() {
+        if (!this.ctx) await this.init();
+        else if (this.ctx.state === 'suspended') await this.ctx.resume();
+    }
+
+    _scheduleCleanup(nodes, duration) {
+        this._activeNodes += nodes.length;
+        const cleanupMs = Math.ceil((duration + 0.15) * 1000);
+        setTimeout(() => {
+            nodes.forEach(n => { try { n.disconnect(); } catch(e) {} });
+            this._activeNodes -= nodes.length;
+        }, cleanupMs);
+    }
+
+    _canPlay() { return this.ready && this.ctx && this.ctx.state === 'running' && this._activeNodes < this._MAX_ACTIVE; }
+
+    startBeat(bpm, cb) {
+        this.stopBeat(); this.beat = 0;
+        this._beatBpm = bpm; this._beatCb = cb;
+        this._intentPlaying = true;  // user explicitly started music
+        const ms = (60000 / bpm) / 4;
+        const start = performance.now();
+        if (cb) cb(start);
+        this.playStep(0);
+        this.beatInt = setInterval(() => { this.beat = (this.beat + 1) % 32; this.playStep(this.beat); }, ms);
+    }
+
+    stopBeat() { if (this.beatInt) { clearInterval(this.beatInt); this.beatInt = null; } this._intentPlaying = false; }
+
+    setBassStyle(style) { this.bassStyle = style % 10; }
+
+    getBpm(style) {
+        // Returns the intended BPM for each track — matches music_v5.html
+        const BPMS = [108,112,126,130,132,138,144,148,150,150]; // sorted low→high
+        return BPMS[(style % 10)] || 130;
+    }
+
+    playStep(step) {
+        if (!this._canPlay() || !this.beatOn) return;
+        const s = this.bassStyle || 0;
+        const dr = this.getSubPattern(s)[step];
+        if (dr) this.subDrone(dr[0], dr[1], dr[2]);
+        const cp = this.getPadPattern(s)[step];
+        if (cp) {
+            if (cp[2] === 's') this.chordStab(cp[0], cp[1]);
+            else this.warblePad(cp[0], cp[1]);
+        }
+        const pp = this.getPercPattern(s);
+        if (pp.k[step]) this.kick808(pp.k[step]);
+        if (pp.s[step]) this.tapeSnap(pp.s[step]);
+        if (pp.h && pp.h[step]) this.hihat(Math.abs(pp.h[step]), pp.h[step] < 0);
+        if (pp.t && pp.t[step]) this.texGrain(pp.t[step]);
+    }
+
+    getSubPattern(style) {
+        const S = {
+            // 00 · Fourside Funk — Earthbound C Dorian ghost-note funk (108 bpm)
+            0: [[0,.58,.20],null,[0,.20,.08],null,[12,.52,.16],null,[7,.44,.14],null,
+                [0,.54,.20],null,[10,.20,.08],null,[10,.48,.16],[9,.22,.10],[7,.36,.14],[0,.16,.06],
+                [0,.56,.20],null,[0,.22,.08],null,[12,.50,.16],[12,.18,.06],[7,.42,.14],null,
+                [0,.52,.20],null,[9,.22,.08],null,[7,.46,.16],null,[12,.38,.14],[0,.18,.06]],
+            // 01 · Hyrule March — Zelda / OoT overworld dignified march (112 bpm)
+            1: [[0,.56,.38],null,null,null,[0,.22,.12],null,[7,.50,.26],null,
+                [5,.52,.30],null,null,null,[7,.48,.26],null,[7,.20,.10],null,
+                [0,.54,.38],null,null,null,[0,.20,.10],null,[7,.48,.26],null,
+                [3,.50,.30],null,null,null,[7,.46,.26],null,[10,.18,.10],null],
+            // 02 · Snake Slither — MM3 chromatic approach bass (126 bpm)
+            2: [[0,.58,.20],null,[0,.22,.08],null,[10,.50,.18],null,[11,.20,.08],null,
+                [0,.54,.20],null,null,[7,.20,.08],[5,.48,.18],null,[4,.22,.10],[5,.16,.06],
+                [0,.56,.20],null,[0,.20,.08],null,[7,.52,.18],null,[8,.22,.08],null,
+                [0,.50,.20],null,null,[3,.18,.08],[7,.46,.18],[8,.18,.08],[7,.36,.16],null],
+            // 03 · Guardia Festival — CT Millennial Fair climbing arpeggio (130 bpm)
+            3: [[0,.52,.20],null,[3,.34,.14],null,[7,.48,.18],null,[10,.30,.12],null,
+                [12,.50,.18],null,[10,.22,.10],null,[7,.46,.18],null,[5,.24,.12],[3,.16,.08],
+                [0,.50,.20],null,[3,.32,.14],null,[7,.46,.18],null,[10,.28,.12],null,
+                [12,.48,.18],null,[9,.20,.10],null,[7,.44,.18],[5,.20,.10],[3,.34,.14],null],
+            // 04 · Gemini Mirror — MM3 call-and-response ascending/descending (132 bpm)
+            4: [[0,.54,.22],null,null,null,[3,.46,.20],null,[5,.38,.18],null,
+                [7,.50,.22],null,[10,.28,.12],null,[12,.48,.20],null,[10,.22,.10],[7,.18,.08],
+                [0,.52,.22],null,null,null,[12,.44,.20],null,[10,.36,.18],null,
+                [7,.48,.22],null,[5,.26,.12],null,[3,.44,.20],[5,.20,.10],[7,.40,.18],null],
+            // 05 · Bright Flash — MM4 pentatonic arpeggio climber (138 bpm)
+            5: [[0,.52,.20],null,[3,.32,.14],null,[7,.48,.18],null,[10,.28,.12],null,
+                [12,.50,.18],null,[10,.22,.10],null,[7,.46,.18],null,[3,.26,.12],[0,.16,.06],
+                [0,.50,.20],null,[3,.30,.14],null,[7,.46,.18],null,[12,.48,.20],null,
+                [15,.46,.18],null,[12,.22,.10],[10,.18,.08],[7,.42,.18],null,[5,.24,.12],[7,.16,.06]],
+            // 06 · Pharaoh Rush — MM4 Hijaz / Phrygian dominant (144 bpm)
+            6: [[0,.60,.18],null,null,null,[1,.44,.14],null,[4,.50,.16],null,
+                [5,.56,.18],null,null,null,[7,.52,.16],null,[8,.28,.10],[7,.18,.06],
+                [0,.58,.18],null,null,[1,.18,.08],[4,.52,.16],null,[5,.56,.18],null,
+                [7,.54,.16],null,[8,.24,.10],null,[5,.50,.16],[4,.22,.10],[1,.44,.14],[0,.16,.06]],
+            // 07 · Sky World — SMB3 Athletic double-hit bounce bass (148 bpm)
+            7: [[0,.58,.14],[0,.26,.08],null,null,[0,.54,.14],null,[7,.48,.14],null,
+                [5,.52,.14],[5,.22,.08],null,null,[7,.50,.14],null,[10,.26,.10],null,
+                [0,.56,.14],[0,.24,.08],null,null,[0,.52,.14],null,[3,.30,.10],null,
+                [7,.50,.14],null,[10,.22,.10],null,[12,.46,.14],[10,.20,.08],[7,.36,.14],null],
+            // 08 · Wily's Resolve — Mega Man 2 octave-bounce bass (150 bpm)
+            8: [[0,.64,.18],null,null,[0,.24,.08],[12,.56,.16],null,[7,.44,.14],null,
+                [0,.60,.18],null,null,[0,.22,.08],[7,.52,.16],null,[10,.30,.12],[0,.18,.08],
+                [0,.62,.18],null,null,[0,.24,.08],[12,.54,.16],null,[7,.42,.14],null,
+                [0,.58,.18],null,null,[3,.20,.08],[7,.50,.16],[10,.24,.10],[12,.46,.16],null],
+            // 09 · Hard Corps — MM3 military double-hit march (150 bpm)
+            9: [[0,.62,.18],[0,.30,.10],null,null,[0,.58,.18],null,[7,.50,.16],null,
+                [0,.60,.18],[0,.28,.10],null,null,[5,.56,.16],null,[7,.44,.14],[0,.20,.08],
+                [0,.60,.18],[0,.28,.10],null,null,[0,.56,.18],null,[10,.48,.16],null,
+                [7,.58,.18],[7,.26,.10],null,null,[5,.54,.16],[4,.20,.10],[7,.42,.14],null],
+        };
+        return S[style] || S[0];
+    }
+
+    getPadPattern(style) {
+        const P = {
+            // 00 · Fourside Funk (108 bpm)
+            0: [[[0,3,7,10],.36],null,null,null,null,null,null,null,
+                null,null,null,null,[[10,14,17],.24,'s'],null,null,null,
+                [[0,3,7,10],.34],null,null,null,null,null,null,null,
+                [[9,12,16,19],.26],null,null,null,null,null,null,null],
+            // 01 · Hyrule March (112 bpm)
+            1: [[[0,7,12],.52,'s'],null,null,null,null,null,[[7,14,19],.40,'s'],null,
+                [[5,12,17],.48,'s'],null,null,null,null,null,[[7,14],.36,'s'],null,
+                [[0,7,12],.50,'s'],null,null,null,null,null,[[7,14,19],.38,'s'],null,
+                [[3,10,15],.46,'s'],null,null,null,null,null,[[7,12,19],.36,'s'],null],
+            // 02 · Snake Slither (126 bpm)
+            2: [[[0,7,12],.44,'s'],null,null,null,null,null,null,null,
+                [[0,7],.36,'s'],null,null,null,[[5,12],.28,'s'],null,null,null,
+                [[0,7,12],.42,'s'],null,null,null,null,[[7,14],.30,'s'],null,null,
+                [[0,5,7],.34,'s'],null,null,null,null,null,[[3,7,10],.26,'s'],null],
+            // 03 · Guardia Festival (130 bpm)
+            3: [[[0,3,7,10],.40,'s'],null,null,null,null,null,[[7,10,14],.30,'s'],null,
+                [[0,3,7],.36,'s'],null,null,null,[[5,10,12],.26,'s'],null,null,null,
+                [[0,3,7,10],.38,'s'],null,null,null,null,null,[[7,10,14],.28,'s'],null,
+                [[0,3,7],.34,'s'],null,null,null,[[9,12,16],.26,'s'],null,null,null],
+            // 04 · Gemini Mirror (132 bpm)
+            4: [[[0,3,7],.38,'s'],null,null,null,null,null,[[5,10,12],.30,'s'],null,
+                [[7,10,14],.36,'s'],null,null,null,null,[[0,3,7,12],.32,'s'],null,null,
+                [[0,3,7],.36,'s'],null,null,null,null,null,[[10,14,17],.28,'s'],null,
+                [[7,12],.34,'s'],null,null,null,[[3,7,10],.30,'s'],null,[[0,7],.34,'s'],null],
+            // 05 · Bright Flash (138 bpm)
+            5: [[[0,7,12],.42,'s'],null,null,null,null,null,[[3,7,10],.32,'s'],null,
+                [[0,7,12],.40,'s'],null,null,null,null,[[5,10,12],.28,'s'],null,null,
+                [[0,7,12],.40,'s'],null,null,null,null,null,[[7,12,15],.30,'s'],null,
+                [[3,10,15],.38,'s'],null,null,null,null,null,[[0,7,12],.36,'s'],null],
+            // 06 · Pharaoh Rush (144 bpm)
+            6: [[[0,7],.46,'s'],null,null,null,null,null,[[4,8],.34,'s'],null,
+                [[5,8,12],.40,'s'],null,null,null,null,[[7,10],.30,'s'],null,null,
+                [[0,7],.44,'s'],null,null,null,[[1,8],.32,'s'],null,null,null,
+                [[5,8,12],.38,'s'],null,null,null,null,null,[[0,5,8],.34,'s'],null],
+            // 07 · Sky World (148 bpm)
+            7: [[[0,7,12],.44,'s'],null,null,null,null,null,null,null,
+                [[5,12],.36,'s'],null,null,null,[[7,14],.30,'s'],null,null,null,
+                [[0,7,12],.42,'s'],null,null,null,null,null,[[3,10],.28,'s'],null,
+                [[7,14],.32,'s'],null,null,null,[[0,7,12],.26,'s'],null,null,null],
+            // 08 · Wily's Resolve (150 bpm)
+            8: [[[0,7,12],.46,'s'],null,null,null,null,null,null,null,
+                null,null,null,null,[[7,14],.32,'s'],null,null,null,
+                [[0,7,12],.44,'s'],null,null,null,null,null,null,null,
+                [[0,3,7,10],.28],null,null,null,null,null,null,null],
+            // 09 · Hard Corps (150 bpm)
+            9: [[[0,7,12],.50,'s'],null,null,null,null,null,[[7,14],.38,'s'],null,
+                [[0,7,12],.46,'s'],null,null,null,null,null,[[5,12],.34,'s'],null,
+                [[0,7,12],.48,'s'],null,null,null,null,null,[[10,17],.36,'s'],null,
+                [[7,14],.44,'s'],null,null,null,null,null,[[0,5,7,12],.38,'s'],null],
+        };
+        return P[style] || P[0];
+    }
+
+    getPercPattern(style) {
+        const R = {
+            // 00 · Fourside Funk — ghost-note funk groove (108 bpm)
+            0: { k:[.54,0,0,0,0,0,.28,0,.50,0,.22,0,0,0,.24,0,
+                    .54,0,.16,0,0,0,.28,0,.50,0,.22,0,0,0,.24,.14],
+                 s:[0,0,0,0,.46,0,0,.14,0,0,0,0,.44,0,0,.12,
+                    0,0,0,0,.46,0,0,.14,0,0,0,0,.44,0,0,.16],
+                 h:[.30,.14,.22,.14,.30,.14,-.34,.14,.30,.14,.22,.14,.30,.14,-.34,.14,
+                    .30,.14,.22,.14,.30,.14,-.34,.14,.30,.14,.22,.14,.30,.14,-.34,.14],
+                 t:[0,0,.04,0,0,.04,0,0,0,0,.04,0,0,0,.04,0,
+                    0,0,.04,0,0,.04,0,0,0,0,.04,0,0,.04,0,0] },
+            // 01 · Hyrule March — dignified march (112 bpm)
+            1: { k:[.50,0,0,0,0,0,0,0,.44,0,0,0,0,0,0,0,
+                    .50,0,0,0,0,0,0,0,.44,0,.18,0,0,0,0,0],
+                 s:[0,0,0,0,.40,0,0,0,0,0,0,0,.38,0,0,0,
+                    0,0,0,0,.40,0,0,.12,0,0,0,0,.38,0,0,0],
+                 h:[.26,0,.16,0,.26,0,.16,0,.26,0,.16,0,.26,0,-.30,0,
+                    .26,0,.16,0,.26,0,.16,0,.26,0,.16,0,.26,0,-.28,0],
+                 t:[0,0,.04,0,0,0,.04,0,0,0,.04,0,0,0,.04,0,
+                    0,0,.04,0,0,0,.04,0,0,0,.04,0,0,0,.04,0] },
+            // 02 · Snake Slither — MM3 slithering ghost groove (126 bpm)
+            2: { k:[.54,0,0,0,0,0,.28,0,.50,0,.22,0,0,0,.26,0,
+                    .54,0,.18,0,0,0,.28,0,.50,0,.22,0,0,0,.26,.14],
+                 s:[0,0,0,0,.44,0,0,.14,0,0,0,0,.42,0,0,.12,
+                    0,0,0,0,.44,0,.12,.14,0,0,0,0,.42,0,0,.16],
+                 h:[.28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12,
+                    .28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12],
+                 t:[] },
+            // 03 · Guardia Festival — CT Millennial Fair (130 bpm)
+            3: { k:[.48,0,0,0,0,0,.24,0,.44,0,.18,0,0,0,.22,0,
+                    .48,0,0,0,0,0,.24,0,.44,0,.18,0,0,0,.22,.12],
+                 s:[0,0,0,0,.42,0,0,.12,0,0,0,0,.40,0,0,.10,
+                    0,0,0,0,.42,0,0,.12,0,0,0,0,.40,0,0,.14],
+                 h:[.28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12,
+                    .28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12],
+                 t:[0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,
+                    0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04] },
+            // 04 · Gemini Mirror — MM3 mirror bass (132 bpm)
+            4: { k:[.52,0,0,0,0,0,.26,0,.48,0,0,0,.22,0,0,0,
+                    .52,0,.18,0,0,0,.26,0,.48,0,0,0,.22,0,.16,0],
+                 s:[0,0,0,0,.46,0,0,.14,0,0,0,0,.44,0,0,.12,
+                    0,0,0,0,.46,0,0,.14,0,0,0,.12,.44,0,0,0],
+                 h:[.28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12,
+                    .28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12],
+                 t:[] },
+            // 05 · Bright Flash — MM4 arpeggio climber (138 bpm)
+            5: { k:[.52,0,0,0,0,0,.26,0,.48,0,.20,0,0,0,.24,0,
+                    .52,0,.16,0,0,0,.26,0,.48,0,.20,0,0,0,.24,.14],
+                 s:[0,0,0,0,.44,0,0,.14,0,0,0,0,.42,0,0,.12,
+                    0,0,0,0,.44,0,.14,0,0,0,0,0,.42,0,0,.16],
+                 h:[.28,0,.20,0,.28,0,-.32,0,.28,0,.20,0,.28,0,-.30,0,
+                    .28,0,.20,0,.28,0,-.32,0,.28,0,.20,0,.28,0,-.30,0],
+                 t:[0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,
+                    0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04] },
+            // 06 · Pharaoh Rush — MM4 driving desert march (144 bpm)
+            6: { k:[.58,0,0,0,.24,0,0,0,.54,0,.20,0,.22,0,0,0,
+                    .58,0,0,0,.24,0,.18,0,.54,0,.20,0,.22,0,.16,0],
+                 s:[0,0,0,0,.50,0,0,.16,0,0,0,0,.48,0,.14,0,
+                    0,0,0,0,.50,0,.16,0,0,0,0,0,.48,0,.14,.18],
+                 h:[.34,.18,.26,.18,.34,.18,-.38,.18,.34,.18,.26,.18,.34,.18,-.38,.18,
+                    .34,.18,.26,.18,.34,.18,-.38,.18,.34,.18,.26,.18,.34,.18,-.38,.18],
+                 t:[] },
+            // 07 · Sky World — SMB3 bouncy athletic (148 bpm)
+            7: { k:[.56,0,0,0,.24,0,0,0,.52,0,.20,0,.22,0,0,0,
+                    .56,0,0,0,.24,0,.18,0,.52,0,.20,0,.22,0,0,0],
+                 s:[0,0,0,0,.48,0,0,.14,0,0,0,0,.46,0,.12,0,
+                    0,0,0,0,.48,0,.14,0,0,0,0,0,.46,0,.12,.16],
+                 h:[.32,.16,.24,.16,.32,.16,-.36,.16,.32,.16,.24,.16,.32,.16,-.36,.16,
+                    .32,.16,.24,.16,.32,.16,-.36,.16,.32,.16,.24,.16,.32,.16,-.36,.16],
+                 t:[] },
+            // 08 · Wily's Resolve — relentless 16th hats, snare on 2&4 (150 bpm)
+            8: { k:[.62,0,0,0,.28,0,0,0,.58,0,.22,0,.26,0,0,0,
+                    .62,0,0,0,.28,0,.18,0,.58,0,.22,0,.26,0,0,0],
+                 s:[0,0,0,0,.54,0,0,.16,0,0,0,0,.52,0,0,.18,
+                    0,0,0,0,.54,0,0,.16,0,0,0,0,.52,0,.14,.20],
+                 h:[.36,.20,.28,.20,.36,.20,-.40,.20,.36,.20,.28,.20,.36,.20,-.40,.20,
+                    .36,.20,.28,.20,.36,.20,-.40,.20,.36,.20,.28,.20,.36,.20,-.40,.20],
+                 t:[] },
+            // 09 · Hard Corps — MM3 military march (150 bpm)
+            9: { k:[.62,0,0,0,.28,0,0,0,.58,0,.24,0,.26,0,0,0,
+                    .62,0,.20,0,.28,0,0,0,.58,0,.24,0,.26,0,0,0],
+                 s:[0,0,.26,0,.52,0,.24,0,0,0,.26,0,.50,0,.22,0,
+                    0,0,.28,0,.52,0,.24,0,0,0,.26,0,.50,0,.22,.18],
+                 h:[.34,.18,.26,.18,.34,.18,.26,.18,.34,.18,.26,.18,.34,.18,.26,.18,
+                    .34,.18,.26,.18,.34,.18,.26,.18,.34,.18,.26,.18,.34,.18,-.36,.18],
+                 t:[] },
+        };
+        return R[style] || R[0];
+    }
+
+    getMelodyPattern() { return new Array(16).fill(null); }
+
+    subDrone(semitone, velocity, duration) {
+        if (!this._canPlay()) return;
+        const t = this.ctx.currentTime;
+        const freq = 65.41 * Math.pow(2, semitone / 12);
+        const dur = duration + 0.25;
+        const nodes = [];
+        const osc = this.ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = freq;
+        const g1 = this.ctx.createGain(); g1.gain.value = 0.45;
+        osc.connect(g1); nodes.push(osc, g1);
+        const oct = this.ctx.createOscillator(); oct.type = 'sine'; oct.frequency.value = freq * 2;
+        const g2 = this.ctx.createGain(); g2.gain.value = 0.3;
+        oct.connect(g2); nodes.push(oct, g2);
+        const h3 = this.ctx.createOscillator(); h3.type = 'sine'; h3.frequency.value = freq * 3;
+        const g3 = this.ctx.createGain(); g3.gain.value = 0.12;
+        h3.connect(g3); nodes.push(h3, g3);
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(velocity * 0.40, t + 0.04);
+        env.gain.setValueAtTime(velocity * 0.40, t + duration * 0.55);
+        env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        g1.connect(env); g2.connect(env); g3.connect(env);
+        env.connect(this.bassFilter);
+        nodes.push(env);
+        [osc, oct, h3].forEach(o => { o.start(t); o.stop(t + dur); });
+        this._scheduleCleanup(nodes, dur);
+    }
+
+    kick808(vel) {
+        if (!this._canPlay()) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator(); osc.type = 'sine';
+        osc.frequency.setValueAtTime(55 + vel * 15, t);
+        osc.frequency.exponentialRampToValueAtTime(28, t + 0.2);
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(vel * 0.6, t + 0.006);
+        env.gain.exponentialRampToValueAtTime(vel * 0.2, t + 0.08);
+        env.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        osc.connect(env); env.connect(this.drumGain);
+        const click = this.ctx.createOscillator(); click.type = 'triangle';
+        click.frequency.setValueAtTime(300 + vel * 60, t);
+        click.frequency.exponentialRampToValueAtTime(120, t + 0.025);
+        const clickEnv = this.ctx.createGain();
+        clickEnv.gain.setValueAtTime(vel * 0.35, t);
+        clickEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+        click.connect(clickEnv); clickEnv.connect(this.drumGain);
+        osc.start(t); osc.stop(t + 0.5);
+        click.start(t); click.stop(t + 0.06);
+        this._scheduleCleanup([osc, env, click, clickEnv], 0.5);
+    }
+
+    tapeSnap(vel) {
+        if (!this._canPlay()) return;
+        const t = this.ctx.currentTime;
+        const bufLen = Math.floor(this.ctx.sampleRate * 0.04);
+        const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.2));
+        const noise = this.ctx.createBufferSource(); noise.buffer = buf;
+        const filt = this.ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 400; filt.Q.value = 0.8;
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(vel * 0.35, t);
+        env.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+        const body = this.ctx.createOscillator(); body.type = 'sine';
+        body.frequency.setValueAtTime(180, t); body.frequency.exponentialRampToValueAtTime(100, t + 0.02);
+        const bEnv = this.ctx.createGain();
+        bEnv.gain.setValueAtTime(vel * 0.12, t); bEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+        noise.connect(filt); filt.connect(env); env.connect(this.drumGain);
+        body.connect(bEnv); bEnv.connect(this.drumGain);
+        noise.start(t); noise.stop(t + 0.06); body.start(t); body.stop(t + 0.04);
+        this._scheduleCleanup([noise, filt, env, body, bEnv], 0.07);
+    }
+
+    hihat(vel, open = false) {
+        if (!this._canPlay()) return;
+        const t = this.ctx.currentTime;
+        const dur = open ? 0.14 : 0.04;
+        const bufLen = Math.floor(this.ctx.sampleRate * dur);
+        const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+        const ch = buf.getChannelData(0);
+        const decayRate = open ? 0.38 : 0.1;
+        for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * decayRate));
+        const noise = this.ctx.createBufferSource(); noise.buffer = buf;
+        const noiseFilt = this.ctx.createBiquadFilter();
+        noiseFilt.type = 'highpass';
+        noiseFilt.frequency.value = open ? 6000 : 8500;
+        noiseFilt.Q.value = 0.5;
+        const noiseEnv = this.ctx.createGain();
+        noiseEnv.gain.setValueAtTime(vel * 0.30, t);
+        noiseEnv.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        noise.connect(noiseFilt); noiseFilt.connect(noiseEnv); noiseEnv.connect(this.hihatGain);
+        const metal = this.ctx.createOscillator(); metal.type = 'square';
+        metal.frequency.value = open ? 3200 : 4800;
+        const metalFilt = this.ctx.createBiquadFilter();
+        metalFilt.type = 'bandpass';
+        metalFilt.frequency.value = open ? 3500 : 5200;
+        metalFilt.Q.value = 3.5;
+        const metalEnv = this.ctx.createGain();
+        metalEnv.gain.setValueAtTime(vel * 0.07, t);
+        metalEnv.gain.exponentialRampToValueAtTime(0.001, t + (open ? 0.06 : 0.015));
+        metal.connect(metalFilt); metalFilt.connect(metalEnv); metalEnv.connect(this.hihatGain);
+        const bright = this.ctx.createOscillator(); bright.type = 'sine';
+        bright.frequency.value = open ? 7800 : 10200;
+        const brightEnv = this.ctx.createGain();
+        brightEnv.gain.setValueAtTime(vel * 0.04, t);
+        brightEnv.gain.exponentialRampToValueAtTime(0.001, t + (open ? 0.04 : 0.01));
+        bright.connect(brightEnv); brightEnv.connect(this.hihatGain);
+        noise.start(t); noise.stop(t + dur + 0.01);
+        metal.start(t); metal.stop(t + (open ? 0.07 : 0.02));
+        bright.start(t); bright.stop(t + (open ? 0.05 : 0.015));
+        this._scheduleCleanup([noise, noiseFilt, noiseEnv, metal, metalFilt, metalEnv, bright, brightEnv], dur + 0.02);
+    }
+
+    texGrain(vel) {
+        if (!this._canPlay()) return;
+        const t = this.ctx.currentTime;
+        const bufLen = Math.floor(this.ctx.sampleRate * 0.1);
+        const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.5));
+        const noise = this.ctx.createBufferSource(); noise.buffer = buf;
+        const filt = this.ctx.createBiquadFilter(); filt.type = 'bandpass'; filt.frequency.value = 500; filt.Q.value = 0.5;
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vel, t + 0.02);
+        env.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        noise.connect(filt); filt.connect(env); env.connect(this.texGain);
+        noise.start(t); noise.stop(t + 0.12);
+        this._scheduleCleanup([noise, filt, env], 0.12);
+    }
+
+    warblePad(semitones, vel) {
+        if (!this._canPlay()) return;
+        const t = this.ctx.currentTime;
+        const baseFreq = 130.81;
+        const dur = 2.0;
+        const nodes = [];
+        const mixer = this.ctx.createGain(); mixer.gain.value = 1;
+        mixer.connect(this.chordFilter);
+        nodes.push(mixer);
+        semitones.forEach(semi => {
+            const freq = baseFreq * Math.pow(2, semi / 12);
+            const o1 = this.ctx.createOscillator(); o1.type = 'triangle'; o1.frequency.value = freq;
+            const o2 = this.ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 1.005;
+            const o3 = this.ctx.createOscillator(); o3.type = 'sine'; o3.frequency.value = freq * 0.995;
+            const o4 = this.ctx.createOscillator(); o4.type = 'sine'; o4.frequency.value = freq * 2;
+            const noteVol = vel * 0.22 / Math.max(3, semitones.length);
+            const g = this.ctx.createGain();
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(noteVol, t + 0.2);
+            g.gain.setValueAtTime(noteVol, t + dur * 0.5);
+            g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+            const g4 = this.ctx.createGain();
+            g4.gain.setValueAtTime(0, t);
+            g4.gain.linearRampToValueAtTime(noteVol * 0.35, t + 0.15);
+            g4.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.6);
+            o1.connect(g); o2.connect(g); o3.connect(g); g.connect(mixer);
+            o4.connect(g4); g4.connect(mixer);
+            [o1, o2, o3, o4].forEach(o => { o.start(t); o.stop(t + dur + 0.05); });
+            nodes.push(o1, o2, o3, o4, g, g4);
+        });
+        this._scheduleCleanup(nodes, dur + 0.1);
+    }
+
+    chordStab(semitones, vel) {
+        if (!this._canPlay()) return;
+        const t = this.ctx.currentTime;
+        const baseFreq = 130.81;
+        const dur = 0.20;
+        const nodes = [];
+        const mixer = this.ctx.createGain(); mixer.gain.value = 1;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass'; filter.frequency.value = 2400; filter.Q.value = 1.0;
+        mixer.connect(filter); filter.connect(this.chordGain);
+        nodes.push(mixer, filter);
+        semitones.forEach(semi => {
+            const freq = baseFreq * Math.pow(2, semi / 12);
+            const o1 = this.ctx.createOscillator(); o1.type = 'triangle'; o1.frequency.value = freq;
+            const o2 = this.ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 2;
+            const noteVol = vel * 0.28 / Math.max(3, semitones.length);
+            const g = this.ctx.createGain();
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(noteVol, t + 0.005);
+            g.gain.exponentialRampToValueAtTime(noteVol * 0.25, t + 0.06);
+            g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+            const g2 = this.ctx.createGain();
+            g2.gain.setValueAtTime(0, t);
+            g2.gain.linearRampToValueAtTime(noteVol * 0.22, t + 0.003);
+            g2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.5);
+            o1.connect(g); g.connect(mixer);
+            o2.connect(g2); g2.connect(mixer);
+            o1.start(t); o1.stop(t + dur + 0.05);
+            o2.start(t); o2.stop(t + dur * 0.5 + 0.05);
+            nodes.push(o1, o2, g, g2);
+        });
+        this._scheduleCleanup(nodes, dur + 0.1);
+    }
+
+    playBass(step) { this.playStep(step); }
+
+    _makeDistCurve(amount) {
+        const s = 256, c = new Float32Array(s);
+        for (let i = 0; i < s; i++) { const x = (i * 2) / s - 1; c[i] = (Math.PI + amount) * x / (Math.PI + amount * Math.abs(x)); }
+        return c;
+    }
+
+    tone(note, dur = 1.1, vol = 0.25) {
+        if (!this._canPlay()) return;
+        note = snapToPentatonic(note);
+        while (note < -3) note += 12;
+        const freq = 261.63 * Math.pow(2, note / 12);
+        const t = this.ctx.currentTime;
+        const partials = [
+            { ratio: 1,     type: 'triangle', amp: 0.42, decayMul: 1.0  },
+            { ratio: 0.997, type: 'triangle', amp: 0.22, decayMul: 0.95 },
+            { ratio: 1.004, type: 'triangle', amp: 0.22, decayMul: 0.90 },
+            { ratio: 2,     type: 'sine',     amp: 0.16, decayMul: 0.55 },
+            { ratio: 2.76,  type: 'sine',     amp: 0.05, decayMul: 0.40 },
+            { ratio: 0.5,   type: 'triangle', amp: 0.12, decayMul: 0.75 },
+        ];
+        const mixer = this.ctx.createGain(); mixer.gain.value = 1;
+        const filterFloor = Math.max(700, freq * 3);
+        const filterMid = Math.max(1200, freq * 4);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass'; filter.Q.value = 1.2;
+        filter.frequency.setValueAtTime(5500 + vol * 3000, t);
+        filter.frequency.exponentialRampToValueAtTime(filterMid, t + dur * 0.4);
+        filter.frequency.exponentialRampToValueAtTime(filterFloor, t + dur);
+        mixer.connect(filter); filter.connect(this.master);
+        const nodes = [mixer, filter];
+        partials.forEach(p => {
+            const osc = this.ctx.createOscillator(); osc.type = p.type;
+            const bendFreq = freq * p.ratio * 1.009;
+            osc.frequency.setValueAtTime(bendFreq, t);
+            osc.frequency.exponentialRampToValueAtTime(freq * p.ratio, t + 0.03);
+            const g = this.ctx.createGain();
+            const peakVol = vol * p.amp;
+            g.gain.setValueAtTime(0, t);
+            g.gain.linearRampToValueAtTime(peakVol, t + 0.003);
+            g.gain.exponentialRampToValueAtTime(peakVol * 0.45, t + 0.07);
+            g.gain.exponentialRampToValueAtTime(0.001, t + dur * p.decayMul);
+            osc.connect(g); g.connect(mixer);
+            const stopTime = dur * p.decayMul + 0.1;
+            osc.start(t); osc.stop(t + stopTime);
+            nodes.push(osc, g);
+        });
+        const bloomFreq = freq * 1.5;
+        const bloom = this.ctx.createOscillator(); bloom.type = 'sine'; bloom.frequency.value = bloomFreq;
+        const bloomEnv = this.ctx.createGain();
+        const bloomPeak = vol * 0.08;
+        bloomEnv.gain.setValueAtTime(0, t);
+        bloomEnv.gain.setValueAtTime(0, t + 0.04);
+        bloomEnv.gain.linearRampToValueAtTime(bloomPeak, t + 0.12);
+        bloomEnv.gain.setValueAtTime(bloomPeak, t + 0.25);
+        bloomEnv.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.7);
+        bloom.connect(bloomEnv); bloomEnv.connect(mixer);
+        bloom.start(t); bloom.stop(t + dur * 0.7 + 0.1);
+        nodes.push(bloom, bloomEnv);
+        this._scheduleCleanup(nodes, dur + 0.15);
+    }
+
+    shockwaveSound(strength) {
+        if (!this._canPlay() || !this.beatOn) return;
+        const t = this.ctx.currentTime;
+        const vol = Math.min(0.38, 0.14 + strength * 0.24);
+        const baseSemi = snapToPentatonic(Math.round(strength * 5) - 12);
+        const bodyFreq = 65.41 * Math.pow(2, baseSemi / 12);
+        const thud = this.ctx.createOscillator(); thud.type = 'sine';
+        thud.frequency.setValueAtTime(bodyFreq * 1.3, t);
+        thud.frequency.exponentialRampToValueAtTime(bodyFreq * 0.4, t + 0.22);
+        const thudEnv = this.ctx.createGain();
+        thudEnv.gain.setValueAtTime(vol, t);
+        thudEnv.gain.linearRampToValueAtTime(vol * 0.6, t + 0.015);
+        thudEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        thud.connect(thudEnv).connect(this.master);
+        thud.start(t); thud.stop(t + 0.35);
+        const bufSize = Math.floor(this.ctx.sampleRate * 0.1);
+        const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+        const ch = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufSize * 0.12));
+        const noise = this.ctx.createBufferSource(); noise.buffer = buf;
+        const nEnv = this.ctx.createGain();
+        nEnv.gain.setValueAtTime(vol * 0.14, t);
+        nEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        const nFilt = this.ctx.createBiquadFilter();
+        nFilt.type = 'lowpass'; nFilt.frequency.value = 450;
+        noise.connect(nFilt).connect(nEnv).connect(this.master);
+        noise.start(t); noise.stop(t + 0.15);
+        this._scheduleCleanup([thud, thudEnv, noise, nEnv, nFilt], 0.35);
+    }
+
+    crystalShatter(index, total) {
+        if (!this._canPlay() || !this.beatOn) return;
+        const t = this.ctx.currentTime;
+        const progress = index / Math.max(1, total - 1);
+        const scale = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24]; // C minor pentatonic
+        const noteIdx = Math.min(scale.length - 1, Math.floor(progress * scale.length));
+        const baseNote = scale[noteIdx];
+        const freq = 261.63 * Math.pow(2, baseNote / 12);
+        const vol = 0.30 + progress * 0.10;
+        const allNodes = [];
+        const crackLen = Math.floor(this.ctx.sampleRate * 0.006);
+        const crackBuf = this.ctx.createBuffer(1, crackLen, this.ctx.sampleRate);
+        const cd = crackBuf.getChannelData(0);
+        for (let i = 0; i < crackLen; i++) cd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (crackLen * 0.08));
+        const crackSrc = this.ctx.createBufferSource(); crackSrc.buffer = crackBuf;
+        const cFilt = this.ctx.createBiquadFilter(); cFilt.type = 'highpass';
+        cFilt.frequency.value = 3000 + progress * 2500; cFilt.Q.value = 0.6;
+        const cGain = this.ctx.createGain(); cGain.gain.value = vol * 1.6;
+        crackSrc.connect(cFilt).connect(cGain).connect(this.master);
+        crackSrc.start(t); crackSrc.stop(t + 0.01);
+        allNodes.push(crackSrc, cFilt, cGain);
+        const partials = [
+            { ratio: 1,    gain: 0.38, dur: 0.08, type: 'triangle' },
+            { ratio: 2.76, gain: 0.16, dur: 0.05, type: 'sine' },
+            { ratio: 5.4,  gain: 0.08, dur: 0.03, type: 'sine' },
+        ];
+        partials.forEach(p => {
+            const osc = this.ctx.createOscillator(); osc.type = p.type; osc.frequency.value = freq * p.ratio;
+            const env = this.ctx.createGain();
+            env.gain.setValueAtTime(vol * p.gain, t);
+            env.gain.exponentialRampToValueAtTime(0.001, t + p.dur);
+            osc.connect(env).connect(this.master);
+            osc.start(t); osc.stop(t + p.dur + 0.01);
+            allNodes.push(osc, env);
+        });
+        const thud = this.ctx.createOscillator(); thud.type = 'sine';
+        thud.frequency.setValueAtTime(freq * 0.5, t);
+        thud.frequency.exponentialRampToValueAtTime(40, t + 0.035);
+        const thudEnv = this.ctx.createGain();
+        thudEnv.gain.setValueAtTime(vol * 0.35, t);
+        thudEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+        thud.connect(thudEnv).connect(this.master);
+        thud.start(t); thud.stop(t + 0.05);
+        allNodes.push(thud, thudEnv);
+        const fragCount = 6 + Math.floor(progress * 2);
+        const fragTimes = [];
+        for (let i = 0; i < fragCount; i++) fragTimes.push(0.005 + Math.pow(i / fragCount, 1.8) * 0.24);
+        const fragMultipliers = [6.2, 5.1, 4.3, 3.7, 3.1, 2.6, 2.2, 1.9];
+        fragTimes.forEach((delay, i) => {
+            const fFreq = freq * fragMultipliers[i % fragMultipliers.length];
+            const fOsc = this.ctx.createOscillator(); fOsc.type = 'sine'; fOsc.frequency.value = fFreq;
+            const fEnv = this.ctx.createGain();
+            const fVol = vol * (0.14 - i * 0.010) * (1 + progress * 0.3);
+            fEnv.gain.setValueAtTime(0, t + delay);
+            fEnv.gain.linearRampToValueAtTime(Math.max(0.003, fVol), t + delay + 0.001);
+            fEnv.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.018);
+            fOsc.connect(fEnv).connect(this.master);
+            fOsc.start(t + delay); fOsc.stop(t + delay + 0.025);
+            allNodes.push(fOsc, fEnv);
+        });
+        const dustCount = 2 + (progress > 0.5 ? 1 : 0);
+        for (let i = 0; i < dustCount; i++) {
+            const delay = 0.03 + i * 0.06;
+            const dFreq = freq * (8 + i * 2);
+            const dOsc = this.ctx.createOscillator(); dOsc.type = 'sine'; dOsc.frequency.value = dFreq;
+            const dEnv = this.ctx.createGain();
+            dEnv.gain.setValueAtTime(0, t + delay);
+            dEnv.gain.linearRampToValueAtTime(vol * 0.035, t + delay + 0.001);
+            dEnv.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.06);
+            dOsc.connect(dEnv).connect(this.master);
+            dOsc.start(t + delay); dOsc.stop(t + delay + 0.08);
+            allNodes.push(dOsc, dEnv);
+        }
+        this._scheduleCleanup(allNodes, 0.35);
+    }
+
+    crystalsClear() {
+        if (!this._canPlay()) return;
+        const t = this.ctx.currentTime;
+        const allNodes = [];
+        const crackLen = Math.floor(this.ctx.sampleRate * 0.012);
+        const crackBuf = this.ctx.createBuffer(1, crackLen, this.ctx.sampleRate);
+        const cd = crackBuf.getChannelData(0);
+        for (let i = 0; i < crackLen; i++) cd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (crackLen * 0.1));
+        const crackSrc = this.ctx.createBufferSource(); crackSrc.buffer = crackBuf;
+        const cFilt = this.ctx.createBiquadFilter(); cFilt.type = 'highpass'; cFilt.frequency.value = 1500; cFilt.Q.value = 0.4;
+        const cGain = this.ctx.createGain(); cGain.gain.value = 0.45;
+        crackSrc.connect(cFilt).connect(cGain).connect(this.master);
+        crackSrc.start(t); crackSrc.stop(t + 0.02);
+        allNodes.push(crackSrc, cFilt, cGain);
+        const sting = [7, 10, 15]; // G Bb Eb — C minor chord
+        sting.forEach((n, i) => {
+            const delay = 0.04 + i * 0.06;
+            const freq = 261.63 * Math.pow(2, n / 12);
+            const osc = this.ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = freq;
+            const env = this.ctx.createGain();
+            env.gain.setValueAtTime(0, t + delay);
+            env.gain.linearRampToValueAtTime(0.18, t + delay + 0.004);
+            env.gain.exponentialRampToValueAtTime(0.025, t + delay + 0.08);
+            env.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.30);
+            osc.connect(env).connect(this.master);
+            osc.start(t + delay); osc.stop(t + delay + 0.35);
+            allNodes.push(osc, env);
+        });
+        const fragTimes = [0.01, 0.025, 0.045, 0.07, 0.10, 0.14, 0.18, 0.22, 0.27, 0.32];
+        const fragMults = [7.1, 5.8, 4.5, 6.3, 3.8, 5.2, 3.2, 4.7, 2.8, 3.5];
+        const baseFreq = 261.63;
+        fragTimes.forEach((delay, i) => {
+            const fFreq = baseFreq * fragMults[i];
+            const fOsc = this.ctx.createOscillator(); fOsc.type = 'sine'; fOsc.frequency.value = fFreq;
+            const fEnv = this.ctx.createGain();
+            const fVol = 0.10 * (1 - delay / 0.45);
+            fEnv.gain.setValueAtTime(Math.max(0.003, fVol), t + delay);
+            fEnv.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.02);
+            fOsc.connect(fEnv).connect(this.master);
+            fOsc.start(t + delay); fOsc.stop(t + delay + 0.03);
+            allNodes.push(fOsc, fEnv);
+        });
+        const shimFreq = 261.63 * Math.pow(2, 19 / 12);
+        const shim = this.ctx.createOscillator(); shim.type = 'sine'; shim.frequency.value = shimFreq;
+        const shimEnv = this.ctx.createGain();
+        shimEnv.gain.setValueAtTime(0, t + 0.2);
+        shimEnv.gain.linearRampToValueAtTime(0.08, t + 0.22);
+        shimEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+        shim.connect(shimEnv).connect(this.master);
+        shim.start(t + 0.2); shim.stop(t + 0.6);
+        allNodes.push(shim, shimEnv);
+        this._scheduleCleanup(allNodes, 0.7);
+    }
+
+    success() { [0, 3, 7, 10].forEach((n, i) => setTimeout(() => this.tone(n, 0.5, 0.14), i * 80)); } // Cm7 arp
+    fail() { this.tone(-7, 0.3, 0.06); }
+
+    countClick(accent = false) {
+        if (!this._canPlay() || !this.beatOn) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.setValueAtTime(accent ? 1200 : 900, t); osc.frequency.exponentialRampToValueAtTime(accent ? 800 : 600, t + 0.03);
+        const env = this.ctx.createGain(); env.gain.setValueAtTime(accent ? 0.4 : 0.25, t); env.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        const filter = this.ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.frequency.value = 1000; filter.Q.value = 2;
+        osc.connect(filter); filter.connect(env); env.connect(this.master); osc.start(t); osc.stop(t + 0.1);
+        this._scheduleCleanup([osc, env, filter], 0.1);
+    }
+}
+
+// ═══════════════════════════════════════
+//  PARTICLE CLASSES
+// ═══════════════════════════════════════
+class Mote {
+    constructor(w, h) { this.w = w; this.h = h; this.reset(true); }
+    reset(init = false) { this.x = Math.random() * this.w; this.y = init ? Math.random() * this.h : this.h + 10; this.size = 0.5 + Math.random() * 1.5; this.speed = 0.1 + Math.random() * 0.25; this.drift = (Math.random() - 0.5) * 0.2; this.alpha = 0.03 + Math.random() * 0.08; this.phase = Math.random() * Math.PI * 2; }
+    update() { this.y -= this.speed; this.x += this.drift + Math.sin(this.phase) * 0.1; this.phase += 0.008; if (this.y < -10) this.reset(); }
+    draw(ctx) { const a = this.alpha * (0.6 + Math.sin(this.phase * 2) * 0.4); ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = `rgba(255,255,255,${a})`; ctx.fill(); }
+}
+
+class Burst {
+    constructor(x, y, color) { this.x = x; this.y = y; this.color = color; const angle = Math.random() * Math.PI * 2, speed = 1 + Math.random() * 3; this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed; this.life = 1; this.size = 2 + Math.random() * 3; }
+    update() { this.x += this.vx; this.y += this.vy; this.vx *= 0.96; this.vy *= 0.96; this.life -= 0.025; }
+    draw(ctx) { if (this.life <= 0) return; const rgb = hexToRgb(this.color); ctx.beginPath(); ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2); ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${this.life * 0.5})`; ctx.fill(); }
+}
+
+class CrystalShard {
+    constructor(x, y, palette, baseSize) {
+        this.x = x; this.y = y;
+        // Shards burst into random jewel tones — white diamonds scatter rainbow light on death
+        const shardPal = SHARD_COLORS[Math.floor(Math.random() * SHARD_COLORS.length)];
+        this.color = shardPal.main; this.lightColor = shardPal.light;
+        const numVerts = 3 + Math.floor(Math.random() * 2);
+        const size = baseSize * (0.25 + Math.random() * 0.5);
+        this.verts = [];
+        const startAngle = Math.random() * Math.PI * 2;
+        for (let i = 0; i < numVerts; i++) {
+            const a = startAngle + (i / numVerts) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+            const r = size * (0.4 + Math.random() * 0.6);
+            this.verts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+        }
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 3 + Math.random() * 7;
+        this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
+        this.rotation = Math.random() * Math.PI * 2;
+        this.angVel = (Math.random() - 0.5) * 0.35;
+        this.gravity = 0.08 + Math.random() * 0.06;
+        this.life = 1; this.decay = 0.012 + Math.random() * 0.01;
+        this.hasHighlight = Math.random() > 0.4;
+    }
+    update() {
+        this.x += this.vx; this.y += this.vy; this.vy += this.gravity;
+        this.vx *= 0.985; this.vy *= 0.985;
+        this.rotation += this.angVel; this.angVel *= 0.995; this.life -= this.decay;
+    }
+    draw(ctx) {
+        if (this.life <= 0) return;
+        const a = this.life;
+        const rgb = hexToRgb(this.color); const lrgb = hexToRgb(this.lightColor);
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.rotation); ctx.globalAlpha = a;
+        ctx.beginPath();
+        this.verts.forEach((v, i) => i === 0 ? ctx.moveTo(v.x, v.y) : ctx.lineTo(v.x, v.y));
+        ctx.closePath();
+        const g = ctx.createLinearGradient(this.verts[0].x, this.verts[0].y, this.verts[1].x, this.verts[1].y);
+        g.addColorStop(0, `rgba(${lrgb.r},${lrgb.g},${lrgb.b},${a * 0.9})`);
+        g.addColorStop(0.5, `rgba(${rgb.r},${rgb.g},${rgb.b},${a * 0.7})`);
+        g.addColorStop(1, `rgba(${rgb.r*0.6|0},${rgb.g*0.6|0},${rgb.b*0.6|0},${a * 0.5})`);
+        ctx.fillStyle = g; ctx.fill();
+        if (this.hasHighlight) { ctx.strokeStyle = `rgba(255,255,255,${a * 0.6})`; ctx.lineWidth = 1; ctx.stroke(); }
+        if (this.verts.length >= 3) {
+            ctx.beginPath();
+            ctx.moveTo(this.verts[0].x * 0.3, this.verts[0].y * 0.3);
+            ctx.lineTo(this.verts[1].x * 0.8, this.verts[1].y * 0.8);
+            ctx.strokeStyle = `rgba(255,255,255,${a * 0.25})`; ctx.lineWidth = 0.5; ctx.stroke();
+        }
+        ctx.globalAlpha = 1; ctx.restore();
+    }
+}
+
+class EnergyMote {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.warmColor = WARM_RELEASE[Math.floor(Math.random() * WARM_RELEASE.length)];
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.8 + Math.random() * 2.5;
+        this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed - 0.8;
+        this.life = 1; this.size = 2 + Math.random() * 4;
+        this.decay = 0.01 + Math.random() * 0.008; this.phase = Math.random() * Math.PI * 2;
+    }
+    update() {
+        this.x += this.vx; this.y += this.vy; this.vy -= 0.03;
+        this.vx *= 0.98; this.vy *= 0.985; this.life -= this.decay; this.phase += 0.1;
+    }
+    draw(ctx) {
+        if (this.life <= 0) return;
+        const rgb = hexToRgb(this.warmColor); const a = this.life * 0.8;
+        const r = this.size * (0.5 + this.life * 0.5);
+        const wobble = Math.sin(this.phase) * r * 0.15;
+        const g = ctx.createRadialGradient(this.x + wobble, this.y, 0, this.x + wobble, this.y, r * 3);
+        g.addColorStop(0, `rgba(255,255,255,${a * 0.7})`);
+        g.addColorStop(0.2, `rgba(${rgb.r},${rgb.g},${rgb.b},${a * 0.6})`);
+        g.addColorStop(0.5, `rgba(${rgb.r},${rgb.g},${rgb.b},${a * 0.2})`);
+        g.addColorStop(1, `rgba(${rgb.r},${rgb.g},${rgb.b},0)`);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(this.x + wobble, this.y, r * 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x + wobble, this.y, r * 0.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${a * 0.9})`; ctx.fill();
+    }
+}
+
+class CrystalDustP {
+    constructor(x, y, palette) {
+        this.x = x + (Math.random() - 0.5) * 20; this.y = y + (Math.random() - 0.5) * 20;
+        // Dust sparkles in random jewel tones — prismatic scatter from the shattered diamond
+        const dustPal = SHARD_COLORS[Math.floor(Math.random() * SHARD_COLORS.length)];
+        this.color = Math.random() > 0.5 ? dustPal.light : dustPal.main;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.3 + Math.random() * 1.2;
+        this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed - 0.3;
+        this.life = 1; this.size = 0.5 + Math.random() * 1.5;
+        this.decay = 0.008 + Math.random() * 0.006;
+        this.twinkleSpeed = 3 + Math.random() * 5; this.twinklePhase = Math.random() * Math.PI * 2;
+    }
+    update() {
+        this.x += this.vx; this.y += this.vy; this.vy -= 0.008;
+        this.vx *= 0.995; this.life -= this.decay; this.twinklePhase += this.twinkleSpeed * 0.016;
+    }
+    draw(ctx) {
+        if (this.life <= 0) return;
+        const twinkle = 0.3 + Math.sin(this.twinklePhase) * 0.7;
+        const a = this.life * twinkle; const rgb = hexToRgb(this.color); const r = this.size * this.life;
+        ctx.beginPath(); ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${a})`; ctx.fill();
+        if (twinkle > 0.7 && r > 0.5) {
+            const sparkR = r * 3;
+            ctx.beginPath(); ctx.moveTo(this.x - sparkR, this.y); ctx.lineTo(this.x + sparkR, this.y);
+            ctx.strokeStyle = `rgba(255,255,255,${a * 0.3})`; ctx.lineWidth = 0.5; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(this.x, this.y - sparkR); ctx.lineTo(this.x, this.y + sparkR); ctx.stroke();
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DRAW CRYSTAL — White diamond with prismatic spectral sparkles
+// ═══════════════════════════════════════════════════════════════
+function drawCrystal(target, now) {
+    const palette = CRYSTAL_PALETTE[target.id % CRYSTAL_PALETTE.length];
+    const lrgb = hexToRgb(palette.light);  // pure white
+    const drgb = hexToRgb(palette.dark);   // cool-silver shadow
+
+    // Six spectral colors for vertex sparkles — one per vertex, cycling the rainbow
+    const SPECTRAL = ['#FF2840', '#FF7820', '#F5D200', '#28C858', '#18C8E0', '#A020E0'];
+
+    if (!target.alive) {
+        if (target.destroyTime && now - target.destroyTime < 600) {
+            const age = now - target.destroyTime; const p = age / 600;
+            const px = (target.x / 100) * canvasW; const py = (target.y / 100) * canvasH;
+            const baseR = 18 * orbScale;
+            // Expanding white ring
+            const ringR = baseR * (1 + p * 4); const ringA = Math.pow(1 - p, 2.5) * 0.55;
+            ctx.beginPath(); ctx.arc(px, py, ringR, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255,255,255,${ringA})`;
+            ctx.lineWidth = 2.5 * (1 - p); ctx.stroke();
+            // Prismatic flash on destroy
+            if (p < 0.4) {
+                const fa = (1 - p / 0.4) * 0.4;
+                const fg = ctx.createRadialGradient(px, py, 0, px, py, baseR * (2 + p * 3));
+                fg.addColorStop(0, `rgba(255,255,255,${fa})`);
+                fg.addColorStop(0.4, `rgba(210,235,255,${fa * 0.5})`);
+                fg.addColorStop(1, `rgba(255,255,255,0)`);
+                ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(px, py, baseR * (2 + p * 3), 0, Math.PI * 2); ctx.fill();
+            }
+        }
+        return;
+    }
+
+    const px = (target.x / 100) * canvasW; const py = (target.y / 100) * canvasH;
+    const T = now / 1000; const baseR = 18 * orbScale;
+    const breathe = 1 + Math.sin(T * 1.5 + target.id * 1.7) * 0.05;
+    const R = baseR * breathe;
+    const aliveCount = state.targets.filter(t => t.alive).length;
+    const urgency = 1 - (aliveCount - 1) / Math.max(1, state.totalTargets - 1);
+    const tremor = urgency * Math.sin(T * 15 + target.id * 4.3) * 1.2 * orbScale;
+    const cx = px + tremor; const cy = py;
+    const rot = T * 0.15 + target.id * 1.1;
+    const numSides = 6;
+
+    const getVertex = (i, r) => {
+        const a = rot + (i / numSides) * Math.PI * 2 - Math.PI / 2;
+        return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r };
+    };
+
+    // ── Soft white ambient glow ──
+    const glowR = R * 4.5;
+    const glow = ctx.createRadialGradient(cx, cy, R * 0.3, cx, cy, glowR);
+    glow.addColorStop(0, `rgba(220,235,255,${0.14 + urgency * 0.08})`);
+    glow.addColorStop(0.3, `rgba(200,220,255,${0.05 + urgency * 0.04})`);
+    glow.addColorStop(1, `rgba(180,210,255,0)`);
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, glowR, 0, Math.PI * 2); ctx.fill();
+
+    // ── Prismatic rainbow rim — light refracting through diamond edges ──
+    for (let i = 0; i < numSides; i++) {
+        const v1 = getVertex(i, R * 1.12);
+        const v2 = getVertex(i + 1, R * 1.12);
+        const hue = ((i / numSides) * 360 + T * 18 + target.id * 60) % 360;
+        ctx.beginPath(); ctx.moveTo(v1.x, v1.y); ctx.lineTo(v2.x, v2.y);
+        ctx.strokeStyle = `hsla(${hue},100%,70%,${0.20 + urgency * 0.15})`;
+        ctx.lineWidth = 1.4; ctx.stroke();
+    }
+
+    // ── Diamond facets — white/silver with light simulation ──
+    for (let i = 0; i < numSides; i++) {
+        const v1 = getVertex(i, R * 1.1); const v2 = getVertex(i + 1, R * 1.1);
+        const facetAngle = rot + ((i + 0.5) / numSides) * Math.PI * 2 - Math.PI / 2;
+        const lightDot = Math.cos(facetAngle + 0.5) * 0.5 + 0.5;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(v1.x, v1.y); ctx.lineTo(v2.x, v2.y); ctx.closePath();
+        const facetGrad = ctx.createLinearGradient(cx, cy, (v1.x + v2.x) / 2, (v1.y + v2.y) / 2);
+        const bodyA = 0.45 + urgency * 0.15;
+        facetGrad.addColorStop(0, `rgba(255,255,255,${bodyA * (0.6 + lightDot * 0.4)})`);
+        facetGrad.addColorStop(0.5, `rgba(${lrgb.r},${lrgb.g},${lrgb.b},${bodyA * (0.4 + lightDot * 0.3)})`);
+        facetGrad.addColorStop(1, `rgba(${drgb.r},${drgb.g},${drgb.b},${bodyA * (0.15 + lightDot * 0.2)})`);
+        ctx.fillStyle = facetGrad; ctx.fill();
+    }
+
+    // ── Outer edge — bright white outline ──
+    ctx.beginPath();
+    for (let i = 0; i <= numSides; i++) { const v = getVertex(i, R * 1.1); i === 0 ? ctx.moveTo(v.x, v.y) : ctx.lineTo(v.x, v.y); }
+    ctx.closePath();
+    ctx.strokeStyle = `rgba(255,255,255,${0.75 + urgency * 0.22})`;
+    ctx.lineWidth = 1.5; ctx.stroke();
+
+    // ── Internal facet lines — cool silver ──
+    for (let i = 0; i < numSides; i++) {
+        const v = getVertex(i, R * 1.1);
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(v.x, v.y);
+        ctx.strokeStyle = `rgba(200,220,255,${0.13 + urgency * 0.08})`;
+        ctx.lineWidth = 0.8; ctx.stroke();
+    }
+
+    // ── Inner tension energy — warm glow visible through the white shell ──
+    const tensionPulse = 1 + Math.sin(T * (2.5 + urgency * 4) + target.id * 2) * (0.15 + urgency * 0.2);
+    const tensionR = R * 0.5 * tensionPulse; const tensionA = 0.18 + urgency * 0.28;
+    const tGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, tensionR * 2);
+    tGrad.addColorStop(0, `rgba(255,240,200,${tensionA * 0.9})`);
+    tGrad.addColorStop(0.3, `rgba(255,200,140,${tensionA * 0.5})`);
+    tGrad.addColorStop(0.6, `rgba(255,140,80,${tensionA * 0.18})`);
+    tGrad.addColorStop(1, `rgba(255,80,40,0)`);
+    ctx.fillStyle = tGrad; ctx.beginPath(); ctx.arc(cx, cy, tensionR * 2, 0, Math.PI * 2); ctx.fill();
+
+    // ── Core — brilliant white hot point ──
+    const coreR = R * 0.2; const corePulse = 1 + Math.sin(T * 3.5 + target.id * 2.5) * 0.12;
+    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * corePulse * 2.5);
+    coreGrad.addColorStop(0, `rgba(255,255,255,${0.95 + urgency * 0.05})`);
+    coreGrad.addColorStop(0.2, `rgba(240,248,255,0.75)`);
+    coreGrad.addColorStop(0.5, `rgba(210,230,255,0.28)`);
+    coreGrad.addColorStop(1, `rgba(180,210,255,0)`);
+    ctx.fillStyle = coreGrad; ctx.beginPath(); ctx.arc(cx, cy, coreR * corePulse * 2.5, 0, Math.PI * 2); ctx.fill();
+
+    // ── Vertex sparkles — each vertex glints a different spectral color ──
+    // Simulates prismatic light scatter from diamond facet corners
+    for (let i = 0; i < numSides; i++) {
+        const v = getVertex(i, R * 1.15);
+        const sparkle = Math.sin(T * 4 + i * 1.8 + target.id) * 0.5 + 0.5;
+        if (sparkle > 0.55) {
+            const sa = (sparkle - 0.55) * 2.2 * 0.65;
+            const sr = 2.8 * orbScale;
+            const specRgb = hexToRgb(SPECTRAL[i % SPECTRAL.length]);
+            // Colored cross sparkle at vertex
+            ctx.beginPath(); ctx.moveTo(v.x - sr * 2.5, v.y); ctx.lineTo(v.x + sr * 2.5, v.y);
+            ctx.strokeStyle = `rgba(${specRgb.r},${specRgb.g},${specRgb.b},${sa * 0.85})`;
+            ctx.lineWidth = 0.9; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(v.x, v.y - sr * 2.5); ctx.lineTo(v.x, v.y + sr * 2.5); ctx.stroke();
+            // White center point
+            ctx.beginPath(); ctx.arc(v.x, v.y, sr * 0.65, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255,255,255,${sa})`; ctx.fill();
+            // Colored bloom around vertex
+            const bloom = ctx.createRadialGradient(v.x, v.y, 0, v.x, v.y, sr * 3.5);
+            bloom.addColorStop(0, `rgba(255,255,255,${sa * 0.8})`);
+            bloom.addColorStop(0.35, `rgba(${specRgb.r},${specRgb.g},${specRgb.b},${sa * 0.35})`);
+            bloom.addColorStop(1, `rgba(${specRgb.r},${specRgb.g},${specRgb.b},0)`);
+            ctx.fillStyle = bloom; ctx.beginPath(); ctx.arc(v.x, v.y, sr * 3.5, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+
+    // ── Orbiting motes — tiny colored diamonds cycling the spectrum ──
+    for (let i = 0; i < 3; i++) {
+        const angle = T * (0.4 + i * 0.15) + i * (Math.PI * 2 / 3) + target.id * 0.8;
+        const orbit = R * 1.8;
+        const mx = cx + Math.cos(angle) * orbit; const my = cy + Math.sin(angle) * orbit;
+        const ma = 0.28 + Math.sin(T * 2.5 + i * 2) * 0.15; const ms = 1.4 * orbScale;
+        // Each mote cycles through a spectral hue
+        const moteHue = ((i * 120 + T * 30 + target.id * 40) % 360);
+        ctx.save(); ctx.translate(mx, my); ctx.rotate(T * 2 + i);
+        ctx.beginPath();
+        ctx.moveTo(0, -ms); ctx.lineTo(ms * 0.6, 0); ctx.lineTo(0, ms); ctx.lineTo(-ms * 0.6, 0);
+        ctx.closePath();
+        ctx.fillStyle = `hsla(${moteHue},100%,72%,${ma})`;
+        ctx.fill(); ctx.restore();
+    }
+}
+
+function drawCrystalConnections(now) {
+    const alive = state.targets.filter(t => t.alive);
+    if (alive.length < 2) return;
+    const T = now / 1000;
+    for (let i = 0; i < alive.length; i++) {
+        for (let j = i + 1; j < alive.length; j++) {
+            const a = alive[i], b = alive[j];
+            const dist = Math.hypot(a.x - b.x, a.y - b.y);
+            if (dist > 45) continue;
+            const ax = (a.x / 100) * canvasW, ay = (a.y / 100) * canvasH;
+            const bx = (b.x / 100) * canvasW, by = (b.y / 100) * canvasH;
+            const alpha = 0.06 + Math.sin(T * 0.8 + i + j) * 0.025;
+            ctx.beginPath(); ctx.moveTo(ax, ay);
+            const midX = (ax + bx) / 2 + Math.sin(T * 2 + i * 3) * 3;
+            const midY = (ay + by) / 2 + Math.cos(T * 2.5 + j * 2) * 3;
+            ctx.lineTo(midX, midY); ctx.lineTo(bx, by);
+            ctx.strokeStyle = `rgba(200,220,255,${alpha})`;
+            ctx.lineWidth = 1; ctx.stroke();
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DRAW ORB
+// ═══════════════════════════════════════════════════════════════
+function drawOrb(orb, now) {
+    const p = toScreen(orb);
+    const { brightness } = getBrightness(orb, now);
+    const baseR = 40 * (orb.size || 1) * orbScale;
+    const rgb = hexToRgb(orb.color);
+    if (isNaN(p.x) || isNaN(p.y) || baseR <= 0) return;
+
+    const spawnAge = orb.spawnTime ? (now - orb.spawnTime) : 1000;
+    const spawnFade = Math.min(1, spawnAge / 600);
+    const spawnEase = spawnFade < 0.5 ? 4 * spawnFade * spawnFade * spawnFade : 1 - Math.pow(-2 * spawnFade + 2, 3) / 2;
+    const b = brightness * spawnEase;
+    const t = now / 1000, T = t + orb.id * 3.7;
+    const breathe = 1 + Math.sin(T * 0.5) * 0.03 + Math.sin(T * 0.9) * 0.02;
+    const sizeScale = 0.32 + b * 0.68;
+    const R = baseR * sizeScale * breathe * spawnEase;
+    if (R < 1) return;
+
+    const hue = T * 0.25 + b * 2;
+    const iR = Math.min(255, rgb.r + Math.sin(hue) * 30 + b * 50);
+    const iG = Math.min(255, rgb.g + Math.sin(hue + 2.1) * 25 + b * 30);
+    const iB = Math.min(255, rgb.b + Math.sin(hue + 4.2) * 35 + b * 20);
+    const hR = Math.min(255, 100 + rgb.r * 0.4 + b * 155);
+    const hG = Math.min(255, 110 + rgb.g * 0.35 + b * 145);
+    const hB = Math.min(255, 130 + rgb.b * 0.3 + b * 125);
+    const wR = Math.min(255, rgb.r * 1.2 + 40), wG = Math.min(255, rgb.g * 0.9 + 20), wB = Math.min(255, rgb.b * 0.7);
+
+    ctx.globalAlpha = spawnEase;
+
+    const shockE = orb.shockEnergy || 0;
+    if (shockE > 0.15 && spawnEase > 0.3) {
+        const trailStrength = Math.min(1, shockE / 2.5);
+        const trailCount = Math.min(6, Math.ceil(shockE * 2));
+        const svx = (orb.shockVx || 0) * (canvasW / 100);
+        const svy = (orb.shockVy || 0) * (canvasH / 100);
+        for (let i = 1; i <= trailCount; i++) {
+            const frac = i / (trailCount + 1);
+            const tx = p.x - svx * i * 2.5, ty = p.y - svy * i * 2.5;
+            const ta = trailStrength * (1 - frac) * 0.3 * spawnEase;
+            const tr = R * (0.65 - frac * 0.12);
+            if (tr > 1 && ta > 0.005) {
+                const tGrad = ctx.createRadialGradient(tx, ty, 0, tx, ty, tr);
+                tGrad.addColorStop(0, rgba(rgb.r, rgb.g, rgb.b, ta * 0.9));
+                tGrad.addColorStop(0.4, rgba(rgb.r, rgb.g, rgb.b, ta * 0.35));
+                tGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+                ctx.fillStyle = tGrad; ctx.beginPath(); ctx.arc(tx, ty, tr, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+    }
+
+    if (orb.shockFlash && spawnEase > 0.3) {
+        const flashAge = now - orb.shockFlash;
+        if (flashAge < 280) {
+            const fp = flashAge / 280, fa = (1 - fp * fp) * 0.5 * spawnEase, fr = R * (1.1 + fp * 0.5);
+            const fGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, fr);
+            fGrad.addColorStop(0, `rgba(255,255,255,${fa})`); fGrad.addColorStop(0.35, `rgba(255,255,255,${fa * 0.35})`); fGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = fGrad; ctx.beginPath(); ctx.arc(p.x, p.y, fr, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+
+    const atmoR = baseR * (2.0 + b * 0.8);
+    const atmoGrad = ctx.createRadialGradient(p.x, p.y, R * 0.5, p.x, p.y, atmoR);
+    atmoGrad.addColorStop(0, rgba(iR, iG, iB, 0.12 + b * 0.25));
+    atmoGrad.addColorStop(0.35, rgba(rgb.r, rgb.g, rgb.b, 0.06 + b * 0.14));
+    atmoGrad.addColorStop(0.65, rgba(rgb.r, rgb.g, rgb.b, 0.02 + b * 0.06));
+    atmoGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+    ctx.fillStyle = atmoGrad; ctx.beginPath(); ctx.arc(p.x, p.y, atmoR, 0, Math.PI * 2); ctx.fill();
+
+    const coronaR = R * (1.15 + b * 0.1);
+    const coronaGrad = ctx.createRadialGradient(p.x, p.y, R * 0.85, p.x, p.y, coronaR);
+    coronaGrad.addColorStop(0, rgba(iR, iG, iB, 0));
+    coronaGrad.addColorStop(0.4, rgba(iR, iG, iB, 0.15 + b * 0.35));
+    coronaGrad.addColorStop(0.7, rgba(wR, wG, wB, 0.08 + b * 0.2));
+    coronaGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+    ctx.fillStyle = coronaGrad; ctx.beginPath(); ctx.arc(p.x, p.y, coronaR, 0, Math.PI * 2); ctx.fill();
+
+    const bodyGrad = ctx.createRadialGradient(p.x + Math.sin(T * 0.4) * R * 0.12, p.y + Math.cos(T * 0.35) * R * 0.12, R * 0.1, p.x, p.y, R);
+    bodyGrad.addColorStop(0, rgba(hR, hG, hB, 0.35 + b * 0.45));
+    bodyGrad.addColorStop(0.25, rgba(iR, iG, iB, 0.25 + b * 0.35));
+    bodyGrad.addColorStop(0.5, rgba(rgb.r, rgb.g, rgb.b, 0.15 + b * 0.25));
+    bodyGrad.addColorStop(0.75, rgba(rgb.r, rgb.g, rgb.b, 0.08 + b * 0.15));
+    bodyGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0.02 + b * 0.05));
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    for (let i = 0; i <= 72; i++) { const a = (i / 72) * Math.PI * 2; const w = Math.sin(a * 4 + T * 1.1) * 0.07 + Math.sin(a * 7 - T * 1.5) * 0.04 + Math.sin(a * 3 + T * 0.7) * 0.05; const r = R * (1 + w * (0.6 + b * 0.6)); const x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.closePath(); ctx.fill();
+
+    for (let shell = 0; shell < 3; shell++) {
+        const shellR = R * (0.75 - shell * 0.15), shellPhase = T * (0.6 + shell * 0.2) + shell * 1.2, shellAlpha = (0.12 + b * 0.22) * (1 - shell * 0.2);
+        const shellGrad = ctx.createRadialGradient(p.x + Math.cos(shellPhase) * shellR * 0.2, p.y + Math.sin(shellPhase) * shellR * 0.2, 0, p.x, p.y, shellR);
+        shellGrad.addColorStop(0, rgba(hR, hG, hB, shellAlpha * 1.3)); shellGrad.addColorStop(0.35, rgba(iR, iG, iB, shellAlpha * 0.9)); shellGrad.addColorStop(0.7, rgba(rgb.r, rgb.g, rgb.b, shellAlpha * 0.4)); shellGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+        ctx.fillStyle = shellGrad; ctx.beginPath();
+        for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2 + shellPhase * 0.3; const w = Math.sin(a * 5 + shellPhase) * 0.12 + Math.sin(a * 3 - shellPhase * 1.3) * 0.08; const r = shellR * (1 + w); i === 0 ? ctx.moveTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r) : ctx.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r); }
+        ctx.closePath(); ctx.fill();
+    }
+
+    const coreR = R * (0.28 + b * 0.12), corePulse = 1 + Math.sin(T * 3.5) * 0.08 + Math.sin(T * 5.5) * 0.05, coreAlpha = 0.4 + b * 0.55;
+    const coreHaloGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, coreR * 2.5 * corePulse);
+    coreHaloGrad.addColorStop(0, rgba(255, 255, 255, coreAlpha * 0.8)); coreHaloGrad.addColorStop(0.15, rgba(hR, hG, hB, coreAlpha * 0.65)); coreHaloGrad.addColorStop(0.4, rgba(iR, iG, iB, coreAlpha * 0.35)); coreHaloGrad.addColorStop(0.7, rgba(rgb.r, rgb.g, rgb.b, coreAlpha * 0.12)); coreHaloGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+    ctx.fillStyle = coreHaloGrad; ctx.beginPath(); ctx.arc(p.x, p.y, coreR * 2.5 * corePulse, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    for (let i = 0; i <= 36; i++) { const a = (i / 36) * Math.PI * 2; const w = Math.sin(a * 4 + T * 4.5) * 0.18 + Math.sin(a * 6 + T * 6) * 0.1 + Math.sin(a * 3 - T * 3) * 0.12; const r = coreR * corePulse * (1 + w * (0.35 + b * 0.4)); i === 0 ? ctx.moveTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r) : ctx.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r); }
+    ctx.closePath();
+    const coreGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, coreR * corePulse);
+    coreGrad.addColorStop(0, rgba(255, 255, 255, coreAlpha)); coreGrad.addColorStop(0.3, rgba(hR, hG, hB, coreAlpha * 0.85)); coreGrad.addColorStop(0.6, rgba(iR, iG, iB, coreAlpha * 0.5)); coreGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+    ctx.fillStyle = coreGrad; ctx.fill();
+
+    const numMotes = 10 + Math.floor(b * 16);
+    for (let i = 0; i < numMotes; i++) {
+        const golden = i * 2.39996323, moteOrbit = R * (0.2 + (i / numMotes) * 0.7);
+        const motePhase = T * (0.15 + (i % 7) * 0.06) + golden, wobble = Math.sin(T * 1.5 + i * 0.9) * 4;
+        const mx = p.x + Math.cos(motePhase) * moteOrbit + Math.cos(motePhase + 1.57) * wobble;
+        const my = p.y + Math.sin(motePhase) * moteOrbit + Math.sin(motePhase + 1.57) * wobble;
+        const moteSize = (0.8 + b * 1.8) * (0.5 + Math.sin(T * 4 + i * 2) * 0.4);
+        const moteAlpha = (0.25 + b * 0.55) * (0.5 + Math.sin(T * 3 + i * 1.5) * 0.4);
+        const mGrad = ctx.createRadialGradient(mx, my, 0, mx, my, moteSize * 2.5);
+        mGrad.addColorStop(0, rgba(255, 255, 255, moteAlpha)); mGrad.addColorStop(0.35, rgba(hR, hG, hB, moteAlpha * 0.6)); mGrad.addColorStop(0.7, rgba(iR, iG, iB, moteAlpha * 0.25)); mGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+        ctx.fillStyle = mGrad; ctx.beginPath(); ctx.arc(mx, my, moteSize * 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    if (b > 0.08) {
+        const edgeAlpha = (b - 0.08) * 0.4;
+        ctx.beginPath();
+        for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2; const w = Math.sin(a * 6 + T * 2.5) * 0.015 + Math.sin(a * 10 - T * 3.5) * 0.01; const r = R * (0.97 + w); i === 0 ? ctx.moveTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r) : ctx.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r); }
+        ctx.closePath(); ctx.strokeStyle = rgba(iR, iG, iB, edgeAlpha); ctx.lineWidth = 1 + b * 0.8; ctx.stroke();
+    }
+
+    if (b > 0.55) {
+        const peak = (b - 0.55) / 0.45, peakPulse = 0.65 + Math.sin(T * 9) * 0.35;
+        const bloomR = R * (1.4 + peak * 0.4);
+        const bloomGrad = ctx.createRadialGradient(p.x, p.y, R * 0.3, p.x, p.y, bloomR);
+        bloomGrad.addColorStop(0, rgba(hR, hG, hB, peak * 0.4 * peakPulse)); bloomGrad.addColorStop(0.3, rgba(iR, iG, iB, peak * 0.25 * peakPulse)); bloomGrad.addColorStop(0.6, rgba(rgb.r, rgb.g, rgb.b, peak * 0.12 * peakPulse)); bloomGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+        ctx.fillStyle = bloomGrad; ctx.beginPath(); ctx.arc(p.x, p.y, bloomR, 0, Math.PI * 2); ctx.fill();
+        for (let ring = 0; ring < 3; ring++) {
+            const ringR = R * (1.03 + peak * (0.06 + ring * 0.045)), ringPulse = Math.sin(T * 7 + ring * 2.1) * 0.5 + 0.5;
+            ctx.beginPath(); for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2; const w = Math.sin(a * 5 + T * 5 + ring) * 0.025 * peak; const r = ringR * (1 + w); i === 0 ? ctx.moveTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r) : ctx.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r); }
+            ctx.closePath(); ctx.strokeStyle = rgba(hR, hG, hB, peak * 0.6 * ringPulse * (1 - ring * 0.25)); ctx.lineWidth = 2.5 + peak * 2 - ring * 0.6; ctx.stroke();
+        }
+        const burstCount = 8 + Math.floor(peak * 10);
+        for (let i = 0; i < burstCount; i++) {
+            const burstAngle = T * 1.2 + i * (Math.PI * 2 / burstCount), burstDist = R * (0.85 + peak * 0.3 + Math.sin(T * 5 + i * 2.3) * 0.08);
+            const bx = p.x + Math.cos(burstAngle) * burstDist, by = p.y + Math.sin(burstAngle) * burstDist;
+            const burstSize = 2.5 + peak * 4, burstAlpha = peak * 0.7 * (0.5 + Math.sin(T * 8 + i * 2.7) * 0.5);
+            const bGrad = ctx.createRadialGradient(bx, by, 0, bx, by, burstSize * 2);
+            bGrad.addColorStop(0, rgba(255, 255, 255, burstAlpha)); bGrad.addColorStop(0.25, rgba(hR, hG, hB, burstAlpha * 0.7)); bGrad.addColorStop(0.6, rgba(iR, iG, iB, burstAlpha * 0.3)); bGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+            ctx.fillStyle = bGrad; ctx.beginPath(); ctx.arc(bx, by, burstSize * 2, 0, Math.PI * 2); ctx.fill();
+        }
+        if (peak > 0.6) {
+            const maxPeak = (peak - 0.6) / 0.4, brillR = coreR * (2 + maxPeak);
+            const brillGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, brillR);
+            brillGrad.addColorStop(0, rgba(255, 255, 255, maxPeak * 0.7 * peakPulse)); brillGrad.addColorStop(0.2, rgba(hR, hG, hB, maxPeak * 0.5 * peakPulse)); brillGrad.addColorStop(0.5, rgba(iR, iG, iB, maxPeak * 0.25 * peakPulse)); brillGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+            ctx.fillStyle = brillGrad; ctx.beginPath(); ctx.arc(p.x, p.y, brillR, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+    ctx.globalAlpha = 1;
+}

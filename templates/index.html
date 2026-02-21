@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Gem Slap</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: #000; position: fixed; top: 0; left: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color: #fff; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        .game-wrap { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 100%; background: #050508; overflow: hidden; }
+        @media (min-width: 520px) and (min-height: 600px) { .game-wrap { top: 50%; transform: translate(-50%, -50%); height: 90%; max-height: 850px; border-radius: 1.2rem; border: 1px solid rgba(255,255,255,0.06); } }
+
+        .header { position: absolute; top: 0; left: 0; right: 0; height: 52px; padding-top: env(safe-area-inset-top, 0px); z-index: 100; display: flex; align-items: center; justify-content: space-between; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
+        .h-section { display: flex; flex-direction: column; min-width: 50px; }
+        .h-section.left { align-items: flex-start; }
+        .h-section.center { align-items: center; flex: 1; }
+        .h-section.right { align-items: flex-end; }
+        .h-val { font-size: 0.9rem; font-weight: 400; font-variant-numeric: tabular-nums; }
+        .h-val .orbs-low { color: #F07B18; }
+        .h-val .orbs-critical { color: #C41E3A; animation: orb-warn 0.6s ease-in-out infinite alternate; }
+        @keyframes orb-warn { 0% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        /* ── IMPROVED: header sub-labels ── */
+        .h-lbl { font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.45; }
+
+
+
+        /* ── GEM SLAP wordmark in header ── */
+        .gs-logo {
+            font-size: clamp(1.05rem, 4.6vw, 1.28rem); font-weight: 800;
+            letter-spacing: 0.18em; line-height: 1; white-space: nowrap;
+            background: linear-gradient(120deg, #A8F7F4 0%, #B3C6FF 35%, #D4A7FF 65%, #FFA7D4 100%);
+            background-size: 250% 250%;
+            animation: gem-grad 5s ease infinite;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 6px rgba(192,132,252,0.35));
+            pointer-events: none;
+        }
+
+        /* ── IMPROVED: tier pill ── */
+        .tier-pill { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.07em; padding: 0.15rem 0.45rem; border-radius: 1rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.25); }
+        .tier-pill.bronze { color: #7EC8F0; background: rgba(77,168,218,0.1); border-color: rgba(77,168,218,0.2); }
+        .tier-pill.silver { color: #4ECDC4; background: rgba(78,205,196,0.1); border-color: rgba(78,205,196,0.2); }
+        .tier-pill.gold { color: #F9DB6D; background: rgba(249,219,109,0.1); border-color: rgba(249,219,109,0.2); }
+
+        .prog-bar { position: absolute; top: calc(52px + env(safe-area-inset-top, 0px)); left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.04); z-index: 100; }
+        .prog-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #1B6B9C, #4DA8DA, #8EEAF4); transition: width 0.3s ease-out; }
+
+        #canvas { position: absolute; }
+
+        .footer { position: absolute; bottom: 0; left: 0; right: 0; height: 36px; padding-bottom: env(safe-area-inset-bottom, 0px); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 100; }
+        .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; }
+        .beat-dot.active { background: rgba(255,255,255,0.7); transform: scale(1.4); }
+        .mute-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.7rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
+        .mute-btn:hover { background: rgba(255,255,255,0.1); }
+        .mute-btn.muted { opacity: 0.3; }
+
+        .pop { position: absolute; pointer-events: none; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; animation: pop-up 0.45s ease-out forwards; z-index: 200; }
+        @keyframes pop-up { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -65%); } }
+        .pop.perfect { color: #F9DB6D; }
+        .pop.great { color: #4ECDC4; }
+        .pop.good { color: #7EC8F0; }
+        .pop.miss { color: rgba(255,255,255,0.2); }
+        .pop.scatter { font-size: 0.7rem !important; text-shadow: 0 0 8px currentColor; animation: pop-up-scatter 0.5s ease-out forwards; }
+        @keyframes pop-up-scatter { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 25% { transform: translate(-50%, -53%) scale(1.0); } 100% { opacity: 0; transform: translate(-50%, -70%); } }
+
+        .pop.crystal-break { color: #7EC8F0; font-size: 0.8rem !important; text-shadow: 0 0 12px rgba(77,168,218,0.6); animation: crystal-pop 0.6s ease-out forwards; }
+        .pop.crystal-clear { color: #D6F0FF; font-size: 1.1rem !important; text-shadow: 0 0 20px rgba(126,224,240,0.7); animation: crystal-pop 0.8s ease-out forwards; }
+        @keyframes crystal-pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); } 30% { transform: translate(-50%, -55%) scale(1.0); } 100% { opacity: 0; transform: translate(-50%, -80%); } }
+
+        .countdown { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 5rem; font-weight: 100; letter-spacing: 0.1em; color: rgba(255,255,255,0.9); z-index: 300; pointer-events: none; animation: count-pop 0.48s ease-out forwards; text-shadow: 0 0 40px rgba(255,255,255,0.3); }
+        .countdown-level { position: absolute; top: calc(50% + 3.6rem); left: 50%; transform: translateX(-50%); font-size: 0.72rem; font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.55); z-index: 300; pointer-events: none; white-space: nowrap; transition: opacity 0.4s ease; }
+        .countdown-level.fade-out { opacity: 0; }
+        .countdown.final { font-size: 5.5rem; color: #fff; text-shadow: 0 0 50px rgba(126,200,240,0.5), 0 0 100px rgba(77,168,218,0.3); }
+        @keyframes count-pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(0.97); } 60% { opacity: 1; transform: translate(-50%, -50%) scale(1.0); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.88); } }
+
+        .overlay { position: absolute; inset: 0; z-index: 500; transition: opacity 0.5s ease, visibility 0.5s; }
+        .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        #start-screen {
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        #intro-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+        .intro-z {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: space-between;
+            width: 100%; height: 100%;
+            padding: max(9vh, 2.2rem) 1.5rem max(6vh, 1.8rem);
+            pointer-events: none;
+        }
+        .intro-top { display: flex; flex-direction: column; align-items: center; }
+        .intro-mid  { flex: 1; }
+        .intro-bottom {
+            display: flex; flex-direction: column; align-items: center;
+            width: 100%; max-width: 320px; gap: 0.5rem;
+        }
+
+        .title {
+            font-size: clamp(1.8rem, 9.2vw, 3.2rem); font-weight: 800;
+            letter-spacing: 0.22em; line-height: 1; white-space: nowrap;
+            margin-bottom: 0.6rem;
+            background: linear-gradient(120deg, #A8F7F4 0%, #B3C6FF 35%, #D4A7FF 65%, #FFA7D4 100%);
+            background-size: 250% 250%;
+            animation: gem-grad 5s ease infinite;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 18px rgba(192,132,252,0.3));
+        }
+        @keyframes gem-grad { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+        .tagline {
+            font-size: 0.63rem; letter-spacing: 0.24em; margin-left: 0.24em;
+            color: rgba(255,255,255,0.3); text-transform: uppercase; font-weight: 300;
+        }
+
+        .tut-hint {
+            position: absolute;
+            top: 52%;          /* just below sceneY=44% + gem/orb height */
+            left: 0; right: 0;
+            font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 500;
+            opacity: 0; transition: opacity 0.35s ease, transform 0.35s ease;
+            transform: translateY(5px); text-align: center;
+        }
+        .tut-hint.show { opacity: 1; transform: translateY(0); }
+        .tut-hint.tap-state   { color: rgba(160,80,255,0.9);  text-shadow: 0 0 14px rgba(160,80,255,0.35); }
+        .tut-hint.shatter-state { color: rgba(127,244,240,0.9); text-shadow: 0 0 14px rgba(127,244,240,0.35); }
+
+        /* Wrapper carries all animations — button itself is static so iOS fires on first tap */
+        .play-btn-wrap {
+            width: 100%; pointer-events: auto;
+            animation: btn-lift 2.4s ease-in-out infinite;
+            will-change: transform;
+            border-radius: 3rem;
+            box-shadow: 0 4px 28px rgba(192,132,252,0.45), 0 0 60px rgba(192,132,252,0.15);
+        }
+        @keyframes btn-lift {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(-3px); }
+        }
+        .play-btn {
+            pointer-events: auto; cursor: pointer; width: 100%;
+            background: linear-gradient(120deg, #A8F7F4 0%, #B3C6FF 35%, #D4A7FF 65%, #FFA7D4 100%);
+            background-size: 250% 250%;
+            animation: gem-grad 5s ease infinite;
+            border: none; border-radius: 3rem;
+            color: rgba(20,10,40,0.82);
+            font-size: 0.9rem; font-weight: 800; letter-spacing: 0.3em; text-transform: uppercase;
+            padding: 1.05rem 0;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation; /* tell iOS: tap only, no gesture evaluation delay */
+            display: block;
+        }
+        .play-btn:active { opacity: 0.88; }
+        .intro-tap-hint {
+            font-size: 0.44rem; letter-spacing: 0.15em; text-transform: uppercase;
+            color: rgba(255,255,255,0.18); pointer-events: none;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           FLOATING END CARD — fully improved typography
+        ═══════════════════════════════════════════════════ */
+        .end-float {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            z-index: 200;
+            display: flex; justify-content: center;
+            padding: 0 0.5rem;
+            padding-bottom: max(0.4rem, env(safe-area-inset-bottom, 0px));
+            transform: translateY(110%);
+            transition: transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            pointer-events: none;
+        }
+        .end-float.show {
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .ef-card {
+            width: 100%; max-width: 380px;
+            background: rgba(5,5,10,0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-bottom: none;
+            border-radius: 1.2rem 1.2rem 0 0;
+            padding: 1.2rem 1.4rem 1rem;
+            display: flex; flex-direction: column; align-items: center;
+            position: relative; overflow: hidden;
+        }
+        /* Top accent glow bar */
+        .ef-card::before {
+            content: ''; position: absolute;
+            top: 0; left: 10%; right: 10%; height: 2px;
+            border-radius: 2px;
+        }
+        .ef-card.tier-gold::before { background: #F9DB6D; box-shadow: 0 0 24px rgba(249,219,109,0.5); }
+        .ef-card.tier-silver::before { background: #4ECDC4; box-shadow: 0 0 18px rgba(78,205,196,0.4); }
+        .ef-card.tier-bronze::before { background: #7EC8F0; box-shadow: 0 0 14px rgba(126,200,240,0.3); }
+        .ef-card.tier-none::before { background: rgba(255,255,255,0.08); }
+
+        /* ── level label in floating card ── */
+        .ef-level {
+            font-size: 0.86rem; letter-spacing: 0.1em; text-transform: uppercase;
+            color: rgba(255,255,255,0.65); margin-bottom: 0.5rem; text-align: center; line-height: 1.3;
+            font-weight: 400;
+        }
+
+        /* ── tier + time hero area — single row ── */
+        .ef-hero {
+            display: flex; flex-direction: row; align-items: baseline;
+            gap: 0.6rem; margin-bottom: 0.7rem;
+        }
+
+        /* ── tier badge ── */
+        .ef-tier-badge {
+            font-size: 1.05rem; font-weight: 700; letter-spacing: 0.22em;
+            text-transform: uppercase; line-height: 1;
+        }
+        .ef-tier-badge.c-gold { color: #F9DB6D; text-shadow: 0 0 20px rgba(249,219,109,0.3); }
+        .ef-tier-badge.c-silver { color: #4ECDC4; text-shadow: 0 0 16px rgba(78,205,196,0.25); }
+        .ef-tier-badge.c-bronze { color: #7EC8F0; text-shadow: 0 0 12px rgba(126,200,240,0.2); }
+        .ef-tier-badge.c-none { color: rgba(255,255,255,0.18); }
+
+        .ef-time {
+            font-size: 1.1rem; font-weight: 200; line-height: 1;
+            font-variant-numeric: tabular-nums;
+            color: rgba(255,255,255,0.45);
+        }
+
+
+
+        /* ── Buttons — side by side ── */
+        .ef-btns {
+            display: flex; flex-direction: row; gap: 0.5rem;
+            width: 100%; max-width: 320px;
+        }
+
+        /* ── continue button ── */
+        .ef-btn-continue {
+            flex: 2; padding: 0.75rem 0; font-size: 0.76rem;
+            font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+            border: none; border-radius: 2rem; cursor: pointer;
+            color: rgba(0,0,0,0.85);
+            transition: all 0.2s ease;
+        }
+        .ef-btn-continue:active { transform: scale(0.97); }
+        .ef-card.tier-gold .ef-btn-continue {
+            background: linear-gradient(135deg, #F9DB6D, #E8C94A);
+            box-shadow: 0 2px 16px rgba(249,219,109,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .ef-card.tier-gold .ef-btn-continue:active { box-shadow: 0 1px 8px rgba(249,219,109,0.2); }
+        .ef-card.tier-silver .ef-btn-continue {
+            background: linear-gradient(135deg, #4ECDC4, #3CB8B0);
+            box-shadow: 0 2px 16px rgba(78,205,196,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .ef-card.tier-silver .ef-btn-continue:active { box-shadow: 0 1px 8px rgba(78,205,196,0.2); }
+        .ef-card.tier-bronze .ef-btn-continue {
+            background: linear-gradient(135deg, #7EC8F0, #5BB5E0);
+            box-shadow: 0 2px 16px rgba(126,200,240,0.25), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .ef-card.tier-bronze .ef-btn-continue:active { box-shadow: 0 1px 8px rgba(126,200,240,0.15); }
+        .ef-card.tier-none .ef-btn-continue {
+            background: rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.6);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* ── retry button ── */
+        .ef-btn-retry {
+            flex: 1; padding: 0.75rem 0; font-size: 0.62rem;
+            font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 2rem;
+            cursor: pointer; background: transparent;
+            color: rgba(255,255,255,0.45);
+            transition: all 0.2s ease;
+        }
+        .ef-btn-retry:active { transform: scale(0.97); color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.04); }
+
+
+
+        /* ═══════════════════════════════════════════════════
+           FULL END SCREEN — improved throughout
+        ═══════════════════════════════════════════════════ */
+        #end-screen { display: flex; align-items: center; justify-content: center; }
+        #end-screen::before { content: ''; position: absolute; inset: 0; background: rgba(5,5,8,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+        .end-card { position: relative; z-index: 1; width: calc(100% - 3rem); max-width: 300px; display: flex; flex-direction: column; align-items: center; padding: 1.6rem 1.2rem 1.4rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 1rem; }
+        .end-card::before { content: ''; position: absolute; top: -1px; left: 20%; right: 20%; height: 2px; border-radius: 2px; transition: background 0.5s, box-shadow 0.5s, opacity 0.5s; }
+        .end-card.tier-gold::before { background: #F9DB6D; box-shadow: 0 0 20px rgba(249,219,109,0.4), 0 0 40px rgba(249,219,109,0.15); }
+        .end-card.tier-silver::before { background: #4ECDC4; box-shadow: 0 0 15px rgba(78,205,196,0.3); }
+        .end-card.tier-bronze::before { background: #7EC8F0; box-shadow: 0 0 12px rgba(126,200,240,0.25); }
+        .end-card.tier-none::before { background: rgba(255,255,255,0.08); }
+        .end-card.tier-fail::before { opacity: 0; }
+
+        /* ── end screen level label ── */
+        .ec-level { font-size: 0.86rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.65; margin-bottom: 0.8rem; text-align: center; line-height: 1.3; font-weight: 400; }
+
+        .ec-score { font-size: 3.5rem; font-weight: 100; line-height: 1; margin-bottom: 0.1rem; font-variant-numeric: tabular-nums; transition: color 0.4s; }
+        .ec-score.c-gold { color: #F9DB6D; } .ec-score.c-silver { color: #4ECDC4; } .ec-score.c-bronze { color: #7EC8F0; }
+        .ec-score.c-none { color: rgba(255,255,255,0.35); } .ec-score.c-fail { color: rgba(255,255,255,0.12); }
+
+        /* ── IMPROVED: tier text in end screen ── */
+        .ec-tier { font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700; margin-bottom: 0.15rem; }
+        .ec-tier.c-gold { color: #F9DB6D; } .ec-tier.c-silver { color: #4ECDC4; } .ec-tier.c-bronze { color: #7EC8F0; }
+        .ec-tier.c-none { color: rgba(255,255,255,0.2); } .ec-tier.c-fail { color: rgba(255,255,255,0.15); }
+
+        /* ── IMPROVED: result message ── */
+        .ec-msg { font-size: 0.62rem; opacity: 0.35; letter-spacing: 0.05em; margin-bottom: 1rem; }
+
+        .ec-row { display: flex; width: 100%; margin-bottom: 1rem; background: rgba(255,255,255,0.015); border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.03); overflow: hidden; }
+        .ec-cell { flex: 1; text-align: center; padding: 0.5rem 0.2rem; }
+        .ec-cell + .ec-cell { border-left: 1px solid rgba(255,255,255,0.03); }
+
+        /* ── IMPROVED: stat values and labels ── */
+        .ec-val { font-size: 0.88rem; font-weight: 300; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.7); }
+        .ec-val.crystal { color: #7EC8F0; }
+        .ec-lbl { font-size: 0.48rem; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.3; margin-top: 0.12rem; }
+
+        .ec-melody { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; margin-bottom: 0.5rem; max-width: 220px; min-height: 6px; }
+        .ec-melody .mdot { width: 4px; height: 4px; border-radius: 50%; }
+        .bass-fav { display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin-bottom: 1rem; padding: 0.2rem 0.5rem; cursor: pointer; transition: all 0.2s; border: none; background: none; }
+        .bass-fav .bass-name { font-size: 0.42rem; opacity: 0.2; letter-spacing: 0.06em; transition: opacity 0.2s; }
+        .bass-fav .fav-heart { font-size: 0.6rem; opacity: 0.12; transition: all 0.3s ease; }
+        .bass-fav.locked .fav-heart { opacity: 1; color: #F07B18; transform: scale(1.2); }
+        .bass-fav.locked .bass-name { opacity: 0.45; }
+
+        .ec-btns { display: flex; gap: 0.5rem; align-items: center; width: 100%; justify-content: center; }
+
+        /* ── IMPROVED: general buttons — larger & more readable ── */
+        .btn { padding: 0.55rem 1.1rem; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.45); cursor: pointer; border-radius: 2rem; transition: all 0.2s; }
+        .btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
+        .btn:active { transform: scale(0.96); }
+        .btn:disabled { opacity: 0.1; pointer-events: none; }
+
+        /* ── IMPROVED: primary button ── */
+        .btn.primary { padding: 0.7rem 2rem; font-size: 0.75rem; letter-spacing: 0.12em; background: linear-gradient(135deg, rgba(240,123,24,0.1), rgba(196,30,58,0.06)); border-color: rgba(240,123,24,0.18); color: rgba(255,255,255,0.85); box-shadow: 0 0 20px rgba(240,123,24,0.05); font-weight: 600; }
+        .btn.primary:hover { background: linear-gradient(135deg, rgba(240,123,24,0.18), rgba(196,30,58,0.1)); box-shadow: 0 0 30px rgba(240,123,24,0.12); }
+
+        .end-card { opacity: 0; transform: translateY(20px) scale(0.96); }
+        .end-card.show { opacity: 1; transform: translateY(0) scale(1); transition: opacity 0.45s ease, transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        .ec-inner { opacity: 0; }
+        .ec-inner.show { opacity: 1; transition: opacity 0.35s ease; }
+        .ver { position: absolute; bottom: 2px; left: 4px; font-size: 7px; opacity: 0.15; }
+    </style>
+</head>
+<body>
+    <div class="game-wrap">
+        <div class="header">
+            <div class="h-section left">
+                <div class="h-val" id="h-time" style="font-variant-numeric:tabular-nums;">0.0s</div>
+                <div class="h-lbl">Time</div>
+            </div>
+            <div class="h-section center">
+                <div class="gs-logo" id="gs-logo">GEM SLAP</div>
+            </div>
+            <div class="h-section right" style="position:relative;padding-right:0;">
+                <div class="h-val"><span id="h-orbs" style="font-variant-numeric:tabular-nums;">0</span><span id="h-orbs-total" style="opacity:0.2;font-size:0.55rem;font-variant-numeric:tabular-nums;"></span></div>
+                <div class="h-lbl">Orbs Left</div>
+            </div>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+        <canvas id="canvas"></canvas>
+        <div class="footer">
+            <div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div>
+            <button class="mute-btn" id="mute-btn">♫</button>
+        </div>
+
+        <div class="overlay" id="start-screen">
+            <canvas id="intro-canvas"></canvas>
+            <div class="intro-z">
+                <div class="tut-hint" id="tut-hint"></div>
+                <div class="intro-top">
+                    <h1 class="title">GEM SLAP</h1>
+                    <p class="tagline">tap orbs · shatter crystals</p>
+                </div>
+                <div class="intro-mid"></div>
+                <div class="intro-bottom">
+                    <div class="play-btn-wrap">
+                        <button class="play-btn" id="play-btn">PLAY</button>
+                    </div>
+                    <div class="intro-tap-hint">or tap anywhere</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="end-float" id="end-float">
+            <div class="ef-card" id="ef-card">
+                <div class="ef-level" id="ef-level">Level 1</div>
+                <div class="ef-hero">
+                    <div class="ef-tier-badge" id="ef-tier">GOLD</div>
+                    <div class="ef-time" id="ef-time-big">0.0s</div>
+                </div>
+                <div class="ef-btns">
+                    <button class="ef-btn-retry" id="ef-retry">Retry</button>
+                    <button class="ef-btn-continue" id="ef-next">Continue</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="overlay hidden" id="end-screen">
+            <div class="end-card" id="end-card">
+                <div class="ec-inner ec-level" id="ec-level">Level 1</div>
+                <div class="ec-inner ec-score" id="ec-time-fail">0.0s</div>
+                <div class="ec-inner ec-tier" id="ec-tier">CRYSTALS REMAIN</div>
+                <div class="ec-inner ec-msg" id="ec-msg">The crystals hold.</div>
+                <div class="ec-inner ec-row">
+                    <div class="ec-cell"><div class="ec-val crystal" id="ec-crys">1/3</div><div class="ec-lbl">Crystals</div></div>
+                    <div class="ec-cell"><div class="ec-val" id="ec-orbs">0/12</div><div class="ec-lbl">Orbs Used</div></div>
+                </div>
+                <div class="ec-inner ec-melody" id="ec-melody"></div>
+                <div class="ec-inner bass-fav" id="bass-fav">
+                    <span class="bass-name" id="bass-name">Classic Funk</span>
+                    <span class="fav-heart">♥</span>
+                </div>
+                <div class="ec-inner ec-btns">
+                    <button class="btn" id="btn-retry">Retry</button>
+                    <button class="btn primary" id="btn-next" disabled>Continue</button>
+                </div>
+            </div>
+        </div>
+        <div class="ver">v65</div>
+    </div>
+
+    <!-- Engine: Audio, particles, draw functions, constants -->
+    <script src="/static/engine.js"></script>
+
+    <script>
+    // ═══════════════════════════════════════
+    //  DOM & CANVAS SETUP
+    // ═══════════════════════════════════════
+    const $ = id => document.getElementById(id);
+    const canvas = $('canvas');
+    const ctx = canvas.getContext('2d');
+    let gameWrap, canvasW = 400, canvasH = 600;
+
+    const audio = new Audio();
+
+    // ═══════════════════════════════════════
+    //  GAME STATE
+    // ═══════════════════════════════════════
+    const state = {
+        level: 1, orbs: [], allOrbs: [], bpm: 90, speed: 0.2, targetTime: 7,
+        timing: { perfect: 100, great: 200, good: 350 },
+        points: { perfect: 100, great: 60, good: 30, miss: 10 },
+        score: 0, melody: [],
+        startTime: 0, elapsed: 0, beatTime: 0, measureMs: 2000,
+        started: false, playing: false, complete: false, levelCleared: false,
+        countdown: 0, countdownStart: 0,
+        visibleAtOnce: 4, totalOrbs: 12, orbsHit: 0, orbsSpawned: 0,
+        bassStyle: 0, favBassStyle: null,
+        targets: [], totalTargets: 0, targetsDestroyed: 0,
+        targetDestroyRadius: 22, patternName: '',
+        batchName: '', levelInSet: 1,
+        freePlay: false, freePlayData: null,
+    };
+
+    // ═══════════════════════════════════════
+    //  PARTICLES & EFFECTS
+    // ═══════════════════════════════════════
+    let motes = [], bursts = [], crystalShards = [], energyMotes = [], crystalDust = [];
+
+    const SHOCK_RADIUS = 38;
+    const SHOCK_STRENGTH = 10.0;
+    const SHOCK_DECAY = 0.965;
+    const SHOCK_MIN = 0.015;
+    let shockwaves = [];
+    let screenShake = { x: 0, y: 0, intensity: 0 };
+
+    function initMotes() { motes = []; for (let i = 0; i < 35; i++) motes.push(new Mote(canvasW, canvasH)); }
+
+    // ═══════════════════════════════════════
+    //  RESPONSIVE LAYOUT
+    // ═══════════════════════════════════════
+    let orbScale = 1;
+
+    function resize() {
+        gameWrap = document.querySelector('.game-wrap'); if (!gameWrap) return;
+        const wrapRect = gameWrap.getBoundingClientRect(), wrapW = wrapRect.width, wrapH = wrapRect.height;
+        const safeTop = window.innerHeight !== document.documentElement.clientHeight ? Math.min(50, window.innerHeight - document.documentElement.clientHeight) : 0;
+        const headerH = 52 + safeTop, progH = 2, footerH = 36, canvasTop = headerH + progH;
+        canvasW = Math.max(100, Math.floor(wrapW)); canvasH = Math.max(100, Math.floor(wrapH - canvasTop - footerH));
+        canvas.style.top = canvasTop + 'px'; canvas.style.left = '0'; canvas.style.width = canvasW + 'px'; canvas.style.height = canvasH + 'px';
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = canvasW * dpr; canvas.height = canvasH * dpr; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr);
+        orbScale = Math.min(1, Math.min(canvasW, canvasH) / 350);
+        initMotes();
+    }
+    window.addEventListener('resize', () => setTimeout(resize, 50));
+    window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(resize, 50));
+
+    function getOrbAt(x, y) {
+        for (let i = state.orbs.length - 1; i >= 0; i--) {
+            const orb = state.orbs[i]; if (orb.hit) continue;
+            const p = toScreen(orb), r = 32 * orb.size * orbScale;
+            if (Math.hypot(x - p.x, y - p.y) < r * 1.1) return orb;
+        }
+        return null;
+    }
+
+    function getRating(orb, time) {
+        const { dist } = getBrightness(orb, time);
+        if (dist <= state.timing.perfect) return 'perfect';
+        if (dist <= state.timing.great) return 'great';
+        if (dist <= state.timing.good) return 'good';
+        return 'miss';
+    }
+
+    // ═══════════════════════════════════════
+    //  MAIN RENDER LOOP
+    // ═══════════════════════════════════════
+    function draw() {
+        state._lastDrawTime = performance.now();
+        state._lastDrawWall = Date.now(); // wall clock — advances even when iOS freezes performance.now()
+        const w = canvasW, h = canvasH, now = performance.now();
+
+        ctx.save();
+        if (screenShake.intensity > 0.1) {
+            screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
+            screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
+            screenShake.intensity *= 0.88;
+            ctx.translate(screenShake.x, screenShake.y);
+        } else { screenShake.intensity = 0; }
+
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+        bgGrad.addColorStop(0, '#07070b'); bgGrad.addColorStop(0.5, '#09090e'); bgGrad.addColorStop(1, '#05050a');
+        ctx.fillStyle = bgGrad; ctx.fillRect(-5, -5, w + 10, h + 10);
+        const vignette = ctx.createRadialGradient(w/2, h/2, h * 0.15, w/2, h/2, h * 0.75);
+        vignette.addColorStop(0, 'rgba(0,0,0,0)'); vignette.addColorStop(1, 'rgba(0,0,0,0.35)');
+        ctx.fillStyle = vignette; ctx.fillRect(0, 0, w, h);
+
+        if (state.playing && !state.complete) {
+            if (!state.freePlay) state.elapsed = (now - state.startTime) / 1000;
+            if (now % 100 < 20) updateHUD();
+        }
+
+        if (motes.length === 0 && w > 0) initMotes();
+        motes.forEach(m => { m.w = w; m.h = h; m.update(); m.draw(ctx); });
+
+        if (!state.started || state.complete) {
+            const T = now / 1000;
+            const demoCrystals = [
+                { x: 30 + Math.sin(T * 0.2) * 5, y: 35 + Math.cos(T * 0.15) * 3, id: 0 },
+                { x: 70 + Math.cos(T * 0.18) * 4, y: 55 + Math.sin(T * 0.22) * 4, id: 1 },
+                { x: 50 + Math.sin(T * 0.25 + 2) * 6, y: 75 + Math.cos(T * 0.2 + 1) * 3, id: 2 },
+            ];
+            if (!state.started) {
+                demoCrystals.forEach(dc => drawCrystal({ ...dc, alive: true, destroyTime: null }, now));
+            }
+        }
+
+        state.targets.forEach(t => drawCrystal(t, now));
+
+        bursts = bursts.filter(b => b.life > 0);
+        bursts.forEach(b => { b.update(); b.draw(ctx); });
+        crystalShards = crystalShards.filter(s => s.life > 0);
+        crystalShards.forEach(s => { s.update(); s.draw(ctx); });
+        energyMotes = energyMotes.filter(e => e.life > 0);
+        energyMotes.forEach(e => { e.update(); e.draw(ctx); });
+        crystalDust = crystalDust.filter(d => d.life > 0);
+        crystalDust.forEach(d => { d.update(); d.draw(ctx); });
+
+        shockwaves = shockwaves.filter(sw => (now - sw.time) < 750);
+        shockwaves.forEach(sw => {
+            const age = now - sw.time, progress = age / 750;
+            const ease = 1 - Math.pow(1 - progress, 3);
+            const alpha = Math.pow(1 - progress, 1.5);
+            const cx = (sw.x / 100) * canvasW, cy = (sw.y / 100) * canvasH;
+            const avgDim = (canvasW + canvasH) / 2;
+            const r = (sw.effectiveRadius / 100) * avgDim * ease;
+            const srgb = hexToRgb(sw.color);
+            if (r > 2) {
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.strokeStyle = rgba(srgb.r, srgb.g, srgb.b, alpha * 0.08);
+                ctx.lineWidth = 14 * (1 - progress); ctx.stroke();
+                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.45 * (0.5 + sw.strength * 0.5)})`;
+                ctx.lineWidth = 2.5 * (1 - progress * 0.5); ctx.stroke();
+                ctx.beginPath(); ctx.arc(cx, cy, r * 0.9, 0, Math.PI * 2);
+                ctx.strokeStyle = rgba(srgb.r, srgb.g, srgb.b, alpha * 0.3 * (0.5 + sw.strength * 0.5));
+                ctx.lineWidth = 1.8 * (1 - progress * 0.5); ctx.stroke();
+            }
+            if (progress < 0.3) {
+                const fillA = (1 - progress / 0.3) * 0.07 * (0.5 + sw.strength);
+                const fillGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+                fillGrad.addColorStop(0, `rgba(255,255,255,${fillA * 0.6})`);
+                fillGrad.addColorStop(0.5, rgba(srgb.r, srgb.g, srgb.b, fillA * 0.25));
+                fillGrad.addColorStop(1, rgba(srgb.r, srgb.g, srgb.b, 0));
+                ctx.fillStyle = fillGrad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+            }
+        });
+
+        const orbsToDraw = [...state.orbs].sort((a, b) => a.y - b.y);
+        orbsToDraw.forEach(orb => {
+            try {
+                if (orb.hit) {
+                    if (orb.fade > 0.01) {
+                        orb.fade -= 0.05;
+                        const p = toScreen(orb), rgb = hexToRgb(orb.color), r = 32 * orb.size * orbScale;
+                        const ring1R = r * (1 + (1 - orb.fade) * 1.2), ring2R = r * (1 + (1 - orb.fade) * 0.8);
+                        ctx.beginPath(); ctx.arc(p.x, p.y, ring1R, 0, Math.PI * 2); ctx.strokeStyle = rgba(rgb.r, rgb.g, rgb.b, orb.fade * 0.4); ctx.lineWidth = 2; ctx.stroke();
+                        ctx.beginPath(); ctx.arc(p.x, p.y, ring2R, 0, Math.PI * 2); ctx.strokeStyle = rgba(255, 255, 255, orb.fade * 0.3); ctx.lineWidth = 1.5; ctx.stroke();
+                        if (orb.fade > 0.1) {
+                            const fadeR = Math.max(1, r * orb.fade);
+                            const fadeGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, fadeR);
+                            fadeGrad.addColorStop(0, rgba(255, 255, 255, orb.fade * 0.4)); fadeGrad.addColorStop(0.5, rgba(rgb.r, rgb.g, rgb.b, orb.fade * 0.2)); fadeGrad.addColorStop(1, rgba(rgb.r, rgb.g, rgb.b, 0));
+                            ctx.beginPath(); ctx.arc(p.x, p.y, fadeR, 0, Math.PI * 2); ctx.fillStyle = fadeGrad; ctx.fill();
+                        }
+                    }
+                    return;
+                }
+
+                const driftMult = 0.25;
+                orb.x += orb.driftX * driftMult;
+                orb.y += orb.driftY * driftMult;
+                if (orb.shockVx || orb.shockVy) {
+                    orb.x += orb.shockVx; orb.y += orb.shockVy;
+                    const transferRate = 0.04;
+                    orb.driftX += (orb.shockVx / driftMult) * transferRate;
+                    orb.driftY += (orb.shockVy / driftMult) * transferRate;
+                    if (!orb._baseDriftSpeed) orb._baseDriftSpeed = Math.hypot(orb.driftX, orb.driftY);
+                    const maxDrift = orb._baseDriftSpeed * 2.5;
+                    const curDrift = Math.hypot(orb.driftX, orb.driftY);
+                    if (curDrift > maxDrift) { orb.driftX = (orb.driftX / curDrift) * maxDrift; orb.driftY = (orb.driftY / curDrift) * maxDrift; }
+                    orb.shockVx *= SHOCK_DECAY; orb.shockVy *= SHOCK_DECAY;
+                    orb.shockEnergy = Math.hypot(orb.shockVx, orb.shockVy);
+                    if (orb.shockEnergy < SHOCK_MIN) { orb.shockVx = 0; orb.shockVy = 0; orb.shockEnergy = 0; }
+                }
+                if (orb.x < 15 || orb.x > 85) { orb.driftX *= -1; if (orb.shockVx) orb.shockVx *= -0.5; orb.x = Math.max(15, Math.min(85, orb.x)); }
+                if (orb.y < 15 || orb.y > 85) { orb.driftY *= -1; if (orb.shockVy) orb.shockVy *= -0.5; orb.y = Math.max(15, Math.min(85, orb.y)); }
+
+                drawOrb(orb, now);
+            } catch (e) { console.error('Orb draw error:', e); }
+        });
+
+        if (state.playing && state.measureMs > 0) {
+            const beatMs = state.measureMs / 4;
+            const since = ((now - state.beatTime) % state.measureMs + state.measureMs) % state.measureMs;
+            const curBeat = Math.floor(since / beatMs), beatProgress = (since % beatMs) / beatMs;
+            document.querySelectorAll('.beat-dot').forEach((d, i) => d.classList.toggle('active', i === curBeat && beatProgress < 0.15));
+        }
+
+        ctx.restore();
+        state.rafId = requestAnimationFrame(draw);
+    }
+
+    // ═══════════════════════════════════════
+    //  SCORING
+    // ═══════════════════════════════════════
+    function calcScore() {
+        const time = state.elapsed;
+        const target = state.targetTime;
+        return { time, target };
+    }
+    function getTier(time, target) {
+        if (time <= target) return { tier: 'gold', text: 'GOLD' };
+        if (time <= target * 1.5) return { tier: 'silver', text: 'SILVER' };
+        if (time <= target * 2.0) return { tier: 'bronze', text: 'BRONZE' };
+        return { tier: 'none', text: '—' };
+    }
+
+    function levelLabel(style = 'text') {
+        const name = state.patternName || '';
+        const num  = state.level || 1;
+        if (style === 'header') {
+            return name || `Level ${num}`;
+        }
+        if (style === 'end') {
+            return name ? `Level ${num}: ${name}` : `Level ${num}`;
+        }
+        return name ? `Level ${num}: ${name}` : `Level ${num}`;
+    }
+
+    function updateHUD() {
+        const { time, target } = calcScore();
+        const { tier } = getTier(time, target);
+        $('h-time').textContent = `${time.toFixed(1)}s`;
+        $('h-time').style.color = tier === 'gold' ? '#F9DB6D' : tier === 'silver' ? '#4ECDC4' : tier === 'bronze' ? '#7EC8F0' : 'rgba(255,255,255,0.5)';
+        const orbsLeft = state.totalOrbs - state.orbsHit;
+        const crystalsLeft = state.totalTargets - state.targetsDestroyed;
+        const orbEl = $('h-orbs');
+        orbEl.textContent = orbsLeft;
+        orbEl.className = '';
+        if (crystalsLeft > 0) {
+            if (orbsLeft <= crystalsLeft) orbEl.className = 'orbs-critical';
+            else if (orbsLeft <= crystalsLeft + 2) orbEl.className = 'orbs-low';
+        }
+
+        $('prog-fill').style.width = `${Math.min(100, (state.targetsDestroyed / state.totalTargets) * 100)}%`;
+    }
+
+    function buildCrystalDots() {
+        // crystal dots removed from header — progress bar tracks crystals
+    }
+
+    // ═══════════════════════════════════════
+    //  INTERACTION — HIT ORB + CRYSTAL CHECK
+    // ═══════════════════════════════════════
+    function hitOrb(orb, x, y) {
+        if (!orb || orb.hit || state.complete) return;
+        const now = performance.now();
+        const rating = getRating(orb, now);
+        const pts = state.points[rating] || 10;
+
+        orb.hit = true; orb.fade = 1; orb.hitTime = now;
+        state.orbsHit++;
+        state.melody.push({ note: orb.note, color: orb.color, rating });
+
+        const vol = rating === 'perfect' ? 0.28 : rating === 'great' ? 0.24 : rating === 'good' ? 0.20 : 0.18;
+        audio.tone(orb.note, 0.95, vol);
+
+        const { brightness: hitBrightness } = getBrightness(orb, now);
+        const hitSpawnAge = orb.spawnTime ? (now - orb.spawnTime) : 1000;
+        const hitSpawnFade = Math.min(1, hitSpawnAge / 600);
+        const hitSpawnEase = hitSpawnFade < 0.5 ? 4*hitSpawnFade*hitSpawnFade*hitSpawnFade : 1 - Math.pow(-2*hitSpawnFade+2,3)/2;
+        const hitB = hitBrightness * hitSpawnEase;
+        const hitSizeScale = 0.32 + hitB * 0.68;
+        const orbVisualR = 40 * (orb.size || 1) * orbScale * hitSizeScale * hitSpawnEase;
+        const crystalVisualR = 18 * orbScale * 1.1;
+        const orbScreenX = (orb.x / 100) * canvasW;
+        const orbScreenY = (orb.y / 100) * canvasH;
+
+        let orbsAffected = 0, maxForce = 0;
+        state.orbs.forEach(other => {
+            if (other === orb || other.hit) return;
+            const dx = other.x - orb.x, dy = other.y - orb.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < SHOCK_RADIUS && dist > 0.5) {
+                const normalDist = dist / SHOCK_RADIUS;
+                const force = SHOCK_STRENGTH * Math.pow(1 - normalDist, 2);
+                const angle = Math.atan2(dy, dx);
+                other.shockVx = (other.shockVx || 0) + Math.cos(angle) * force;
+                other.shockVy = (other.shockVy || 0) + Math.sin(angle) * force;
+                other.shockEnergy = Math.hypot(other.shockVx, other.shockVy);
+                other.shockFlash = now;
+                orbsAffected++; maxForce = Math.max(maxForce, force);
+            }
+        });
+
+        const scatterStrength = Math.min(1, orbsAffected / 4);
+        if (orbsAffected > 0) {
+            shockwaves.push({ x: orb.x, y: orb.y, time: now, strength: scatterStrength, color: orb.color, effectiveRadius: SHOCK_RADIUS });
+            screenShake.intensity = Math.max(screenShake.intensity, Math.min(8, orbsAffected * 1.8 + maxForce * 2));
+            audio.shockwaveSound(scatterStrength);
+        }
+
+        let crystalsHitThisTurn = 0;
+        state.targets.forEach(target => {
+            if (!target.alive) return;
+            const crystalScreenX = (target.x / 100) * canvasW;
+            const crystalScreenY = (target.y / 100) * canvasH;
+            const distPx = Math.hypot(crystalScreenX - orbScreenX, crystalScreenY - orbScreenY);
+            if (distPx <= orbVisualR + crystalVisualR) {
+                target.alive = false; target.destroyTime = now;
+                state.targetsDestroyed++; crystalsHitThisTurn++;
+                const palette = CRYSTAL_PALETTE[target.id % CRYSTAL_PALETTE.length];
+                const sx = (target.x / 100) * canvasW, sy = (target.y / 100) * canvasH;
+                const shardR = 18 * orbScale;
+                for (let i = 0; i < 10 + Math.floor(Math.random() * 6); i++) crystalShards.push(new CrystalShard(sx, sy, palette, shardR));
+                for (let i = 0; i < 15 + Math.floor(Math.random() * 10); i++) energyMotes.push(new EnergyMote(sx, sy));
+                for (let i = 0; i < 12 + Math.floor(Math.random() * 8); i++) crystalDust.push(new CrystalDustP(sx, sy, palette));
+                audio.crystalShatter(state.targetsDestroyed - 1, state.totalTargets);
+            }
+        });
+
+        const avgDim = (canvasW + canvasH) / 2;
+        const overlapRadiusPercent = ((orbVisualR + crystalVisualR) / avgDim) * 100;
+        if (crystalsHitThisTurn > 0) {
+            shockwaves.push({ x: orb.x, y: orb.y, time: now, strength: Math.min(1, crystalsHitThisTurn / 3), color: CRYSTAL_PALETTE[0].mid, effectiveRadius: overlapRadiusPercent });
+            screenShake.intensity = Math.max(screenShake.intensity, crystalsHitThisTurn * 5);
+            if (crystalsHitThisTurn >= 2) showPop(x, y - 28, 'crystal-break', false, `×${crystalsHitThisTurn} SHATTER`);
+        }
+
+        const p = toScreen(orb);
+        const baseCount = rating === 'perfect' ? 18 : rating === 'great' ? 10 : rating === 'good' ? 5 : 2;
+        const scatterBonus = Math.min(14, orbsAffected * 3);
+        for (let i = 0; i < baseCount + scatterBonus; i++) {
+            const b = new Burst(p.x, p.y, orb.color);
+            if (i >= baseCount) { b.size *= 1.3; const a = (i / scatterBonus) * Math.PI * 2; b.vx = Math.cos(a) * (3 + Math.random() * 2); b.vy = Math.sin(a) * (3 + Math.random() * 2); }
+            bursts.push(b);
+        }
+
+        updateHUD();
+
+        if (state.targetsDestroyed >= state.totalTargets && !state.freePlay) {
+            state.levelCleared = true;
+            state.freePlay = true;
+            state.freePlayData = { ...calcScore() };
+            showPop(canvasW / 2, canvasH / 2 + 52, 'crystal-clear', false, 'ALL SHATTERED');
+            audio.crystalsClear();
+            updateHUD();
+            setTimeout(() => showFloatingEnd(), 1000);
+            trySpawnNext();
+            return;
+        }
+        if (!state.freePlay && state.orbsHit >= state.totalOrbs) {
+            state.levelCleared = false;
+            setTimeout(() => endLevel(false), 600);
+            return;
+        }
+        trySpawnNext();
+    }
+
+    function showPop(x, y, rating, isScatter = false, customText = null) {
+        const el = document.createElement('div');
+        el.className = `pop ${rating}${isScatter ? ' scatter' : ''}`;
+        el.textContent = customText || rating;
+        el.style.left = x + 'px'; el.style.top = (y + 52) + 'px';
+        document.querySelector('.game-wrap').appendChild(el);
+        setTimeout(() => el.remove(), rating === 'crystal-clear' ? 800 : isScatter ? 500 : 450);
+    }
+
+    function handleInput(e) {
+        e.preventDefault(); audio.unlock();
+        if (!state.started) { startGame(); return; }
+        if (state.complete || !state.playing) return;
+        const rect = canvas.getBoundingClientRect();
+        const touches = e.touches || [{ clientX: e.clientX, clientY: e.clientY }];
+        for (const t of touches) {
+            const x = t.clientX - rect.left, y = t.clientY - rect.top;
+            const orb = getOrbAt(x, y);
+            if (orb) hitOrb(orb, x, y);
+        }
+    }
+    canvas.addEventListener('touchstart', handleInput, { passive: false });
+    canvas.addEventListener('mousedown', handleInput);
+    $('start-screen').addEventListener('click', () => { audio.unlock(); if (!state.started) startGame(); });
+    $('play-btn').addEventListener('click', (e) => { e.stopPropagation(); audio.unlock(); if (!state.started) startGame(); });
+
+    // ═══════════════════════════════════════
+    //  INTRO SCENE ANIMATION
+    // ═══════════════════════════════════════
+    const introState = { running: true };
+
+    function introLoop() {
+        if (!introState.running) return;
+        const now = performance.now();
+        const ic = $('intro-canvas');
+        const rect = ic.getBoundingClientRect();
+        ic.width  = rect.width  * (window.devicePixelRatio || 1);
+        ic.height = rect.height * (window.devicePixelRatio || 1);
+        const ictx = ic.getContext('2d');
+        ictx.scale((window.devicePixelRatio || 1), (window.devicePixelRatio || 1));
+        const W = rect.width, H = rect.height;
+        const T = now / 1000;
+
+        // ── Background ─────────────────────────────────────────────
+        ictx.fillStyle = '#030308'; ictx.fillRect(0, 0, W, H);
+
+        // Subtle depth radial — very faint
+        const depthG = ictx.createRadialGradient(W*0.5, H*0.48, 0, W*0.5, H*0.48, Math.max(W,H)*0.72);
+        depthG.addColorStop(0,   'rgba(80,40,120,0.08)');
+        depthG.addColorStop(0.5, 'rgba(40,20,80,0.04)');
+        depthG.addColorStop(1,   'rgba(0,0,0,0)');
+        ictx.fillStyle = depthG; ictx.fillRect(0, 0, W, H);
+
+        // ── Ambient gem sparkles (drifting upward) ──────────────────
+        const spkCols = [[127,244,240],[148,170,255],[192,132,252],[244,114,182],[255,209,82],[130,255,170],[255,160,120],[168,247,200],[220,130,255],[255,200,140],[100,220,255]];
+        for (let i = 0; i < 11; i++) {
+            const seed = i * 2.618;
+            const bx = ((Math.sin(seed * 1.3) * 0.5 + 0.5) * 0.85 + 0.075) * W;
+            const by = ((Math.cos(seed * 2.1) * 0.5 + 0.5) * 0.8  + 0.1)   * H;
+            const py = ((by - T * (7 + (i % 4) * 2.5)) % H + H) % H;
+            const px = bx + Math.sin(T * 0.4 + seed) * 7;
+            const pa = (Math.sin(T * 0.55 + seed * 2.5) * 0.5 + 0.5) * 0.2;
+            const ps = 1.4 + (i % 4) * 1.1;
+            const [cr,cg,cb] = spkCols[i % spkCols.length];
+            ictx.save(); ictx.translate(px, py); ictx.rotate(T * 0.22 + seed * 0.5);
+            ictx.beginPath();
+            ictx.moveTo(0, -ps*1.35); ictx.lineTo(ps*0.62, 0);
+            ictx.lineTo(0,  ps*1.0 ); ictx.lineTo(-ps*0.62, 0);
+            ictx.closePath();
+            ictx.fillStyle = `rgba(${cr},${cg},${cb},${pa})`; ictx.fill();
+            ictx.restore();
+        }
+
+        // ── Demo animation ─────────────────────────────────────────
+        const cycle    = 4600;
+        const t        = (now % cycle) / cycle;
+        const sceneY   = H * 0.44;
+        const crystalX = W * 0.64;
+        const orbStartX = W * 0.1;
+        const orbEndX   = crystalX - 6;
+        const orbPhase  = Math.min(1, t / 0.48);
+        const orbX      = orbStartX + (orbEndX - orbStartX) * easeInOutCubic(orbPhase);
+        const orbAlpha  = t < 0.04 ? t / 0.04 : (t > 0.52 ? Math.max(0, 1 - (t - 0.52) / 0.08) : 1);
+        const crystalAlive = t < 0.50;
+        const shockPhase   = t > 0.50 ? (t - 0.50) / 0.22 : -1;
+
+        // ── Crystal (white diamond gem) ─────────────────────────────
+        if (crystalAlive) {
+            const cR = Math.min(W, H) * 0.052;
+            const R  = cR * (1 + Math.sin(T * 1.4) * 0.04);
+
+            // Outer glow
+            const glow = ictx.createRadialGradient(crystalX, sceneY, R*0.4, crystalX, sceneY, R*4.2);
+            glow.addColorStop(0,   'rgba(212,167,255,0.16)');
+            glow.addColorStop(0.35,'rgba(168,247,244,0.07)');
+            glow.addColorStop(1,   'rgba(0,0,0,0)');
+            ictx.fillStyle = glow; ictx.beginPath(); ictx.arc(crystalX, sceneY, R*4.2, 0, Math.PI*2); ictx.fill();
+
+            // Diamond vertices
+            const top    = { x: crystalX,          y: sceneY - R*1.3  };
+            const right  = { x: crystalX + R*0.9,  y: sceneY - R*0.05 };
+            const bottom = { x: crystalX,           y: sceneY + R*1.0  };
+            const left   = { x: crystalX - R*0.9,  y: sceneY - R*0.05 };
+            const crL    = { x: crystalX - R*0.33,  y: sceneY - R*0.55 };
+            const crR    = { x: crystalX + R*0.33,  y: sceneY - R*0.55 };
+
+            // Clipped fills
+            ictx.save();
+            ictx.beginPath();
+            ictx.moveTo(top.x, top.y); ictx.lineTo(right.x, right.y);
+            ictx.lineTo(bottom.x, bottom.y); ictx.lineTo(left.x, left.y);
+            ictx.closePath(); ictx.clip();
+
+            // White gradient base
+            const baseG = ictx.createLinearGradient(crystalX, top.y, crystalX, bottom.y);
+            baseG.addColorStop(0,   'rgba(255,255,255,0.92)');
+            baseG.addColorStop(0.28,'rgba(228,238,255,0.78)');
+            baseG.addColorStop(0.65,'rgba(198,218,255,0.58)');
+            baseG.addColorStop(1,   'rgba(168,198,255,0.36)');
+            ictx.fillStyle = baseG; ictx.fillRect(crystalX-R*1.1, top.y-2, R*2.2, bottom.y-top.y+4);
+
+            // Prismatic shimmer (animated)
+            [[127,244,240,0.22],[176,110,255,0.18],[255,167,212,0.14]].forEach(([r,g,b,a],i) => {
+                const pa = T*0.22 + i*(Math.PI*2/3);
+                const pg = ictx.createRadialGradient(
+                    crystalX+Math.cos(pa)*R*0.55, sceneY+Math.sin(pa)*R*0.4, 0,
+                    crystalX+Math.cos(pa)*R*0.55, sceneY+Math.sin(pa)*R*0.4, R*1.15);
+                pg.addColorStop(0, `rgba(${r},${g},${b},${a})`); pg.addColorStop(1,'rgba(0,0,0,0)');
+                ictx.fillStyle = pg; ictx.fillRect(crystalX-R*1.1, top.y-2, R*2.2, bottom.y-top.y+4);
+            });
+
+            // Top sparkle highlight
+            const hl = ictx.createRadialGradient(crystalX, sceneY-R*0.58, 0, crystalX, sceneY-R*0.58, R*0.56);
+            hl.addColorStop(0, `rgba(255,255,255,${0.78+Math.sin(T*1.9)*0.14})`);
+            hl.addColorStop(0.55,'rgba(255,255,255,0.12)'); hl.addColorStop(1,'rgba(255,255,255,0)');
+            ictx.fillStyle = hl; ictx.fillRect(crystalX-R*1.1, top.y-2, R*2.2, bottom.y-top.y+4);
+            ictx.restore();
+
+            // Outline
+            ictx.beginPath();
+            ictx.moveTo(top.x, top.y); ictx.lineTo(right.x, right.y);
+            ictx.lineTo(bottom.x, bottom.y); ictx.lineTo(left.x, left.y);
+            ictx.closePath();
+            ictx.strokeStyle = 'rgba(255,255,255,0.72)'; ictx.lineWidth = 1.6; ictx.stroke();
+
+            // Facet lines
+            ictx.lineWidth = 0.75; ictx.strokeStyle = 'rgba(200,228,255,0.38)';
+            [[top,crL],[top,crR],[crL,left],[crR,right],[crL,crR],
+             [left,bottom],[right,bottom],[crL,bottom],[crR,bottom]
+            ].forEach(([a,b]) => { ictx.beginPath(); ictx.moveTo(a.x,a.y); ictx.lineTo(b.x,b.y); ictx.stroke(); });
+        }
+
+        // ── Gem shard explosion ─────────────────────────────────────
+        if (t > 0.50 && t < 0.93) {
+            const sp = (t - 0.50) / 0.43;
+            const shardCols = [[255,82,82],[82,255,143],[176,110,255],[82,194,255],[255,209,82],[255,82,196],[82,255,230]];
+            for (let i = 0; i < 7; i++) {
+                const angle = (i/7)*Math.PI*2 + i*0.38;
+                const dist  = sp * Math.min(W,H) * 0.13 * (0.55 + (i%3)*0.22);
+                const fx = crystalX + Math.cos(angle)*dist;
+                const fy = sceneY   + Math.sin(angle)*dist + sp*sp*16;
+                const fa = Math.max(0, 1 - sp*1.1) * 0.88;
+                const fs = Math.min(W,H) * 0.013 * (1 - sp*0.58);
+                const [sr,sg,sb] = shardCols[i];
+                ictx.save(); ictx.translate(fx, fy); ictx.rotate(T*4.5 + i*1.15);
+                ictx.beginPath();
+                ictx.moveTo(0,-fs*1.4); ictx.lineTo(fs*0.68,0); ictx.lineTo(0,fs); ictx.lineTo(-fs*0.68,0);
+                ictx.closePath();
+                ictx.fillStyle = `rgba(${sr},${sg},${sb},${fa})`; ictx.fill();
+                ictx.restore();
+            }
+        }
+
+        // ── Orb (gem violet, travels toward crystal) ────────────────
+        if (orbAlpha > 0.01) {
+            const oR    = Math.min(W,H) * 0.043;
+            const color = { r:160, g:80, b:255 };
+            const ob    = 0.62 + Math.sin(T*2.2)*0.18;
+            ictx.globalAlpha = orbAlpha;
+
+            // Outer atmosphere
+            const ag = ictx.createRadialGradient(orbX, sceneY, oR*0.3, orbX, sceneY, oR*2.8);
+            ag.addColorStop(0, `rgba(${color.r},${color.g},${color.b},${0.22+ob*0.16})`);
+            ag.addColorStop(0.5,`rgba(${color.r},${color.g},${color.b},0.05)`);
+            ag.addColorStop(1,  `rgba(${color.r},${color.g},${color.b},0)`);
+            ictx.fillStyle = ag; ictx.beginPath(); ictx.arc(orbX, sceneY, oR*2.8, 0, Math.PI*2); ictx.fill();
+
+            // Wobbly body
+            const bg = ictx.createRadialGradient(orbX+Math.sin(T)*oR*0.12, sceneY, oR*0.1, orbX, sceneY, oR);
+            bg.addColorStop(0,   `rgba(240,210,255,${0.52+ob*0.35})`);
+            bg.addColorStop(0.25,`rgba(200,140,255,${0.36+ob*0.28})`);
+            bg.addColorStop(0.6, `rgba(${color.r},${color.g},${color.b},${0.2+ob*0.2})`);
+            bg.addColorStop(1,   `rgba(${color.r},${color.g},${color.b},0.02)`);
+            ictx.fillStyle = bg;
+            ictx.beginPath();
+            for (let i=0; i<=48; i++) {
+                const a = (i/48)*Math.PI*2;
+                const w = Math.sin(a*4+T*1.6)*0.06 + Math.sin(a*7-T*2.2)*0.04;
+                const r = oR*(1+w);
+                const ox = orbX+Math.cos(a)*r, oy = sceneY+Math.sin(a)*r;
+                i===0 ? ictx.moveTo(ox,oy) : ictx.lineTo(ox,oy);
+            }
+            ictx.closePath(); ictx.fill();
+
+            // Core highlight
+            const cG = ictx.createRadialGradient(orbX, sceneY, 0, orbX, sceneY, oR*0.45);
+            cG.addColorStop(0,  `rgba(255,255,255,${0.58+ob*0.28})`);
+            cG.addColorStop(0.4,`rgba(230,200,255,${0.35+ob*0.18})`);
+            cG.addColorStop(1,  'rgba(160,80,255,0)');
+            ictx.fillStyle = cG; ictx.beginPath(); ictx.arc(orbX, sceneY, oR*0.45, 0, Math.PI*2); ictx.fill();
+
+            ictx.globalAlpha = 1;
+        }
+
+        // ── Shockwave rings on impact ───────────────────────────────
+        if (shockPhase > 0 && shockPhase < 1.4) {
+            const ringCols = ['rgba(212,167,255','rgba(127,244,240','rgba(255,167,212'];
+            for (let i=0; i<3; i++) {
+                const rp = Math.max(0, shockPhase - i*0.1);
+                if (rp <= 0 || rp > 1.2) continue;
+                const rR = rp * Math.min(W,H) * 0.22;
+                const rA = Math.max(0, 1-rp) * 0.42 * (1-i*0.24);
+                ictx.beginPath(); ictx.arc(crystalX, sceneY, rR, 0, Math.PI*2);
+                ictx.strokeStyle = `${ringCols[i]},${rA})`; ictx.lineWidth = 2.5-i*0.6; ictx.stroke();
+            }
+        }
+
+        // ── Impact flash ────────────────────────────────────────────
+        if (t > 0.50 && t < 0.60) {
+            const fp = (t-0.50)/0.10, fa = (1-fp)*0.38;
+            const fg = ictx.createRadialGradient(crystalX, sceneY, 0, crystalX, sceneY, Math.min(W,H)*0.13);
+            fg.addColorStop(0,   `rgba(240,220,255,${fa})`);
+            fg.addColorStop(0.4, `rgba(192,132,252,${fa*0.4})`);
+            fg.addColorStop(1,   'rgba(100,60,200,0)');
+            ictx.fillStyle = fg; ictx.beginPath(); ictx.arc(crystalX, sceneY, Math.min(W,H)*0.13, 0, Math.PI*2); ictx.fill();
+        }
+
+        // ── Aim ring (orb approaching crystal) ─────────────────────
+        if (t > 0.30 && t < 0.50) {
+            const tipP = (t-0.30)/0.20;
+            const tipR = Math.min(W,H)*0.065*(0.5+tipP*0.5);
+            const tipA = (Math.sin(tipP*Math.PI*3)*0.28+0.28)*Math.min(1,tipP*3);
+            ictx.beginPath(); ictx.arc(orbX, sceneY, tipR, 0, Math.PI*2);
+            ictx.strokeStyle = `rgba(192,140,255,${tipA})`; ictx.lineWidth = 1.5; ictx.stroke();
+        }
+
+        // ── Tut hint sync ───────────────────────────────────────────
+        const hint = $('tut-hint');
+        if (t > 0.22 && t < 0.50) {
+            hint.textContent = 'tap the orb';
+            hint.className   = 'tut-hint show tap-state';
+        } else if (t > 0.52 && t < 0.80) {
+            hint.textContent = 'smash the crystal';
+            hint.className   = 'tut-hint show shatter-state';
+        } else {
+            hint.className = 'tut-hint';
+        }
+
+        requestAnimationFrame(introLoop);
+    }
+
+    introLoop();
+
+    // ═══════════════════════════════════════
+    //  GAME FLOW
+    // ═══════════════════════════════════════
+    async function loadLevel(n) {
+        try {
+            state.orbs = []; state.allOrbs = [];
+            state.playing = false; state.complete = false; state.freePlay = false; state.freePlayData = null;
+            shockwaves = []; crystalShards = []; energyMotes = []; crystalDust = []; bursts = [];
+            screenShake.intensity = 0;
+
+            const bassParam = state.favBassStyle !== null ? state.favBassStyle : (n - 1) % 10;
+            const url = `/api/level/${n}/bass/${bassParam}`;
+            const res = await fetch(url); if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            state.level = n;
+            state.allOrbs = data.orbs.map(o => ({ ...o, hit: false, fade: 0, spawned: false }));
+            state.orbs = [];
+            state.speed = data.speed; state.targetTime = data.targetTime;
+            state.timing = data.timing; state.points = data.points;
+            state.visibleAtOnce = data.visibleAtOnce || 4; state.totalOrbs = data.totalOrbs || data.orbs.length;
+            state.score = 0; state.melody = []; state.complete = false; state.levelCleared = false;
+            state.elapsed = 0; state.orbsHit = 0; state.orbsSpawned = 0;
+            state.bassStyle = bassParam;
+            audio.setBassStyle(state.bassStyle);
+            // Each track has its own BPM — get it from the engine's table
+            state.bpm = audio.getBpm(state.bassStyle);
+            state.measureMs = (60000 / state.bpm) * 4;
+
+            state.targets = data.targets.map(t => ({ ...t, alive: true, destroyTime: null }));
+            state.totalTargets = state.targets.length;
+            state.targetsDestroyed = 0;
+            state.targetDestroyRadius = data.targetDestroyRadius;
+            state.patternName = data.patternName || '';
+            state.batchName = data.batchName || '';
+            state.levelInSet = data.levelInSet || ((state.level - 1) % 10) + 1;
+
+            $('h-time').textContent = '0.0s';
+            $('h-time').style.color = 'rgba(255,255,255,0.5)';
+            $('h-orbs').textContent = `${state.totalOrbs}`;
+            $('h-orbs').className = '';
+            $('h-orbs-total').textContent = `/${state.totalOrbs}`;
+            $('prog-fill').style.width = '0%';
+            buildCrystalDots();
+        } catch (err) { console.error('Failed to load level:', err); }
+    }
+
+    function spawnInitialOrbs() {
+        const toSpawn = state.allOrbs.filter(o => !o.spawned).slice(0, state.visibleAtOnce);
+        toSpawn.forEach((orb, index) => { setTimeout(() => { if (!orb.spawned) spawnOrb(orb); }, index * 250); });
+    }
+
+    function spawnOrb(orb) {
+        if (orb.spawned) return;
+        let x, y, attempts = 0;
+        do { x = 25 + Math.random() * 50; y = 25 + Math.random() * 50; attempts++; }
+        while (attempts < 30 && state.orbs.some(o => !o.hit && Math.hypot(o.x - x, o.y - y) < 18));
+        orb.x = x; orb.y = y;
+        orb.spawned = true; orb.spawnTime = performance.now(); orb.fade = 0;
+        orb.shockVx = 0; orb.shockVy = 0; orb.shockEnergy = 0; orb.shockFlash = null;
+        orb._baseDriftSpeed = Math.hypot(orb.driftX, orb.driftY);
+        state.orbs.push(orb); state.orbsSpawned++;
+    }
+
+    function trySpawnNext() {
+        const unspawned = state.allOrbs.filter(o => !o.spawned);
+        if (unspawned.length > 0) spawnOrb(unspawned[0]);
+    }
+
+    async function startGame() {
+        if (state.started) return;
+        state.started = true;          // guard immediately — before any await
+        introState.running = false;
+        await audio.init(); resize();
+        $('start-screen').classList.add('hidden');
+        await loadLevel(1); startCountdown();
+    }
+
+    function startCountdown() {
+        audio.stopBeat();
+        state.countdown = 3; state.countdownStart = performance.now(); state.playing = false;
+        const countMs = 550;
+        // Show level name as subtitle — fades out with the countdown
+        showLevelName(3 * countMs);
+        ['3', '2', '1'].forEach((num, i) => { setTimeout(() => { audio.countClick(i === 2); showCountNumber(num); }, i * countMs); });
+        setTimeout(() => {
+            state.countdown = 0; spawnInitialOrbs();
+            const beatMs = (60000 / state.bpm);
+            const leadIn = beatMs * 0.75;
+            audio.startBeat(state.bpm, t => { state.beatTime = t + leadIn; state.startTime = t; });
+            state.playing = true;
+        }, 3 * countMs);
+    }
+
+    function showCountNumber(num) { const el = document.createElement('div'); el.className = `countdown${num === '1' ? ' final' : ''}`; el.textContent = num; document.querySelector('.game-wrap').appendChild(el); setTimeout(() => el.remove(), 480); }
+
+    function showLevelName(totalMs) {
+        const name = state.patternName || '';
+        const num  = state.level || 1;
+        const text = name ? `Level ${num}: ${name}` : `Level ${num}`;
+        const el = document.createElement('div');
+        el.className = 'countdown-level';
+        el.textContent = text;
+        document.querySelector('.game-wrap').appendChild(el);
+        // Fade out over last 400ms of countdown
+        setTimeout(() => el.classList.add('fade-out'), totalMs - 400);
+        setTimeout(() => el.remove(), totalMs + 100);
+    }
+
+    function showFloatingEnd() {
+        const data = state.freePlayData;
+        if (!data) return;
+        const { time, target } = data;
+        const { tier, text } = getTier(time, target);
+
+        const card = $('ef-card');
+        card.className = `ef-card tier-${tier}`;
+        $('ef-level').innerHTML = levelLabel('end');
+        $('ef-tier').textContent = text;
+        $('ef-tier').className = `ef-tier-badge c-${tier}`;
+
+        $('end-float').classList.add('show');
+
+        const countStart = performance.now(); const dur = 600;
+        function tick() {
+            const p = Math.min(1, (performance.now() - countStart) / dur);
+            const ease = 1 - Math.pow(1 - p, 3);
+            $('ef-time-big').textContent = `${(time * ease).toFixed(1)}s`;
+            if (p < 1) requestAnimationFrame(tick);
+        }
+        setTimeout(() => requestAnimationFrame(tick), 200);
+    }
+
+    function endLevel(cleared = true) {
+        state.complete = true; state.playing = false;
+        state.levelCleared = cleared;
+
+        const card = $('end-card');
+        card.classList.remove('show'); card.className = 'end-card';
+        document.querySelectorAll('#end-card .ec-inner').forEach(el => el.classList.remove('show'));
+        card.classList.add('tier-fail');
+
+        $('ec-level').innerHTML = levelLabel('end');
+        $('ec-time-fail').textContent = `${state.elapsed.toFixed(1)}s`;
+        $('ec-time-fail').className = 'ec-inner ec-score c-fail';
+        $('ec-tier').textContent = 'CRYSTALS REMAIN';
+        $('ec-tier').className = 'ec-inner ec-tier c-fail';
+        $('ec-msg').textContent = 'The crystals hold.';
+        $('ec-crys').textContent = `${state.targetsDestroyed}/${state.totalTargets}`;
+        $('ec-orbs').textContent = `${state.orbsHit}/${state.totalOrbs}`;
+        $('btn-next').disabled = true;
+        $('bass-name').textContent = BASS_NAMES[state.bassStyle] || '';
+        $('bass-fav').className = `ec-inner bass-fav${state.favBassStyle !== null ? ' locked' : ''}`;
+
+        const mel = $('ec-melody'); mel.innerHTML = '';
+        state.melody.forEach(m => {
+            const d = document.createElement('div'); d.className = 'mdot';
+            d.style.background = m.color;
+            d.style.opacity = m.rating === 'perfect' ? 1 : m.rating === 'great' ? 0.7 : m.rating === 'good' ? 0.45 : 0.2;
+            mel.appendChild(d);
+        });
+
+        audio.fail();
+        $('end-screen').classList.remove('hidden');
+        setTimeout(() => card.classList.add('show'), 60);
+        document.querySelectorAll('#end-card .ec-inner').forEach((el, i) => { setTimeout(() => el.classList.add('show'), 350 + i * 60); });
+    }
+
+    async function retry() {
+        $('end-screen').classList.add('hidden');
+        $('end-float').classList.remove('show');
+        state.freePlay = false;
+        audio.stopBeat();
+        await loadLevel(state.level); startCountdown();
+    }
+    async function next() {
+        $('end-screen').classList.add('hidden');
+        $('end-float').classList.remove('show');
+        state.freePlay = false;
+        audio.stopBeat();
+        await loadLevel(state.level + 1); startCountdown();
+    }
+
+    $('btn-retry').addEventListener('click', () => { audio.unlock(); retry(); });
+    $('btn-next').addEventListener('click', () => { audio.unlock(); next(); });
+    $('ef-retry').addEventListener('click', () => { audio.unlock(); retry(); });
+    $('ef-next').addEventListener('click', () => { audio.unlock(); next(); });
+    $('mute-btn').addEventListener('click', () => { audio.beatOn = !audio.beatOn; $('mute-btn').classList.toggle('muted', !audio.beatOn); });
+    $('bass-fav').addEventListener('click', () => {
+        if (state.favBassStyle !== null) state.favBassStyle = null;
+        else state.favBassStyle = state.bassStyle;
+        $('bass-fav').className = `ec-inner bass-fav${state.favBassStyle !== null ? ' locked' : ''} show`;
+    });
+
+    resize(); draw();
+
+    // ═══════════════════════════════════════════════════════════════
+    //  RENDER LOOP RESURRECTION
+    //
+    //  Problem: iOS Safari kills requestAnimationFrame after ~5 min
+    //  of phone sleep. draw() stops running → blank canvas.
+    //
+    //  Three things go wrong simultaneously:
+    //    1. rAF loop is dead                → canvas blank
+    //    2. state.startTime is stale        → elapsed jumps, may false-complete
+    //    3. state.beatTime is stale         → orb pulse phase is wrong
+    //
+    //  Root cause of the 5-min bug:
+    //    The old code detected loop death via performance.now() gap.
+    //    After a LONG sleep (5+ min), iOS freezes performance.now() during
+    //    suspension. When the tab resumes, perf.now() has only advanced by
+    //    ~16ms (one frame), so gap < 1500 and resurrection is skipped even
+    //    though the rAF loop is actually dead.
+    //
+    //  Fix: use Date.now() (wall clock) for death detection — it always
+    //  advances through iOS sleep. Keep performance.now() gap only for
+    //  correcting animation timestamps (where monotonic time is needed).
+    //  Also call resize() on resurrection: a long sleep can cause iOS to
+    //  discard the canvas backing store sizing.
+    // ═══════════════════════════════════════════════════════════════
+    function _resurrectLoop() {
+        if (document.hidden) return;
+
+        // Use wall-clock gap to detect death — survives iOS perf.now() freeze
+        const wallNow = Date.now();
+        const wallGap = wallNow - (state._lastDrawWall || wallNow);
+        if (wallGap < 1500) return;   // loop is alive, nothing to do
+
+        // Performance.now() gap for correcting animation timestamps.
+        // If iOS froze perf.now() during sleep, perfGap will be near 0
+        // and these corrections are no-ops — correct, since the timestamps
+        // are still valid relative to the resumed perf.now() clock.
+        const perfNow = performance.now();
+        const perfGap = perfNow - (state._lastDrawTime || perfNow);
+        if (state.playing && !state.complete && !state.freePlay) {
+            state.startTime += perfGap;
+        }
+        if (state.beatTime) state.beatTime += perfGap;
+
+        // Resize before redrawing — long sleep can invalidate canvas sizing
+        resize();
+
+        // Cancel any ghost rAF ID and start a fresh loop
+        cancelAnimationFrame(state.rafId);
+        state.rafId = null;
+        state._lastDrawTime = perfNow;
+        state._lastDrawWall = wallNow;
+        draw();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) _resurrectLoop();
+    });
+    window.addEventListener('pageshow', _resurrectLoop);
+    // touchstart as final safety net: catches hard lock/unlock on iOS
+    // where visibilitychange and pageshow both misfire after long sleep
+    document.addEventListener('touchstart', _resurrectLoop, { passive: true });
+    </script>
+</body>
+</html>
