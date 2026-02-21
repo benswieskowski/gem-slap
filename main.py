@@ -1,9 +1,8 @@
 """
-AURA - A Zen Rhythm Game
-v49 - CONSTELLATIONS v3: gnomonic-projected RA/Dec, variety reorder, 20-orb standard
+Gem Slap - A Rhythm Game
 """
-from flask import Flask, render_template, jsonify
-import random, math
+from flask import Flask, render_template, jsonify, send_from_directory, make_response
+import random, math, os
 
 from game_data import (
     SCALE, NOTE_COLORS, get_color,
@@ -21,6 +20,18 @@ def add_header(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
+    return response
+
+
+# ── Service worker must be served from root scope with no-cache headers ────────
+@app.route('/service-worker.js')
+def service_worker():
+    response = make_response(
+        send_from_directory(os.path.join(app.root_path, 'static'), 'service-worker.js')
+    )
+    # Service worker itself must NOT be cached, so the browser always gets updates
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Service-Worker-Allowed'] = '/'
     return response
 
 
