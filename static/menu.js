@@ -171,11 +171,7 @@
                 panel.classList.add('show');
             });
         });
-        // Scroll to current level after panel animates in
-        setTimeout(() => {
-            const cur = document.querySelector('.ls-card.current');
-            if (cur) cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }, 480);
+
     }
 
     function closeLevelSelect() {
@@ -225,7 +221,6 @@
         const tiers   = p.bestTiers || {};
         const times   = p.bestTimes || {};
         const names   = p.levelNames || {};
-        const current = state.level || 1;
 
         const showUpTo = Math.max(10, Math.ceil(highest / 10) * 10);
         const scroll = document.getElementById('ls-scroll');
@@ -251,7 +246,7 @@
                 const card = document.createElement('div');
                 card.className = 'ls-card'
                     + (locked  ? ' locked'  : '')
-                    + (lvl === current ? ' current' : '');
+                    ;
                 card.dataset.level = lvl;
 
                 // Medal indicator: emoji or dim dot
