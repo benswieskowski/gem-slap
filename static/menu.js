@@ -295,8 +295,11 @@
             } else {
                 clearTimeout(this._confirmTimer);
                 try { localStorage.removeItem('gs_progress'); } catch {}
+                // resetGameUI first — kills ls-panel display:none immediately,
+                // no race with the close animation
+                resetGameUI();
                 closeLevelSelect(); closeMenu();
-                setTimeout(async () => { await loadLevel(1); startCountdown(); }, 400);
+                setTimeout(async () => { await loadLevel(1); startCountdown(); }, 50);
             }
         });
         resetWrap.appendChild(resetBtn);
