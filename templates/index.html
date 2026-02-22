@@ -1722,7 +1722,8 @@
             if (state.patternName) {
                 const _lnp = loadProgress();
                 const levelNames = _lnp.levelNames || {};
-                if (!levelNames[n]) { levelNames[n] = state.patternName; saveProgress({ levelNames }); }
+                // Always overwrite — ensures renamed/reshuffled levels update correctly
+                levelNames[n] = state.patternName; saveProgress({ levelNames });
             }
 
             $('h-time').textContent = '0.0s';
