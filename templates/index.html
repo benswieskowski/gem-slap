@@ -1778,8 +1778,8 @@
         const days = p.daysPlayed || [];
         if (!days.includes(today)) days.push(today);
         saveProgress({ sessions: (p.sessions||0) + 1, daysPlayed: days, sessionClears: 0 });
-        // Resume from highest reached level
-        const resumeLevel = Math.max(1, p.highestLevel || 1);
+        // Resume from last selected/played level
+        const resumeLevel = Math.max(1, p.resumeLevel || p.highestLevel || 1);
         await loadLevel(resumeLevel); startCountdown();
     }
 
@@ -1853,12 +1853,16 @@
         // Save progress + check for new best
         const isNewBest = setBestTime(state.level, time);
         const prevBest  = isNewBest ? null : getBestTime(state.level);
-        // Lifetime: clears + play time + session clears
+        // Lifetime: clears + play time + session clears + advance resume point
         const _lp = loadProgress();
+        const _nextLvl = state.level + 1;
+        const _resumePatch = { resumeLevel: _nextLvl };
+        if (_nextLvl > (_lp.highestLevel || 1)) _resumePatch.highestLevel = _nextLvl;
         saveProgress({
             totalClears: (_lp.totalClears||0) + 1,
             totalPlaySecs: (_lp.totalPlaySecs||0) + time,
             sessionClears: (_lp.sessionClears||0) + 1,
+            ..._resumePatch,
         });
 
         const card = $('ef-card');
@@ -1928,24 +1932,45 @@
         document.querySelectorAll('#end-card .ec-inner').forEach((el, i) => { setTimeout(() => el.classList.add('show'), 350 + i * 60); });
     }
 
-    async function retry() {
+    function resetGameUI() {
+        // Dismiss every overlay that could be open mid-game
         $('end-screen').classList.add('hidden');
         $('end-float').classList.remove('show');
+        $('offline-screen').classList.remove('show');
+        // Remove any in-progress countdown panel
+        document.querySelectorAll('.cd-wrap').forEach(el => el.remove());
         state.freePlay = false;
+        state.complete = false;
+        // Force level-select panel and footer fully off-screen immediately —
+        // avoids sub-pixel sliver of panel header peeking at bottom of screen
+        // during and after close animation
+        const lsPanel  = document.getElementById('ls-panel');
+        const lsFooter = document.getElementById('ls-footer');
+        const lsOverlay = document.getElementById('ls-overlay');
+        if (lsPanel)  { lsPanel.classList.remove('show');  lsPanel.style.transform  = 'translateY(calc(100% + 4px))'; }
+        if (lsFooter) { lsFooter.classList.remove('show'); lsFooter.style.transform = 'translateY(calc(100% + 4px))'; }
+        if (lsOverlay){ lsOverlay.classList.remove('show'); }
+        // Re-arm transitions after forced reset so next open animates correctly
+        setTimeout(() => {
+            if (lsPanel)  lsPanel.style.transform  = '';
+            if (lsFooter) lsFooter.style.transform = '';
+        }, 50);
+    }
+
+    async function retry() {
+        resetGameUI();
         audio.stopBeat();
         await loadLevel(state.level); startCountdown();
     }
     async function next() {
-        $('end-screen').classList.add('hidden');
-        $('end-float').classList.remove('show');
-        state.freePlay = false;
+        resetGameUI();
         audio.stopBeat();
         const nextLevel = state.level + 1;
-        // Record that player has unlocked this level
+        // Record unlock + update resume point
         const p = loadProgress();
-        if (nextLevel > (p.highestLevel || 1)) {
-            saveProgress({ highestLevel: nextLevel });
-        }
+        const _np = { resumeLevel: nextLevel };
+        if (nextLevel > (p.highestLevel || 1)) _np.highestLevel = nextLevel;
+        saveProgress(_np);
         await loadLevel(nextLevel); startCountdown();
     }
 
@@ -2252,8 +2277,10 @@
     document.getElementById('ls-play-btn').addEventListener('click', async () => {
         if (!_lsSelectedLevel) return;
         const lvl = _lsSelectedLevel;
+        saveProgress({ resumeLevel: lvl });
         closeLevelSelect();
         closeMenu();
+        if (state.started) resetGameUI();
         if (!state.started) {
             // Game hasn't started yet — full startup path
             state.started = true;
