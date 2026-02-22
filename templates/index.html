@@ -51,11 +51,11 @@
 
         #canvas { position: absolute; }
 
-        .footer { position: absolute; bottom: 0; left: 0; right: 0; height: 36px; padding-bottom: env(safe-area-inset-bottom, 0px); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 100; }
-        .footer-timer { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.9rem; font-weight: 400; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.5); line-height: 1; pointer-events: none; }
+        .footer { position: absolute; bottom: 0; left: 0; right: 0; height: calc(36px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 100; }
+        .footer-timer { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); font-size: 0.9rem; font-weight: 400; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.5); line-height: 1; pointer-events: none; }
         .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; }
         .beat-dot.active { background: rgba(255,255,255,0.7); transform: scale(1.4); }
-        .mute-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
+        .mute-btn { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 1px); width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
         .mute-btn:hover { background: rgba(255,255,255,0.1); }
         .mute-btn.muted { opacity: 0.3; }
 
@@ -1065,7 +1065,14 @@
         gameWrap = document.querySelector('.game-wrap'); if (!gameWrap) return;
         const wrapRect = gameWrap.getBoundingClientRect(), wrapW = wrapRect.width, wrapH = wrapRect.height;
         const safeTop = window.innerHeight !== document.documentElement.clientHeight ? Math.min(50, window.innerHeight - document.documentElement.clientHeight) : 0;
-        const headerH = 52 + safeTop, progH = 2, footerH = 36, canvasTop = headerH + progH;
+        // Read safe-area-inset-bottom at runtime — probe div with env() padding
+        // gives us the real pixel value the browser computed for this device
+        const _safeProbe = document.createElement('div');
+        _safeProbe.style.cssText = 'position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;';
+        document.body.appendChild(_safeProbe);
+        const safeBottom = parseFloat(getComputedStyle(_safeProbe).paddingBottom) || 0;
+        document.body.removeChild(_safeProbe);
+        const headerH = 52 + safeTop, progH = 2, footerH = 36 + safeBottom, canvasTop = headerH + progH;
         canvasW = Math.max(100, Math.floor(wrapW)); canvasH = Math.max(100, Math.floor(wrapH - canvasTop - footerH));
         canvas.style.top = canvasTop + 'px'; canvas.style.left = '0'; canvas.style.width = canvasW + 'px'; canvas.style.height = canvasH + 'px';
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
