@@ -643,10 +643,10 @@
             position: absolute; inset: 0; z-index: 850;
             background: rgba(0,0,0,0.5);
             backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-            opacity: 0; pointer-events: none;
+            opacity: 0; pointer-events: none; visibility: hidden;
             transition: opacity 0.35s ease;
         }
-        .ls-overlay.show { opacity: 1; pointer-events: auto; }
+        .ls-overlay.show { opacity: 1; pointer-events: auto; visibility: visible; }
 
         .ls-panel {
             position: absolute; left: 0; right: 0; bottom: 0;
@@ -656,13 +656,17 @@
             border-top: 1px solid rgba(255,255,255,0.07);
             border-radius: 1.4rem 1.4rem 0 0;
             box-shadow: inset 0 1px 0 rgba(168,247,244,0.15), 0 -8px 40px rgba(0,0,0,0.6);
-            display: flex; flex-direction: column;
+            display: none; flex-direction: column; /* display:none = cannot render at all */
             overflow: hidden;
+            visibility: hidden;             /* belt-and-suspenders — covers any display glitch */
             transform: translateY(100%);
             transition: transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94);
             pointer-events: none;
         }
-        .ls-panel.show { transform: translateY(0); pointer-events: auto; }
+        /* .animating: display:flex so transition can play, but still off-screen */
+        .ls-panel.animating { display: flex; }
+        /* .show: fully visible and interactive */
+        .ls-panel.show { display: flex; visibility: visible; transform: translateY(0); pointer-events: auto; }
 
         .ls-header {
             display: flex; align-items: center; justify-content: space-between;
@@ -1941,20 +1945,17 @@
         document.querySelectorAll('.cd-wrap').forEach(el => el.remove());
         state.freePlay = false;
         state.complete = false;
-        // Force level-select panel and footer fully off-screen immediately —
-        // avoids sub-pixel sliver of panel header peeking at bottom of screen
-        // during and after close animation
-        const lsPanel  = document.getElementById('ls-panel');
-        const lsFooter = document.getElementById('ls-footer');
+        // Fully kill level select — remove all classes so display:none takes effect
+        // This is the only reliable way to guarantee zero pixels render
+        const lsPanel   = document.getElementById('ls-panel');
+        const lsFooter  = document.getElementById('ls-footer');
         const lsOverlay = document.getElementById('ls-overlay');
-        if (lsPanel)  { lsPanel.classList.remove('show');  lsPanel.style.transform  = 'translateY(calc(100% + 4px))'; }
-        if (lsFooter) { lsFooter.classList.remove('show'); lsFooter.style.transform = 'translateY(calc(100% + 4px))'; }
-        if (lsOverlay){ lsOverlay.classList.remove('show'); }
-        // Re-arm transitions after forced reset so next open animates correctly
-        setTimeout(() => {
-            if (lsPanel)  lsPanel.style.transform  = '';
-            if (lsFooter) lsFooter.style.transform = '';
-        }, 50);
+        if (lsPanel)   { lsPanel.classList.remove('show', 'animating'); lsPanel.style.transform = ''; }
+        if (lsFooter)  { lsFooter.classList.remove('show'); lsFooter.style.transform = ''; }
+        if (lsOverlay) { lsOverlay.classList.remove('show'); }
+        // Clear scroll so no stale content on next open
+        const scroll = document.getElementById('ls-scroll');
+        if (scroll) scroll.innerHTML = '';
     }
 
     async function retry() {
@@ -2141,30 +2142,46 @@
 
     function openLevelSelect() {
         _lsSelectedLevel = null;
-        // Fully reset state before building
-        document.getElementById('ls-footer').classList.remove('show');
+        const panel  = document.getElementById('ls-panel');
+        const footer = document.getElementById('ls-footer');
+        const overlay = document.getElementById('ls-overlay');
+        // Reset
+        footer.classList.remove('show');
         document.getElementById('ls-scroll').innerHTML = '';
         buildLevelSelect();
-        document.getElementById('ls-overlay').classList.add('show');
-        document.getElementById('ls-panel').classList.add('show');
+        // Step 1: make display:flex (via .animating) so transition can play
+        panel.classList.add('animating');
+        overlay.classList.add('show');
+        // Step 2: on next frame, add .show to trigger the slide-up transition
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                panel.classList.add('show');
+            });
+        });
         // Scroll to current level after panel animates in
         setTimeout(() => {
             const cur = document.querySelector('.ls-card.current');
             if (cur) cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        }, 460);
+        }, 480);
     }
 
     function closeLevelSelect() {
         _lsSelectedLevel = null;
-        document.getElementById('ls-overlay').classList.remove('show');
-        document.getElementById('ls-panel').classList.remove('show');
-        document.getElementById('ls-footer').classList.remove('show');
-        // Clear scroll after animation so no stale cards/selections persist
-        setTimeout(() => {
-            if (!document.getElementById('ls-panel').classList.contains('show')) {
-                document.getElementById('ls-scroll').innerHTML = '';
-            }
-        }, 450);
+        const panel  = document.getElementById('ls-panel');
+        const footer = document.getElementById('ls-footer');
+        const overlay = document.getElementById('ls-overlay');
+        footer.classList.remove('show');
+        overlay.classList.remove('show');
+        panel.classList.remove('show'); // triggers slide-down transition
+        // After transition: remove .animating → display:none (physically cannot render)
+        const cleanup = () => {
+            panel.classList.remove('animating');
+            panel.removeEventListener('transitionend', cleanup);
+            document.getElementById('ls-scroll').innerHTML = '';
+        };
+        panel.addEventListener('transitionend', cleanup);
+        // Safety fallback in case transitionend doesn't fire (e.g. tab hidden)
+        setTimeout(cleanup, 500);
     }
 
     function selectLsCard(lvl, cardEl) {
