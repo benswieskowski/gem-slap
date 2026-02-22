@@ -81,7 +81,168 @@ def create_phrase_library():
 
 
 # ═══════════════════════════════════════════════════════════════
-# BATCH 0: MATH SYMBOLS — 8–10 crystals per level
+# BATCH 0: ANIMALS — simple silhouettes, 8–10 crystals each
+#
+# Each animal chosen for one unmistakable visual signature:
+# tail fork (fish), M-wings (bird), tall ears (rabbit), S-neck (swan),
+# 4-wing symmetry (butterfly), shell+legs top-down (turtle),
+# forked flukes (whale), spiral shell (snail),
+# raised V-claws (crab), 8-leg radial (spider).
+#
+# Coordinates in 22–78% playfield range.
+# Crystal counts: 8 → 9 → 9 → 9 → 10 → 10 → 10 → 10 → 10 → 10
+# ═══════════════════════════════════════════════════════════════
+ANIMAL_PATTERNS = [
+
+    # ── 1. Fish — 8 crystals ─────────────────────────────────
+    # Facing left. Signature: oval body + forked tail V on the right.
+    {'name': 'Fish', 'cells': [
+        {'x': 26, 'y': 50},   # mouth tip
+        {'x': 36, 'y': 43},   # eye
+        {'x': 48, 'y': 36},   # body — upper arc
+        {'x': 62, 'y': 40},   # body — upper right
+        {'x': 48, 'y': 64},   # body — lower arc
+        {'x': 62, 'y': 60},   # body — lower right
+        {'x': 74, 'y': 38},   # tail — upper fork
+        {'x': 74, 'y': 62},   # tail — lower fork
+    ]},
+
+    # ── 2. Bird — 9 crystals ─────────────────────────────────
+    # In flight. Signature: M-shaped wings — the universal bird silhouette.
+    {'name': 'Bird', 'cells': [
+        {'x': 24, 'y': 44},   # left wing — outer tip
+        {'x': 35, 'y': 30},   # left wing — apex of M
+        {'x': 43, 'y': 40},   # left wing — inner valley of M
+        {'x': 50, 'y': 46},   # body center
+        {'x': 57, 'y': 40},   # right wing — inner valley of M
+        {'x': 65, 'y': 30},   # right wing — apex of M
+        {'x': 76, 'y': 44},   # right wing — outer tip
+        {'x': 44, 'y': 66},   # tail — left feather
+        {'x': 56, 'y': 66},   # tail — right feather
+    ]},
+
+    # ── 3. Rabbit — 9 crystals ───────────────────────────────
+    # Sitting. Signature: two tall narrow parallel ears — unmistakable.
+    {'name': 'Rabbit', 'cells': [
+        {'x': 40, 'y': 24},   # left ear — top
+        {'x': 42, 'y': 36},   # left ear — base
+        {'x': 58, 'y': 36},   # right ear — base
+        {'x': 60, 'y': 24},   # right ear — top
+        {'x': 50, 'y': 48},   # head
+        {'x': 50, 'y': 64},   # body
+        {'x': 36, 'y': 74},   # left foot
+        {'x': 64, 'y': 74},   # right foot
+        {'x': 68, 'y': 60},   # fluffy tail
+    ]},
+
+    # ── 4. Swan — 9 crystals ─────────────────────────────────
+    # Facing right. Signature: long S-curve neck descending into oval body.
+    {'name': 'Swan', 'cells': [
+        {'x': 68, 'y': 26},   # head
+        {'x': 62, 'y': 34},   # neck — upper curve
+        {'x': 54, 'y': 42},   # neck — mid curve
+        {'x': 46, 'y': 50},   # neck base / body join
+        {'x': 30, 'y': 52},   # body — left (widest)
+        {'x': 34, 'y': 62},   # body — lower left
+        {'x': 48, 'y': 68},   # body — bottom center
+        {'x': 62, 'y': 64},   # body — tail
+        {'x': 50, 'y': 56},   # wing highlight
+    ]},
+
+    # ── 5. Butterfly — 10 crystals ───────────────────────────
+    # Wings spread. Signature: 4 distinct wings + narrow body. Bilateral.
+    {'name': 'Butterfly', 'cells': [
+        {'x': 26, 'y': 38},   # upper left wing — outer
+        {'x': 36, 'y': 26},   # upper left wing — top
+        {'x': 64, 'y': 26},   # upper right wing — top
+        {'x': 74, 'y': 38},   # upper right wing — outer
+        {'x': 40, 'y': 46},   # upper left — inner pinch
+        {'x': 60, 'y': 46},   # upper right — inner pinch
+        {'x': 50, 'y': 42},   # body — upper waist
+        {'x': 50, 'y': 60},   # body — lower
+        {'x': 32, 'y': 64},   # lower left wing
+        {'x': 68, 'y': 64},   # lower right wing
+    ]},
+
+    # ── 6. Turtle — 10 crystals ──────────────────────────────
+    # Top-down. Signature: oval shell outline + 4 legs poking out.
+    {'name': 'Turtle', 'cells': [
+        {'x': 50, 'y': 28},   # head
+        {'x': 38, 'y': 36},   # shell — upper left
+        {'x': 62, 'y': 36},   # shell — upper right
+        {'x': 30, 'y': 54},   # shell — left
+        {'x': 70, 'y': 54},   # shell — right
+        {'x': 38, 'y': 68},   # shell — lower left
+        {'x': 62, 'y': 68},   # shell — lower right
+        {'x': 24, 'y': 40},   # front left leg
+        {'x': 76, 'y': 40},   # front right leg
+        {'x': 26, 'y': 66},   # back left leg
+    ]},
+
+    # ── 7. Whale — 10 crystals ───────────────────────────────
+    # Swimming left to right. Signature: massive body + forked tail flukes.
+    {'name': 'Whale', 'cells': [
+        {'x': 24, 'y': 50},   # head tip
+        {'x': 26, 'y': 58},   # jaw
+        {'x': 32, 'y': 42},   # eye
+        {'x': 42, 'y': 32},   # body — upper left
+        {'x': 56, 'y': 28},   # body — dorsal peak
+        {'x': 68, 'y': 32},   # body — upper right
+        {'x': 44, 'y': 58},   # body — lower left
+        {'x': 60, 'y': 60},   # body — lower right
+        {'x': 76, 'y': 38},   # tail fluke — upper
+        {'x': 76, 'y': 62},   # tail fluke — lower
+    ]},
+
+    # ── 8. Snail — 10 crystals ───────────────────────────────
+    # Moving left. Signature: circular shell arc + horizontal foot + antenna.
+    {'name': 'Snail', 'cells': [
+        {'x': 64, 'y': 28},   # shell — top
+        {'x': 76, 'y': 44},   # shell — right
+        {'x': 74, 'y': 60},   # shell — lower right
+        {'x': 62, 'y': 70},   # shell — bottom
+        {'x': 50, 'y': 64},   # shell — left arc
+        {'x': 60, 'y': 50},   # shell — inner whorl
+        {'x': 42, 'y': 72},   # foot — right
+        {'x': 30, 'y': 70},   # foot — left
+        {'x': 26, 'y': 60},   # head
+        {'x': 24, 'y': 48},   # antenna
+    ]},
+
+    # ── 9. Crab — 10 crystals ────────────────────────────────
+    # Facing forward. Signature: wide body + two large claws raised in V.
+    {'name': 'Crab', 'cells': [
+        {'x': 22, 'y': 28},   # left claw — pincer tip
+        {'x': 28, 'y': 40},   # left claw — base
+        {'x': 36, 'y': 50},   # left arm
+        {'x': 44, 'y': 58},   # body — left
+        {'x': 50, 'y': 54},   # body — center
+        {'x': 56, 'y': 58},   # body — right
+        {'x': 64, 'y': 50},   # right arm
+        {'x': 72, 'y': 40},   # right claw — base
+        {'x': 78, 'y': 28},   # right claw — pincer tip
+        {'x': 50, 'y': 72},   # legs / body base
+    ]},
+
+    # ── 10. Spider — 10 crystals ─────────────────────────────
+    # Top-down. Signature: 2 body segments + 4 legs per side splayed out.
+    {'name': 'Spider', 'cells': [
+        {'x': 50, 'y': 38},   # head
+        {'x': 50, 'y': 58},   # abdomen
+        {'x': 34, 'y': 28},   # left upper leg — outer
+        {'x': 24, 'y': 36},   # left upper leg — far
+        {'x': 30, 'y': 52},   # left lower leg — outer
+        {'x': 22, 'y': 62},   # left lower leg — far
+        {'x': 66, 'y': 28},   # right upper leg — outer
+        {'x': 76, 'y': 36},   # right upper leg — far
+        {'x': 70, 'y': 52},   # right lower leg — outer
+        {'x': 78, 'y': 62},   # right lower leg — far
+    ]},
+]
+
+
+# ═══════════════════════════════════════════════════════════════
+# BATCH 1: MATH SYMBOLS — 8–10 crystals per level
 #
 # All coordinates in the 22–78% playfield range.
 # Cell count: 8 → 9 → 9 → 7 → 8 → 7 → 10 → 9 → 9 → 10
@@ -227,7 +388,7 @@ MATH_PATTERNS = [
 
 
 # ═══════════════════════════════════════════════════════════════
-# BATCH 1: MUSIC — musical symbols, easy → hard
+# BATCH 2: MUSIC — musical symbols, easy → hard
 # Cell count: 5 → 5 → 6 → 7 → 7 → 7 → 8 → 8 → 8 → 9
 # ═══════════════════════════════════════════════════════════════
 MUSIC_PATTERNS = [
@@ -289,7 +450,7 @@ MUSIC_PATTERNS = [
 
 
 # ═══════════════════════════════════════════════════════════════
-# BATCH 2: GEOMETRY — easy → hard
+# BATCH 3: GEOMETRY — easy → hard
 # Cell count: 3 → 4 → 4 → 4 → 5 → 5 → 5 → 6 → 6 → 7
 # ═══════════════════════════════════════════════════════════════
 GEOMETRY_PATTERNS = [
@@ -307,7 +468,7 @@ GEOMETRY_PATTERNS = [
 
 
 # ═══════════════════════════════════════════════════════════════
-# BATCH 3: CONSTELLATIONS
+# BATCH 4: CONSTELLATIONS
 # Star counts: 5 → 5 → 7 → 4 → 5 → 7 → 6 → 6 → 8 → 9
 # ═══════════════════════════════════════════════════════════════
 CONSTELLATION_PATTERNS = [
@@ -332,6 +493,7 @@ CONSTELLATION_PATTERNS = [
 # Batch 3 = Constellations (levels 31–40)
 # ═══════════════════════════════════════════════════════════════
 LEVEL_BATCHES = [
+    {'name': 'Animals',        'patterns': ANIMAL_PATTERNS},
     {'name': 'Math Symbols',   'patterns': MATH_PATTERNS},
     {'name': 'Music',          'patterns': MUSIC_PATTERNS},
     {'name': 'Geometry',       'patterns': GEOMETRY_PATTERNS},
