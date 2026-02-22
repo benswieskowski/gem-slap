@@ -55,13 +55,11 @@ def generate_level(level_num, bass_style=None):
     level_in_set = ((level_num - 1) % 10) + 1
     set_num = (level_num - 1) // 10
 
-    if level_in_set <= 3:   visible_at_once = 6
-    elif level_in_set <= 6: visible_at_once = 8
-    else:                   visible_at_once = 9
+    visible_at_once = 8   # standardized across all levels
 
     total_orbs = STANDARD_TOTAL_ORBS
     bpm = 80 + (level_in_set - 1) * 3
-    base_speed = min(0.04 + (level_in_set - 1) * 0.025, 0.28)
+    base_speed = 0.12     # standardized across all levels
     target_time = total_orbs * (1.7 - (level_in_set - 1) * 0.04)
     current_bass = bass_style if bass_style is not None else set_num % 10
 
