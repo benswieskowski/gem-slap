@@ -976,6 +976,7 @@
     // ═══════════════════════════════════════
     //  PROGRESS — localStorage save/restore
     // ═══════════════════════════════════════
+    const TOTAL_LEVELS = 50; // wrap back to level 1 after this
     const SAVE_KEY = 'gs_progress';
 
     function loadProgress() {
@@ -1007,7 +1008,7 @@
         if (isNew) {
             bestTimes[level] = time;
             bestTiers[level] = tier;
-            saveProgress({ bestTimes, bestTiers, highestLevel: Math.max(p.highestLevel || 1, level) });
+            saveProgress({ bestTimes, bestTiers, highestLevel: Math.min(TOTAL_LEVELS, Math.max(p.highestLevel || 1, level)) });
         }
         return isNew;
     }
@@ -1859,9 +1860,11 @@
         const prevBest  = isNewBest ? null : getBestTime(state.level);
         // Lifetime: clears + play time + session clears + advance resume point
         const _lp = loadProgress();
-        const _nextLvl = state.level + 1;
+        // On level 50 completion, resume wraps to 1; highestLevel caps at 50
+        const _nextLvl = state.level >= TOTAL_LEVELS ? 1 : state.level + 1;
         const _resumePatch = { resumeLevel: _nextLvl };
-        if (_nextLvl > (_lp.highestLevel || 1)) _resumePatch.highestLevel = _nextLvl;
+        const _newHighest = Math.min(TOTAL_LEVELS, Math.max(_lp.highestLevel || 1, state.level + 1));
+        if (_newHighest > (_lp.highestLevel || 1)) _resumePatch.highestLevel = _newHighest;
         saveProgress({
             totalClears: (_lp.totalClears||0) + 1,
             totalPlaySecs: (_lp.totalPlaySecs||0) + time,
@@ -1966,11 +1969,14 @@
     async function next() {
         resetGameUI();
         audio.stopBeat();
-        const nextLevel = state.level + 1;
+        // Wrap back to level 1 after the final level
+        const nextLevel = state.level >= TOTAL_LEVELS ? 1 : state.level + 1;
         // Record unlock + update resume point
+        // highestLevel caps at TOTAL_LEVELS (50 = game complete)
         const p = loadProgress();
         const _np = { resumeLevel: nextLevel };
-        if (nextLevel > (p.highestLevel || 1)) _np.highestLevel = nextLevel;
+        const newHighest = Math.min(TOTAL_LEVELS, Math.max(p.highestLevel || 1, state.level + 1));
+        if (newHighest > (p.highestLevel || 1)) _np.highestLevel = newHighest;
         saveProgress(_np);
         await loadLevel(nextLevel); startCountdown();
     }
@@ -1989,6 +1995,7 @@
         audio.beatOn = false;
         $('mute-btn').classList.add('muted');
     }
+
     $('bass-fav').addEventListener('click', () => {
         if (state.favBassStyle !== null) state.favBassStyle = null;
         else state.favBassStyle = state.bassStyle;
