@@ -1,7 +1,7 @@
 // Gem Slap — Service Worker
 // Caches app shell on install; serves API levels from cache when offline
 
-const SW_VERSION = 'gem-slap-v1';
+const SW_VERSION = 'gem-slap-v2';
 const SHELL_CACHE = SW_VERSION + '-shell';
 const LEVEL_CACHE = SW_VERSION + '-levels';
 
