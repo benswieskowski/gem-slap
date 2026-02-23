@@ -1382,7 +1382,7 @@
             state.freePlay = true;
             state.freePlayData = { ...calcScore() };
             showPop(canvasW / 2, canvasH / 2 + 52, 'crystal-clear', false, 'ALL SHATTERED');
-            audio.crystalsClear();
+            setTimeout(() => audio.crystalsClear(), 30);
             updateHUD();
             setTimeout(() => showFloatingEnd(), 1000);
             trySpawnNext();
