@@ -114,7 +114,20 @@ class Audio {
 
         this.master = this.ctx.createGain();
         this.master.gain.value = 0.78;
-        this.master.connect(this.ctx.destination);
+
+        // Limiter — sits between master gain and destination.
+        // Transparent during normal play; catches peak spikes when many
+        // oscillators fire simultaneously (e.g. final crystal + fanfare)
+        // so the music isn't loudness-masked by the burst. Fast attack (2ms)
+        // catches transients; moderate release (180ms) avoids pump artefacts.
+        this.limiter = this.ctx.createDynamicsCompressor();
+        this.limiter.threshold.value = -4;   // dB — only engages on peaks
+        this.limiter.knee.value       = 2;   // tight knee — limiter not compressor
+        this.limiter.ratio.value      = 20;  // hard limiting above threshold
+        this.limiter.attack.value     = 0.002;
+        this.limiter.release.value    = 0.18;
+        this.master.connect(this.limiter);
+        this.limiter.connect(this.ctx.destination);
 
         this.bassFilter = this.ctx.createBiquadFilter();
         this.bassFilter.type = 'lowpass'; this.bassFilter.frequency.value = 500; this.bassFilter.Q.value = 0.7;
@@ -863,57 +876,103 @@ class Audio {
     }
 
     crystalsClear() {
-        if (!this._canPlay()) return;
+        // Level completion fanfare — ascending C minor pentatonic arpeggio
+        // with per-note shimmer bursts, dense shimmer cloud (Long Dust Trail
+        // extended), and a final sustained high note that rings out.
+        // Only ever called once: when all crystals are destroyed.
+        // Intentionally bypasses _MAX_ACTIVE — this must always play.
+        if (!this.ready || !this.ctx || this.ctx.state !== 'running') return;
         const t = this.ctx.currentTime;
         const allNodes = [];
-        const crackLen = Math.floor(this.ctx.sampleRate * 0.012);
+        const ROOT = 261.63; // C4
+
+        // ── Soft crack accent ─────────────────────────────────────────
+        // Very light — the last crystalShatter already fired on the final
+        // crystal, so this just adds a crisp high accent to mark the moment.
+        const crackLen = Math.floor(this.ctx.sampleRate * 0.006);
         const crackBuf = this.ctx.createBuffer(1, crackLen, this.ctx.sampleRate);
         const cd = crackBuf.getChannelData(0);
-        for (let i = 0; i < crackLen; i++) cd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (crackLen * 0.1));
+        for (let i = 0; i < crackLen; i++) cd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (crackLen * 0.06));
         const crackSrc = this.ctx.createBufferSource(); crackSrc.buffer = crackBuf;
-        const cFilt = this.ctx.createBiquadFilter(); cFilt.type = 'highpass'; cFilt.frequency.value = 1500; cFilt.Q.value = 0.4;
-        const cGain = this.ctx.createGain(); cGain.gain.value = 0.45;
+        const cFilt = this.ctx.createBiquadFilter(); cFilt.type = 'highpass';
+        cFilt.frequency.value = 5500; cFilt.Q.value = 0.5;
+        const cGain = this.ctx.createGain(); cGain.gain.value = 0.28;
         crackSrc.connect(cFilt).connect(cGain).connect(this.master);
-        crackSrc.start(t); crackSrc.stop(t + 0.02);
+        crackSrc.start(t); crackSrc.stop(t + 0.008);
         allNodes.push(crackSrc, cFilt, cGain);
-        const sting = [7, 10, 15]; // G Bb Eb — C minor chord
-        sting.forEach((n, i) => {
-            const delay = 0.04 + i * 0.06;
-            const freq = 261.63 * Math.pow(2, n / 12);
-            const osc = this.ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = freq;
+
+        // ── Ascending arpeggio — C Eb F G Bb C ───────────────────────
+        // 6 clean sine tones, 68ms apart, long decay so all 6 are still
+        // ringing by the end — full pentatonic chord hanging in the air.
+        // Volume increases slightly as we ascend (louder = more triumphant).
+        // Each note also spawns 3 shimmer tones above it immediately.
+        [0, 3, 5, 7, 10, 12].forEach((semis, i) => {
+            const delay = i * 0.068;
+            const freq  = ROOT * Math.pow(2, semis / 12);
+            const decay = 0.32 - i * 0.008;
+            const osc = this.ctx.createOscillator(); osc.type = 'sine';
+            osc.frequency.value = freq;
             const env = this.ctx.createGain();
             env.gain.setValueAtTime(0, t + delay);
-            env.gain.linearRampToValueAtTime(0.18, t + delay + 0.004);
-            env.gain.exponentialRampToValueAtTime(0.025, t + delay + 0.08);
-            env.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.30);
+            env.gain.linearRampToValueAtTime(0.20 + i * 0.012, t + delay + 0.004);
+            env.gain.exponentialRampToValueAtTime(0.001, t + delay + decay);
             osc.connect(env).connect(this.master);
-            osc.start(t + delay); osc.stop(t + delay + 0.35);
+            osc.start(t + delay); osc.stop(t + delay + decay + 0.01);
+            allNodes.push(osc, env);
+            // Per-note shimmer burst
+            [3.1, 5.4, 7.8].forEach((mult, j) => {
+                const sDelay = delay + 0.002 + j * 0.006;
+                const sFreq  = freq * mult * (0.97 + Math.random() * 0.06);
+                const sDur   = 0.055 + j * 0.018;
+                const sOsc = this.ctx.createOscillator(); sOsc.type = 'sine'; sOsc.frequency.value = sFreq;
+                const sEnv = this.ctx.createGain();
+                sEnv.gain.setValueAtTime(0, t + sDelay);
+                sEnv.gain.linearRampToValueAtTime(0.038 - j * 0.008, t + sDelay + 0.001);
+                sEnv.gain.exponentialRampToValueAtTime(0.001, t + sDelay + sDur);
+                sOsc.connect(sEnv).connect(this.master);
+                sOsc.start(t + sDelay); sOsc.stop(t + sDelay + sDur + 0.005);
+                allNodes.push(sOsc, sEnv);
+            });
+        });
+
+        // ── Dense shimmer cloud ───────────────────────────────────────
+        // 28 micro-tones spread over 900ms, all pentatonic-pitched across
+        // 3 octaves. Power-curved arrival — burst-heavy at the start, thinning
+        // to a tail. Each tone rings 80–180ms so they blur into shimmer.
+        const SSCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
+        for (let i = 0; i < 28; i++) {
+            const delay  = 0.05 + Math.pow(i / 27, 1.4) * 0.85;
+            const semis  = SSCALE[i % SSCALE.length];
+            const octave = Math.floor(i / SSCALE.length);
+            const freq   = ROOT * Math.pow(2, (semis + octave * 12) / 12);
+            const dur    = 0.08 + Math.random() * 0.10;
+            const gVol   = 0.042 * Math.max(0.3, 1 - i * 0.022);
+            const dOsc = this.ctx.createOscillator(); dOsc.type = 'sine'; dOsc.frequency.value = freq;
+            const dEnv = this.ctx.createGain();
+            dEnv.gain.setValueAtTime(0, t + delay);
+            dEnv.gain.linearRampToValueAtTime(gVol, t + delay + 0.001);
+            dEnv.gain.exponentialRampToValueAtTime(0.001, t + delay + dur);
+            dOsc.connect(dEnv).connect(this.master);
+            dOsc.start(t + delay); dOsc.stop(t + delay + dur + 0.005);
+            allNodes.push(dOsc, dEnv);
+        }
+
+        // ── Final sustained note — C6 + G6 ───────────────────────────
+        // High C two octaves up, swells in at 500ms and rings for 700ms.
+        // A perfect fifth above it adds warmth. The held breath at the end.
+        const highFreq = ROOT * 4; // C6
+        [highFreq, highFreq * 1.5].forEach((freq, i) => {
+            const osc = this.ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = freq;
+            const env = this.ctx.createGain();
+            env.gain.setValueAtTime(0, t + 0.50 + i * 0.02);
+            env.gain.linearRampToValueAtTime(i === 0 ? 0.10 : 0.042, t + 0.56 + i * 0.02);
+            env.gain.exponentialRampToValueAtTime(0.001, t + 1.20 - i * 0.10);
+            osc.connect(env).connect(this.master);
+            osc.start(t + 0.50 + i * 0.02); osc.stop(t + 1.25);
             allNodes.push(osc, env);
         });
-        const fragTimes = [0.01, 0.025, 0.045, 0.07, 0.10, 0.14, 0.18, 0.22, 0.27, 0.32];
-        const fragMults = [7.1, 5.8, 4.5, 6.3, 3.8, 5.2, 3.2, 4.7, 2.8, 3.5];
-        const baseFreq = 261.63;
-        fragTimes.forEach((delay, i) => {
-            const fFreq = baseFreq * fragMults[i];
-            const fOsc = this.ctx.createOscillator(); fOsc.type = 'sine'; fOsc.frequency.value = fFreq;
-            const fEnv = this.ctx.createGain();
-            const fVol = 0.10 * (1 - delay / 0.45);
-            fEnv.gain.setValueAtTime(Math.max(0.003, fVol), t + delay);
-            fEnv.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.02);
-            fOsc.connect(fEnv).connect(this.master);
-            fOsc.start(t + delay); fOsc.stop(t + delay + 0.03);
-            allNodes.push(fOsc, fEnv);
-        });
-        const shimFreq = 261.63 * Math.pow(2, 19 / 12);
-        const shim = this.ctx.createOscillator(); shim.type = 'sine'; shim.frequency.value = shimFreq;
-        const shimEnv = this.ctx.createGain();
-        shimEnv.gain.setValueAtTime(0, t + 0.2);
-        shimEnv.gain.linearRampToValueAtTime(0.08, t + 0.22);
-        shimEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-        shim.connect(shimEnv).connect(this.master);
-        shim.start(t + 0.2); shim.stop(t + 0.6);
-        allNodes.push(shim, shimEnv);
-        this._scheduleCleanup(allNodes, 0.7);
+
+        this._scheduleCleanup(allNodes, 1.35);
     }
 
     success() { [0, 3, 7, 10].forEach((n, i) => setTimeout(() => this.tone(n, 0.5, 0.14), i * 80)); } // Cm7 arp
