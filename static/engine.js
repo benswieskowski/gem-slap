@@ -957,22 +957,7 @@ class Audio {
             allNodes.push(dOsc, dEnv);
         }
 
-        // ── Final sustained note — C6 + G6 ───────────────────────────
-        // High C two octaves up, swells in at 500ms and rings for 700ms.
-        // A perfect fifth above it adds warmth. The held breath at the end.
-        const highFreq = ROOT * 4; // C6
-        [highFreq, highFreq * 1.5].forEach((freq, i) => {
-            const osc = this.ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = freq;
-            const env = this.ctx.createGain();
-            env.gain.setValueAtTime(0, t + 0.50 + i * 0.02);
-            env.gain.linearRampToValueAtTime(i === 0 ? 0.10 : 0.042, t + 0.56 + i * 0.02);
-            env.gain.exponentialRampToValueAtTime(0.001, t + 1.20 - i * 0.10);
-            osc.connect(env).connect(this.master);
-            osc.start(t + 0.50 + i * 0.02); osc.stop(t + 1.25);
-            allNodes.push(osc, env);
-        });
-
-        this._scheduleCleanup(allNodes, 1.35);
+        this._scheduleCleanup(allNodes, 1.05);
     }
 
     success() { [0, 3, 7, 10].forEach((n, i) => setTimeout(() => this.tone(n, 0.5, 0.14), i * 80)); } // Cm7 arp
