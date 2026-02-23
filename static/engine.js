@@ -904,11 +904,12 @@ class Audio {
 
     crystalShatter(index, total) {
         // CC V4 — Denser Fragments
-        // Crack / partials / thud unchanged from original.
-        // Fragments: 10–13 (was 6–8), window 380ms (was 240ms), ±7% pitch randomisation.
-        // Volume curve shallower so late fragments remain audible.
-        // Dust: 4–5 tones at 90ms each (was 2–3 at 60ms).
-        if (!this._canPlay() || !this.beatOn) return;
+        // Bypasses _canPlay() node-limit check — crystal SFX must always play,
+        // including during rapid multi-crystal sequences where cumulative nodes
+        // would exceed _MAX_ACTIVE. Uses direct cleanup (like crystalsClear) so
+        // its nodes are never counted in _activeNodes.
+        // Also does NOT check beatOn — muting music should never silence SFX.
+        if (!this.ready || !this.ctx || this.ctx.state !== 'running') return;
         const t = this.ctx.currentTime;
         const progress = index / Math.max(1, total - 1);
         const scale = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24]; // C minor pentatonic
@@ -995,7 +996,12 @@ class Audio {
             allNodes.push(dOsc, dEnv);
         }
 
-        this._scheduleCleanup(allNodes, 0.50);
+        // Direct cleanup — intentionally does NOT touch _activeNodes.
+        // Counting ~47 nodes per shatter would push rapid-fire sequences over
+        // _MAX_ACTIVE and silently block subsequent shatters.
+        setTimeout(() => {
+            allNodes.forEach(n => { try { n.disconnect(); } catch(e) {} });
+        }, 700);
     }
 
     crystalsClear() {
@@ -1087,7 +1093,31 @@ class Audio {
     }
 
     success() { [0, 3, 7, 10].forEach((n, i) => setTimeout(() => this.tone(n, 0.5, 0.14), i * 80)); } // Cm7 arp
-    fail() { this.tone(-7, 0.3, 0.06); }
+
+    fail() {
+        // Two-note descending figure: D4 → Bb3, 130ms apart.
+        // Soft and brief — acknowledges the state without drama.
+        // A low sine thud underneath adds a felt sense of landing.
+        if (!this.ready || !this.ctx || this.ctx.state !== 'running') return;
+        const t = this.ctx.currentTime;
+
+        // Note 1: D4 (semitone +2), gentle
+        this.tone(2, 0.20, 0.13);
+        // Note 2: Bb3 (semitone -2), slightly softer, lands like a sigh
+        setTimeout(() => this.tone(-2, 0.26, 0.11), 130);
+
+        // Soft low thud — 90Hz drops to 38Hz, felt more than heard on phone
+        const osc = this.ctx.createOscillator(); osc.type = 'sine';
+        osc.frequency.setValueAtTime(90, t);
+        osc.frequency.exponentialRampToValueAtTime(38, t + 0.22);
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.09, t + 0.008);
+        env.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.connect(env); env.connect(this.master);
+        osc.start(t); osc.stop(t + 0.32);
+        this._scheduleCleanup([osc, env], 0.32);
+    }
 
     countClick(accent = false) {
         if (!this._canPlay() || !this.beatOn) return;
