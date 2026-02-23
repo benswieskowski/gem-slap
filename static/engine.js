@@ -767,6 +767,11 @@ class Audio {
     }
 
     crystalShatter(index, total) {
+        // CC V4 — Denser Fragments
+        // Crack / partials / thud unchanged from original.
+        // Fragments: 10–13 (was 6–8), window 380ms (was 240ms), ±7% pitch randomisation.
+        // Volume curve shallower so late fragments remain audible.
+        // Dust: 4–5 tones at 90ms each (was 2–3 at 60ms).
         if (!this._canPlay() || !this.beatOn) return;
         const t = this.ctx.currentTime;
         const progress = index / Math.max(1, total - 1);
@@ -776,6 +781,8 @@ class Audio {
         const freq = 261.63 * Math.pow(2, baseNote / 12);
         const vol = 0.30 + progress * 0.10;
         const allNodes = [];
+
+        // ── Crack transient (original) ────────────────────────────────
         const crackLen = Math.floor(this.ctx.sampleRate * 0.006);
         const crackBuf = this.ctx.createBuffer(1, crackLen, this.ctx.sampleRate);
         const cd = crackBuf.getChannelData(0);
@@ -787,6 +794,8 @@ class Audio {
         crackSrc.connect(cFilt).connect(cGain).connect(this.master);
         crackSrc.start(t); crackSrc.stop(t + 0.01);
         allNodes.push(crackSrc, cFilt, cGain);
+
+        // ── Partials (original) ───────────────────────────────────────
         const partials = [
             { ratio: 1,    gain: 0.38, dur: 0.08, type: 'triangle' },
             { ratio: 2.76, gain: 0.16, dur: 0.05, type: 'sine' },
@@ -801,6 +810,8 @@ class Audio {
             osc.start(t); osc.stop(t + p.dur + 0.01);
             allNodes.push(osc, env);
         });
+
+        // ── Thud (original) ───────────────────────────────────────────
         const thud = this.ctx.createOscillator(); thud.type = 'sine';
         thud.frequency.setValueAtTime(freq * 0.5, t);
         thud.frequency.exponentialRampToValueAtTime(40, t + 0.035);
@@ -810,36 +821,45 @@ class Audio {
         thud.connect(thudEnv).connect(this.master);
         thud.start(t); thud.stop(t + 0.05);
         allNodes.push(thud, thudEnv);
-        const fragCount = 6 + Math.floor(progress * 2);
-        const fragTimes = [];
-        for (let i = 0; i < fragCount; i++) fragTimes.push(0.005 + Math.pow(i / fragCount, 1.8) * 0.24);
+
+        // ── Fragment scatter (denser) ─────────────────────────────────
+        // 10–13 fragments over 380ms. Multipliers jittered ±7% per hit
+        // so no two crystals sound identical. Shallower volume curve keeps
+        // later fragments audible — richer tail, lush in rapid-fire.
+        const fragCount = 10 + Math.floor(progress * 3);
         const fragMultipliers = [6.2, 5.1, 4.3, 3.7, 3.1, 2.6, 2.2, 1.9];
-        fragTimes.forEach((delay, i) => {
-            const fFreq = freq * fragMultipliers[i % fragMultipliers.length];
+        for (let i = 0; i < fragCount; i++) {
+            const delay = 0.005 + Math.pow(i / fragCount, 1.8) * 0.38;
+            const baseMulti = fragMultipliers[i % fragMultipliers.length];
+            const fFreq = freq * baseMulti * (0.93 + Math.random() * 0.14);
             const fOsc = this.ctx.createOscillator(); fOsc.type = 'sine'; fOsc.frequency.value = fFreq;
             const fEnv = this.ctx.createGain();
-            const fVol = vol * (0.14 - i * 0.010) * (1 + progress * 0.3);
+            const fVol = vol * (0.14 - i * 0.007) * (1 + progress * 0.3);
             fEnv.gain.setValueAtTime(0, t + delay);
             fEnv.gain.linearRampToValueAtTime(Math.max(0.003, fVol), t + delay + 0.001);
-            fEnv.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.018);
+            fEnv.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.022);
             fOsc.connect(fEnv).connect(this.master);
-            fOsc.start(t + delay); fOsc.stop(t + delay + 0.025);
+            fOsc.start(t + delay); fOsc.stop(t + delay + 0.030);
             allNodes.push(fOsc, fEnv);
-        });
-        const dustCount = 2 + (progress > 0.5 ? 1 : 0);
+        }
+
+        // ── Dust (more, longer) ───────────────────────────────────────
+        // 4–5 tones at 90ms each (was 2–3 at 60ms).
+        const dustCount = 4 + (progress > 0.5 ? 1 : 0);
         for (let i = 0; i < dustCount; i++) {
-            const delay = 0.03 + i * 0.06;
-            const dFreq = freq * (8 + i * 2);
+            const delay = 0.025 + i * 0.055;
+            const dFreq = freq * (8 + i * 1.8);
             const dOsc = this.ctx.createOscillator(); dOsc.type = 'sine'; dOsc.frequency.value = dFreq;
             const dEnv = this.ctx.createGain();
             dEnv.gain.setValueAtTime(0, t + delay);
-            dEnv.gain.linearRampToValueAtTime(vol * 0.035, t + delay + 0.001);
-            dEnv.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.06);
+            dEnv.gain.linearRampToValueAtTime(vol * 0.032, t + delay + 0.001);
+            dEnv.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.09);
             dOsc.connect(dEnv).connect(this.master);
-            dOsc.start(t + delay); dOsc.stop(t + delay + 0.08);
+            dOsc.start(t + delay); dOsc.stop(t + delay + 0.10);
             allNodes.push(dOsc, dEnv);
         }
-        this._scheduleCleanup(allNodes, 0.35);
+
+        this._scheduleCleanup(allNodes, 0.50);
     }
 
     crystalsClear() {
