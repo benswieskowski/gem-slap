@@ -266,6 +266,37 @@
         .ef-card.tier-silver::before { background: #4ECDC4; box-shadow: 0 0 18px rgba(78,205,196,0.4); }
         .ef-card.tier-bronze::before { background: #7EC8F0; box-shadow: 0 0 14px rgba(126,200,240,0.3); }
         .ef-card.tier-none::before { background: rgba(255,255,255,0.08); }
+        /* Fail state — very dim warm bar, no glow, not harsh */
+        .ef-card.tier-fail::before { background: rgba(180,80,60,0.35); box-shadow: none; }
+
+        /* ── Fail-specific elements (hidden in win state) ── */
+        .ef-fail-crystals {
+            display: none;
+            flex-direction: column; align-items: center;
+            margin-bottom: 0.6rem;
+        }
+        .ef-card.tier-fail .ef-fail-crystals { display: flex; }
+        .ef-fail-crys-val {
+            font-size: 2.6rem; font-weight: 100; line-height: 1;
+            font-variant-numeric: tabular-nums;
+            color: rgba(255,255,255,0.25);
+            margin-bottom: 0.2rem;
+        }
+        .ef-fail-crys-label {
+            font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase;
+            color: rgba(255,255,255,0.2);
+        }
+        .ef-fail-msg {
+            display: none;
+            font-size: 0.62rem; color: rgba(255,255,255,0.32);
+            letter-spacing: 0.06em; margin-bottom: 0.85rem;
+            text-align: center; line-height: 1.5;
+        }
+        .ef-card.tier-fail .ef-fail-msg { display: block; }
+
+        /* Hide win-only elements in fail state */
+        .ef-card.tier-fail .ef-pb   { display: none; }
+        .ef-card.tier-fail .ef-hero { display: none; }
 
         /* ── level label in floating card ── */
         .ef-level {
@@ -363,6 +394,20 @@
             transition: all 0.2s ease;
         }
         .ef-btn-retry:active { transform: scale(0.97); color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.04); }
+
+        /* Fail state — hide continue, make retry fill the full width and look primary */
+        .ef-card.tier-fail #ef-next  { display: none; }
+        .ef-card.tier-fail .ef-btn-retry {
+            flex: 1;
+            background: rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.85);
+            border-color: rgba(255,255,255,0.18);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+        .ef-card.tier-fail .ef-btn-retry:active {
+            background: rgba(255,255,255,0.16);
+            color: rgba(255,255,255,0.9);
+        }
 
 
 
@@ -861,6 +906,12 @@
                     <div class="ef-tier-badge" id="ef-tier">GOLD</div>
                     <div class="ef-time" id="ef-time-big">0.0s</div>
                 </div>
+                <!-- Fail-state elements — hidden in win state via CSS -->
+                <div class="ef-fail-crystals">
+                    <div class="ef-fail-crys-val" id="ef-fail-crys-val">0/0</div>
+                    <div class="ef-fail-crys-label">crystals shattered</div>
+                </div>
+                <div class="ef-fail-msg" id="ef-fail-msg"></div>
                 <div class="ef-btns">
                     <button class="ef-btn-retry" id="ef-retry">Retry</button>
                     <button class="ef-btn-continue" id="ef-next">Continue</button>
@@ -1911,35 +1962,27 @@
         state.complete = true; state.playing = false;
         state.levelCleared = cleared;
 
-        const card = $('end-card');
-        card.classList.remove('show'); card.className = 'end-card';
-        document.querySelectorAll('#end-card .ec-inner').forEach(el => el.classList.remove('show'));
-        card.classList.add('tier-fail');
+        // Fail state: use the same ef-card drawer as the win state.
+        // #end-screen is no longer used for the fail path.
+        const broken  = state.targetsDestroyed;
+        const total   = state.totalTargets;
+        const ratio   = total > 0 ? broken / total : 0;
 
-        $('ec-level').innerHTML = levelLabel('end');
-        $('ec-time-fail').textContent = `${state.elapsed.toFixed(1)}s`;
-        $('ec-time-fail').className = 'ec-inner ec-score c-fail';
-        $('ec-tier').textContent = 'CRYSTALS REMAIN';
-        $('ec-tier').className = 'ec-inner ec-tier c-fail';
-        $('ec-msg').textContent = 'The crystals hold.';
-        $('ec-crys').textContent = `${state.targetsDestroyed}/${state.totalTargets}`;
-        $('ec-orbs').textContent = `${state.orbsHit}/${state.totalOrbs}`;
-        $('btn-next').disabled = true;
-        $('bass-name').textContent = BASS_NAMES[state.bassStyle] || '';
-        $('bass-fav').className = `ec-inner bass-fav${state.favBassStyle !== null ? ' locked' : ''}`;
+        // Contextual message — warm and forward-looking, never harsh
+        let msg;
+        if (broken === 0)          msg = 'Send those orbs flying and try again.';
+        else if (ratio < 0.4)      msg = `${broken} crystal${broken > 1 ? 's' : ''} down. Keep going.`;
+        else if (ratio < 0.75)     msg = 'Good progress — one more run should do it.';
+        else if (ratio < 1.0)      msg = 'So close. The shape is almost there.';
+        else                       msg = ''; // shouldn't reach here (that's a win)
 
-        const mel = $('ec-melody'); mel.innerHTML = '';
-        state.melody.forEach(m => {
-            const d = document.createElement('div'); d.className = 'mdot';
-            d.style.background = m.color;
-            d.style.opacity = m.rating === 'perfect' ? 1 : m.rating === 'great' ? 0.7 : m.rating === 'good' ? 0.45 : 0.2;
-            mel.appendChild(d);
-        });
-
+        const efCard = $('ef-card');
+        efCard.className = 'ef-card tier-fail';
+        $('ef-level').innerHTML = levelLabel('end');
+        $('ef-fail-crys-val').textContent = `${broken}/${total}`;
+        $('ef-fail-msg').textContent = msg;
         audio.fail();
-        $('end-screen').classList.remove('hidden');
-        setTimeout(() => card.classList.add('show'), 60);
-        document.querySelectorAll('#end-card .ec-inner').forEach((el, i) => { setTimeout(() => el.classList.add('show'), 350 + i * 60); });
+        $('end-float').classList.add('show');
     }
 
     function resetGameUI() {
