@@ -100,11 +100,14 @@ class Audio {
         this._MAX_ACTIVE = 150;
         this._beatBpm = 0;
         this._beatCb = null;
-        // _intentPlaying: set by startBeat(), cleared ONLY by explicit stopBeat().
-        // Survives phone lock / visibilitychange not firing. Unlike _wasPlaying,
-        // it does not depend on any background event firing correctly.
         this._intentPlaying = false;
         this._needsResume = false;
+        // Look-ahead scheduler state
+        this._schedAt    = null;   // scheduled audio time for current step (set in _fireStep)
+        this._stepDur    = 0;      // duration of one 16th note in seconds
+        this._nextStep   = 0;      // next step to schedule (0–31)
+        this._nextStepTime = 0;    // ctx.currentTime of the next step
+        this._loopCount  = 0;      // how many full 32-step loops have completed
     }
 
     async init() {
@@ -112,43 +115,49 @@ class Audio {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         if (this.ctx.state === 'suspended') await this.ctx.resume();
 
+        // ── SFX bus: master → limiter → destination ──────────────────────────
+        // All game sound effects (crystal shatter, fanfare, shockwave, tone)
+        // route through this.master. The limiter catches SFX peak spikes without
+        // affecting the music, which lives on a completely separate bus below.
         this.master = this.ctx.createGain();
         this.master.gain.value = 0.78;
-
-        // Limiter — sits between master gain and destination.
-        // Transparent during normal play; catches peak spikes when many
-        // oscillators fire simultaneously (e.g. final crystal + fanfare)
-        // so the music isn't loudness-masked by the burst. Fast attack (2ms)
-        // catches transients; moderate release (180ms) avoids pump artefacts.
         this.limiter = this.ctx.createDynamicsCompressor();
-        this.limiter.threshold.value = -4;   // dB — only engages on peaks
-        this.limiter.knee.value       = 2;   // tight knee — limiter not compressor
-        this.limiter.ratio.value      = 20;  // hard limiting above threshold
+        this.limiter.threshold.value = -3;   // dB
+        this.limiter.knee.value       = 2;
+        this.limiter.ratio.value      = 20;  // hard limit above threshold
         this.limiter.attack.value     = 0.002;
         this.limiter.release.value    = 0.18;
         this.master.connect(this.limiter);
         this.limiter.connect(this.ctx.destination);
 
+        // ── Music bus: musicOut → destination (bypasses limiter) ─────────────
+        // All background music channels route here. Completely separate from the
+        // SFX bus so SFX peaks can never compress or duck the music.
+        this.musicOut = this.ctx.createGain();
+        this.musicOut.gain.value = 0.82;
+        this.musicOut.connect(this.ctx.destination);
+
         this.bassFilter = this.ctx.createBiquadFilter();
         this.bassFilter.type = 'lowpass'; this.bassFilter.frequency.value = 500; this.bassFilter.Q.value = 0.7;
         this.bassGain = this.ctx.createGain(); this.bassGain.gain.value = 0.44;
-        this.bassFilter.connect(this.bassGain); this.bassGain.connect(this.master);
+        this.bassFilter.connect(this.bassGain); this.bassGain.connect(this.musicOut);
 
         this.drumGain = this.ctx.createGain(); this.drumGain.gain.value = 0.38;
-        this.drumGain.connect(this.master);
+        this.drumGain.connect(this.musicOut);
 
         this.hihatGain = this.ctx.createGain(); this.hihatGain.gain.value = 0.26;
-        this.hihatGain.connect(this.master);
+        this.hihatGain.connect(this.musicOut);
 
         this.chordFilter = this.ctx.createBiquadFilter();
         this.chordFilter.type = 'lowpass'; this.chordFilter.frequency.value = 1500; this.chordFilter.Q.value = 0.7;
         this.chordGain = this.ctx.createGain(); this.chordGain.gain.value = 0.38;
-        this.chordFilter.connect(this.chordGain); this.chordGain.connect(this.master);
+        this.chordFilter.connect(this.chordGain); this.chordGain.connect(this.musicOut);
 
         this.texGain = this.ctx.createGain(); this.texGain.gain.value = 0.10;
-        this.texGain.connect(this.master);
+        this.texGain.connect(this.musicOut);
 
         this._distCurve = this._makeDistCurve(20);
+        this._createReverb();
 
         const b = this.ctx.createBuffer(1, 1, 22050);
         const s = this.ctx.createBufferSource(); s.buffer = b;
@@ -156,6 +165,46 @@ class Audio {
 
         this._setupVisibilityHandler();
         this.ready = true;
+    }
+
+    _createReverb() {
+        // Synthetic convolution reverb — exponentially decaying stereo noise IR.
+        // Early reflections emphasized in first 30ms; gentle air-absorption rolloff
+        // baked into the decay curve. Only hihat, chord, and texture send here —
+        // bass and kick stay fully dry to avoid muddiness.
+        const sr  = this.ctx.sampleRate;
+        const len = Math.floor(sr * 1.4);
+        const ir  = this.ctx.createBuffer(2, len, sr);
+        const earlyMs = Math.floor(sr * 0.03); // 30ms early reflection window
+        for (let ch = 0; ch < 2; ch++) {
+            const d = ir.getChannelData(ch);
+            for (let i = 0; i < len; i++) {
+                const norm  = i / len;
+                const decay = Math.pow(1 - norm, 2.2);             // smooth power-law
+                const airAbs = 1 - norm * 0.35;                    // HF rolloff over time
+                const early = i < earlyMs ? 1 + (1 - i / earlyMs) * 0.6 : 1; // boost early refs
+                d[i] = (Math.random() * 2 - 1) * decay * airAbs * early;
+            }
+        }
+        this.reverb = this.ctx.createConvolver();
+        this.reverb.buffer = ir;
+
+        // Wet bus: reverb → reverbGain → musicOut (reverb is a music-world effect)
+        this.reverbGain = this.ctx.createGain();
+        this.reverbGain.gain.value = 0.14;  // overall wet level — subtle spatial depth
+        this.reverb.connect(this.reverbGain);
+        this.reverbGain.connect(this.musicOut);
+
+        // Send gains — each source channel sends a fraction of signal to reverb
+        // Hihat: most reverb (air), chord: medium, texture: medium, bass/kick: none
+        this.hihatRevSend = this.ctx.createGain(); this.hihatRevSend.gain.value = 0.28;
+        this.hihatGain.connect(this.hihatRevSend); this.hihatRevSend.connect(this.reverb);
+
+        this.chordRevSend = this.ctx.createGain(); this.chordRevSend.gain.value = 0.22;
+        this.chordGain.connect(this.chordRevSend); this.chordRevSend.connect(this.reverb);
+
+        this.texRevSend = this.ctx.createGain(); this.texRevSend.gain.value = 0.35;
+        this.texGain.connect(this.texRevSend); this.texRevSend.connect(this.reverb);
     }
 
     _setupVisibilityHandler() {
@@ -178,7 +227,7 @@ class Audio {
         // but leave _intentPlaying alone — we want to resume on return.
         document.addEventListener('visibilitychange', () => {
             if (!this.ctx || !document.hidden) return;
-            if (this.beatInt) { clearInterval(this.beatInt); this.beatInt = null; }
+            if (this.beatInt) { clearTimeout(this.beatInt); this.beatInt = null; }
         });
 
         // Mark that we should attempt a resume on the next user gesture.
@@ -225,10 +274,35 @@ class Audio {
         document.addEventListener('click', gestureResume);
     }
 
+    // ── Look-ahead scheduler ──────────────────────────────────────────────────
+    // Uses Web Audio ctx.currentTime for sample-accurate step scheduling instead
+    // of setInterval. The ticker runs every INTERVAL_MS; each run schedules any
+    // steps whose time falls within the LOOKAHEAD window. Sounds are triggered at
+    // exact audio times, eliminating the ±10–20ms jitter of raw setInterval.
+    _startScheduler() {
+        const LOOKAHEAD   = 0.08;  // seconds ahead to schedule
+        const INTERVAL_MS = 20;    // scheduler tick interval in ms
+        this._stepDur     = 60 / (this._beatBpm * 4);  // one 16th note in seconds
+        this._nextStep    = 0;
+        this._loopCount   = 0;
+        this._nextStepTime = this.ctx.currentTime + 0.01;
+
+        const tick = () => {
+            if (!this._intentPlaying) return;
+            while (this._nextStepTime < this.ctx.currentTime + LOOKAHEAD) {
+                this._fireStep(this._nextStep, this._nextStepTime);
+                this._nextStep++;
+                if (this._nextStep >= 32) { this._nextStep = 0; this._loopCount++; }
+                this._nextStepTime += this._stepDur;
+            }
+            this.beatInt = setTimeout(tick, INTERVAL_MS);
+        };
+        tick();
+    }
+
     _restartBeat() {
         if (!this.ready || this.beatInt) return;
-        const ms = (60000 / this._beatBpm) / 4;
-        this.beatInt = setInterval(() => { this.beat = (this.beat + 1) % 32; this.playStep(this.beat); }, ms);
+        this._startScheduler();
     }
 
     async unlock() {
@@ -248,29 +322,46 @@ class Audio {
     _canPlay() { return this.ready && this.ctx && this.ctx.state === 'running' && this._activeNodes < this._MAX_ACTIVE; }
 
     startBeat(bpm, cb) {
-        this.stopBeat(); this.beat = 0;
+        this.stopBeat();
         this._beatBpm = bpm; this._beatCb = cb;
-        this._intentPlaying = true;  // user explicitly started music
-        const ms = (60000 / bpm) / 4;
+        this._intentPlaying = true;
+        // Call cb immediately so game startTime / beatTime are set from now
         const start = performance.now();
         if (cb) cb(start);
-        this.playStep(0);
-        this.beatInt = setInterval(() => { this.beat = (this.beat + 1) % 32; this.playStep(this.beat); }, ms);
+        this._startScheduler();
     }
 
-    stopBeat() { if (this.beatInt) { clearInterval(this.beatInt); this.beatInt = null; } this._intentPlaying = false; }
+    stopBeat() {
+        if (this.beatInt) { clearTimeout(this.beatInt); this.beatInt = null; }
+        this._intentPlaying = false;
+    }
 
     setBassStyle(style) { this.bassStyle = style % 10; }
 
     getBpm(style) {
-        // Returns the intended BPM for each track — matches music_v5.html
         const BPMS = [108,112,126,130,132,138,144,148,150,150]; // sorted low→high
         return BPMS[(style % 10)] || 130;
     }
 
-    playStep(step) {
+    // _fireStep: the heart of the scheduler — plays one 16th-note step.
+    // `when` is the precise ctx.currentTime at which sounds should start.
+    // Sets this._schedAt so all music sound functions land exactly on `when`
+    // rather than at ctx.currentTime (which is slightly later due to tick latency).
+    _fireStep(step, when) {
         if (!this._canPlay() || !this.beatOn) return;
         const s = this.bassStyle || 0;
+
+        // ── Swing (styles 0 + 2 only) ──────────────────────────────────────
+        // Off-beat 16th notes (odd steps) land 12% / 10% of a step later,
+        // giving funk styles a lopsided, human groove.
+        const SWING = [0.12, 0, 0.10, 0, 0, 0, 0, 0, 0, 0];
+        const swingFrac = SWING[s] || 0;
+        const scheduledAt = (swingFrac > 0 && step % 2 === 1)
+            ? when + this._stepDur * swingFrac
+            : when;
+        this._schedAt = scheduledAt;
+
+        // ── Standard step sounds ────────────────────────────────────────────
         const dr = this.getSubPattern(s)[step];
         if (dr) this.subDrone(dr[0], dr[1], dr[2]);
         const cp = this.getPadPattern(s)[step];
@@ -283,7 +374,13 @@ class Audio {
         if (pp.s[step]) this.tapeSnap(pp.s[step]);
         if (pp.h && pp.h[step]) this.hihat(Math.abs(pp.h[step]), pp.h[step] < 0);
         if (pp.t && pp.t[step]) this.texGrain(pp.t[step]);
+
+        this._schedAt = null;
+        this.beat = step; // keep .beat in sync for anything that reads it
     }
+
+    // Legacy alias — kept so any external code calling playStep still works
+    playStep(step) { this._fireStep(step, this.ctx ? this.ctx.currentTime : 0); }
 
     getSubPattern(style) {
         const S = {
@@ -430,7 +527,8 @@ class Audio {
                     0,0,0,0,.52,0,.12,.14,0,0,0,0,.50,0,0,.16],
                  h:[.28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12,
                     .28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12],
-                 t:[] },
+                 t:[0,0,0,.04,0,0,.04,0,0,0,0,.04,0,0,.04,0,
+                    0,0,0,.04,0,0,.04,0,0,0,0,.04,0,0,.04,.04] },
             // 03 · Guardia Festival — CT Millennial Fair (130 bpm)
             // Kick: lighter than other styles (.64) for festival bounce, beat 3 .52, ghosts .18
             // Snare: .50/.48, feather ghosts .10–.14 — celebratory without heaviness
@@ -451,7 +549,8 @@ class Audio {
                     0,0,0,0,.54,0,0,.14,0,0,0,.12,.52,0,0,0],
                  h:[.28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12,
                     .28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12],
-                 t:[] },
+                 t:[0,0,.04,0,0,0,0,0,0,0,.04,0,0,0,0,0,
+                    0,0,.04,0,0,0,0,0,0,0,.04,0,0,0,.04,0] },
             // 05 · Bright Flash — MM4 arpeggio climber (138 bpm)
             // Kick: .70 downbeats, .32 driving upbeats, .20 ghost, .16 feather — high energy
             // Snare: .52/.50 — punchy to match the climbing momentum
@@ -472,7 +571,8 @@ class Audio {
                     0,0,0,0,.58,0,.16,0,0,0,0,0,.56,0,.14,.18],
                  h:[.34,.18,.26,.18,.34,.18,-.38,.18,.34,.18,.26,.18,.34,.18,-.38,.18,
                     .34,.18,.26,.18,.34,.18,-.38,.18,.34,.18,.26,.18,.34,.18,-.38,.18],
-                 t:[] },
+                 t:[0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0,
+                    0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0] },
             // 07 · Sky World — SMB3 bouncy athletic (148 bpm)
             // Kick: .74 BIG bounce on 1, .32 spring-step upbeat, .62 beat 3 — contrast = bounce feel
             // Snare: .56/.54 — crisp and athletic to match the springy character
@@ -482,7 +582,8 @@ class Audio {
                     0,0,0,0,.56,0,.14,0,0,0,0,0,.54,0,.12,.16],
                  h:[.32,.16,.24,.16,.32,.16,-.36,.16,.32,.16,.24,.16,.32,.16,-.36,.16,
                     .32,.16,.24,.16,.32,.16,-.36,.16,.32,.16,.24,.16,.32,.16,-.36,.16],
-                 t:[] },
+                 t:[0,0,.04,0,0,0,.04,0,0,0,.04,0,0,0,.04,0,
+                    0,0,.04,0,0,0,.04,0,0,0,.04,0,0,0,.04,0] },
             // 08 · Wily's Resolve — relentless 16th hats (150 bpm)
             // Kick: .78 MAX POWER beat 1, .38 driving and-kick, .66 beat 3 — brutal contrast
             // Snare: .62/.60 — heaviest snare of all styles, matches the relentless Wily energy
@@ -492,7 +593,8 @@ class Audio {
                     0,0,0,0,.62,0,0,.16,0,0,0,0,.60,0,.14,.20],
                  h:[.36,.20,.28,.20,.36,.20,-.40,.20,.36,.20,.28,.20,.36,.20,-.40,.20,
                     .36,.20,.28,.20,.36,.20,-.40,.20,.36,.20,.28,.20,.36,.20,-.40,.20],
-                 t:[] },
+                 t:[.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,
+                    .03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03] },
             // 09 · Hard Corps — MM3 military march (150 bpm)
             // Kick: .78 authoritative downbeat, .36 march-push, .64 beat 3 — full military weight
             // Snare: keeps the military ghost-roll pattern; main beats .58/.56 punched up
@@ -502,7 +604,8 @@ class Audio {
                     0,0,.28,0,.58,0,.24,0,0,0,.26,0,.56,0,.22,.18],
                  h:[.34,.18,.26,.18,.34,.18,.26,.18,.34,.18,.26,.18,.34,.18,.26,.18,
                     .34,.18,.26,.18,.34,.18,.26,.18,.34,.18,.26,.18,.34,.18,-.36,.18],
-                 t:[] },
+                 t:[.04,0,0,0,0,0,0,0,0,0,0,.04,0,0,0,0,
+                    .04,0,0,0,0,0,0,0,0,0,0,.04,0,0,0,.04] },
         };
         return R[style] || R[0];
     }
@@ -511,7 +614,7 @@ class Audio {
 
     subDrone(semitone, velocity, duration) {
         if (!this._canPlay()) return;
-        const t = this.ctx.currentTime;
+        const t = this._schedAt ?? this.ctx.currentTime;
         const freq = 65.41 * Math.pow(2, semitone / 12);
         const dur = duration + 0.25;
         const nodes = [];
@@ -538,7 +641,7 @@ class Audio {
 
     kick808(vel) {
         if (!this._canPlay()) return;
-        const t = this.ctx.currentTime;
+        const t = this._schedAt ?? this.ctx.currentTime;
         const osc = this.ctx.createOscillator(); osc.type = 'sine';
         osc.frequency.setValueAtTime(55 + vel * 15, t);
         osc.frequency.exponentialRampToValueAtTime(28, t + 0.2);
@@ -562,7 +665,7 @@ class Audio {
 
     tapeSnap(vel) {
         if (!this._canPlay()) return;
-        const t = this.ctx.currentTime;
+        const t = this._schedAt ?? this.ctx.currentTime;
         const bufLen = Math.floor(this.ctx.sampleRate * 0.04);
         const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
         const ch = buf.getChannelData(0);
@@ -584,7 +687,7 @@ class Audio {
 
     hihat(vel, open = false) {
         if (!this._canPlay()) return;
-        const t = this.ctx.currentTime;
+        const t = this._schedAt ?? this.ctx.currentTime;
         const dur = open ? 0.14 : 0.04;
         const bufLen = Math.floor(this.ctx.sampleRate * dur);
         const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
@@ -624,7 +727,7 @@ class Audio {
 
     texGrain(vel) {
         if (!this._canPlay()) return;
-        const t = this.ctx.currentTime;
+        const t = this._schedAt ?? this.ctx.currentTime;
         const bufLen = Math.floor(this.ctx.sampleRate * 0.1);
         const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
         const ch = buf.getChannelData(0);
@@ -641,7 +744,7 @@ class Audio {
 
     warblePad(semitones, vel) {
         if (!this._canPlay()) return;
-        const t = this.ctx.currentTime;
+        const t = this._schedAt ?? this.ctx.currentTime;
         const baseFreq = 130.81;
         const dur = 2.0;
         const nodes = [];
@@ -674,7 +777,7 @@ class Audio {
 
     chordStab(semitones, vel) {
         if (!this._canPlay()) return;
-        const t = this.ctx.currentTime;
+        const t = this._schedAt ?? this.ctx.currentTime;
         const baseFreq = 130.81;
         const dur = 0.20;
         const nodes = [];
@@ -907,8 +1010,6 @@ class Audio {
         const ROOT = 261.63; // C4
 
         // ── Soft crack accent ─────────────────────────────────────────
-        // Very light — the last crystalShatter already fired on the final
-        // crystal, so this just adds a crisp high accent to mark the moment.
         const crackLen = Math.floor(this.ctx.sampleRate * 0.006);
         const crackBuf = this.ctx.createBuffer(1, crackLen, this.ctx.sampleRate);
         const cd = crackBuf.getChannelData(0);
@@ -916,16 +1017,16 @@ class Audio {
         const crackSrc = this.ctx.createBufferSource(); crackSrc.buffer = crackBuf;
         const cFilt = this.ctx.createBiquadFilter(); cFilt.type = 'highpass';
         cFilt.frequency.value = 5500; cFilt.Q.value = 0.5;
-        const cGain = this.ctx.createGain(); cGain.gain.value = 0.28;
+        const cGain = this.ctx.createGain(); cGain.gain.value = 0.14; // was 0.28
         crackSrc.connect(cFilt).connect(cGain).connect(this.master);
         crackSrc.start(t); crackSrc.stop(t + 0.008);
         allNodes.push(crackSrc, cFilt, cGain);
 
         // ── Ascending arpeggio — C Eb F G Bb C ───────────────────────
-        // 6 clean sine tones, 68ms apart, long decay so all 6 are still
-        // ringing by the end — full pentatonic chord hanging in the air.
-        // Volume increases slightly as we ascend (louder = more triumphant).
-        // Each note also spawns 3 shimmer tones above it immediately.
+        // Gain budget: arp notes scaled to 0.10-0.15 (was 0.20-0.27).
+        // Per-note shimmers at 0.018-0.024 (was 0.022-0.038).
+        // All 6 notes + 18 shimmers now sum to ~0.55 through master,
+        // keeping the combined hardware output well below OS AGC threshold.
         [0, 3, 5, 7, 10, 12].forEach((semis, i) => {
             const delay = i * 0.068;
             const freq  = ROOT * Math.pow(2, semis / 12);
@@ -934,7 +1035,7 @@ class Audio {
             osc.frequency.value = freq;
             const env = this.ctx.createGain();
             env.gain.setValueAtTime(0, t + delay);
-            env.gain.linearRampToValueAtTime(0.20 + i * 0.012, t + delay + 0.004);
+            env.gain.linearRampToValueAtTime(0.10 + i * 0.008, t + delay + 0.004); // was 0.20 + i*0.012
             env.gain.exponentialRampToValueAtTime(0.001, t + delay + decay);
             osc.connect(env).connect(this.master);
             osc.start(t + delay); osc.stop(t + delay + decay + 0.01);
@@ -947,7 +1048,7 @@ class Audio {
                 const sOsc = this.ctx.createOscillator(); sOsc.type = 'sine'; sOsc.frequency.value = sFreq;
                 const sEnv = this.ctx.createGain();
                 sEnv.gain.setValueAtTime(0, t + sDelay);
-                sEnv.gain.linearRampToValueAtTime(0.038 - j * 0.008, t + sDelay + 0.001);
+                sEnv.gain.linearRampToValueAtTime(0.020 - j * 0.004, t + sDelay + 0.001); // was 0.038 - j*0.008
                 sEnv.gain.exponentialRampToValueAtTime(0.001, t + sDelay + sDur);
                 sOsc.connect(sEnv).connect(this.master);
                 sOsc.start(t + sDelay); sOsc.stop(t + sDelay + sDur + 0.005);
@@ -956,9 +1057,8 @@ class Audio {
         });
 
         // ── Dense shimmer cloud ───────────────────────────────────────
-        // 28 micro-tones spread over 900ms, all pentatonic-pitched across
-        // 3 octaves. Power-curved arrival — burst-heavy at the start, thinning
-        // to a tail. Each tone rings 80–180ms so they blur into shimmer.
+        // 28 micro-tones — gVol ceiling reduced to 0.024 (was 0.042).
+        // Tones spread over 900ms so they never stack more than ~8 at once.
         const SSCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
         for (let i = 0; i < 28; i++) {
             const delay  = 0.05 + Math.pow(i / 27, 1.4) * 0.85;
@@ -966,7 +1066,7 @@ class Audio {
             const octave = Math.floor(i / SSCALE.length);
             const freq   = ROOT * Math.pow(2, (semis + octave * 12) / 12);
             const dur    = 0.08 + Math.random() * 0.10;
-            const gVol   = 0.042 * Math.max(0.3, 1 - i * 0.022);
+            const gVol   = 0.024 * Math.max(0.3, 1 - i * 0.022); // was 0.042
             const dOsc = this.ctx.createOscillator(); dOsc.type = 'sine'; dOsc.frequency.value = freq;
             const dEnv = this.ctx.createGain();
             dEnv.gain.setValueAtTime(0, t + delay);
@@ -977,7 +1077,13 @@ class Audio {
             allNodes.push(dOsc, dEnv);
         }
 
-        this._scheduleCleanup(allNodes, 1.05);
+        // Disconnect directly — intentionally does NOT touch _activeNodes.
+        // crystalsClear already bypasses _canPlay(); if we counted its 100+ nodes
+        // in _activeNodes the counter would exceed _MAX_ACTIVE for ~700ms and
+        // silently drop music scheduler steps, causing audible beat dropout.
+        setTimeout(() => {
+            allNodes.forEach(n => { try { n.disconnect(); } catch(e) {} });
+        }, Math.ceil(1.05 * 1000 + 150));
     }
 
     success() { [0, 3, 7, 10].forEach((n, i) => setTimeout(() => this.tone(n, 0.5, 0.14), i * 80)); } // Cm7 arp
