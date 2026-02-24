@@ -722,6 +722,22 @@
         }
         .ach-item:not(.locked) .ach-check { opacity: 1; }
 
+        /* Progress bar — shown only on locked countable achievements */
+        .ach-progress { margin-top: 0.4rem; display: flex; align-items: center; gap: 0.5rem; }
+        .ach-progress-bar {
+            flex: 1; height: 3px; border-radius: 2px;
+            background: rgba(255,255,255,0.08); overflow: hidden;
+        }
+        .ach-progress-fill {
+            height: 100%; border-radius: 2px; min-width: 2px;
+            background: linear-gradient(90deg, #4DA8DA, #8EEAF4);
+            transition: width 0.4s ease;
+        }
+        .ach-progress-label {
+            font-size: 0.48rem; color: rgba(255,255,255,0.3);
+            letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
+        }
+
         /* Footer: level select button */
         .menu-footer {
             flex-shrink: 0; padding: 0.8rem 1.4rem;
