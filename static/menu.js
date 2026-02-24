@@ -13,23 +13,76 @@
     // ═══════════════════════════════════════
 
     const ACHIEVEMENTS = [
-        { id: 'first_blood',   icon: '✦',  name: 'First Blood',    desc: 'Complete your first level',              check: p => (p.highestLevel||0) >= 2 },
-        { id: 'on_a_roll',     icon: '🔥', name: 'On a Roll',      desc: 'Clear 3 levels in one session',          check: p => (p.sessionClears||0) >= 3 },
-        { id: 'perfectionist', icon: '🥇', name: 'Perfectionist',   desc: 'Earn a gold medal on any level',        check: p => Object.values(p.bestTiers||{}).includes('gold') },
-        { id: 'untouchable',   icon: '💎', name: 'Untouchable',     desc: 'Earn gold medals on 5 levels',          check: p => Object.values(p.bestTiers||{}).filter(t=>t==='gold').length >= 5 },
-        { id: 'centurion',     icon: '⚡', name: 'Centurion',       desc: 'Hit 100 orbs total',                    check: p => (p.totalOrbsHit||0) >= 100 },
-        { id: 'veteran',       icon: '🌟', name: 'Veteran',         desc: 'Hit 1000 orbs total',                   check: p => (p.totalOrbsHit||0) >= 1000 },
-        { id: 'committed',     icon: '📅', name: 'Committed',       desc: 'Play on 3 different days',              check: p => (p.daysPlayed||[]).length >= 3 },
-        { id: 'speed_demon',   icon: '⚡', name: 'Speed Demon',     desc: 'Clear any level in under 10 seconds',   check: p => Object.values(p.bestTimes||{}).some(t=>t<10) },
-        { id: 'completionist', icon: '👑', name: 'Completionist',   desc: 'Medal every level in a batch of 10',   check: p => {
-            const tiers = p.bestTiers || {};
-            for (let start = 1; start <= (p.highestLevel||1); start += 10) {
-                const batch = Array.from({length:10},(_,i)=>start+i);
-                if (batch.every(n => tiers[n] && tiers[n] !== 'none')) return true;
-            }
-            return false;
-        }},
-        { id: 'dedicated',     icon: '⏱', name: 'Dedicated',       desc: 'Spend 30 minutes playing',              check: p => (p.totalPlaySecs||0) >= 1800 },
+
+        // ── STARTER ──────────────────────────────────────────────────────────
+        { id: 'first_blood',     icon: '✦',  name: 'First Blood',      desc: 'Complete your first level',
+          check: p => (p.highestLevel||0) >= 2 },
+        { id: 'committed',       icon: '📅', name: 'Committed',         desc: 'Play on 3 different days',
+          check: p => (p.daysPlayed||[]).length >= 3 },
+        { id: 'dedicated',       icon: '⏱', name: 'Dedicated',         desc: 'Spend 30 minutes playing',
+          check: p => (p.totalPlaySecs||0) >= 1800 },
+
+        // ── STREAKS ───────────────────────────────────────────────────────────
+        { id: 'hat_trick',       icon: '🔱', name: 'Hat Trick',         desc: 'Gold 3 levels in a row',
+          check: p => (p.goldStreak||0) >= 3 },
+        { id: 'golden_run',      icon: '👑', name: 'Golden Run',         desc: 'Gold 5 levels in a row',
+          check: p => (p.goldStreak||0) >= 5 },
+        { id: 'unstoppable',     icon: '🌊', name: 'Unstoppable',        desc: 'Gold 10 levels in a row',
+          check: p => (p.goldStreak||0) >= 10 },
+        { id: 'on_fire',         icon: '🔥', name: 'On Fire',            desc: 'Gold 3 levels in a single session',
+          check: p => (p.sessionGolds||0) >= 3 },
+
+        // ── SKILL ────────────────────────────────────────────────────────────
+        { id: 'chain_reaction',  icon: '💥', name: 'Chain Reaction',     desc: 'Break 2 crystals with a single orb hit',
+          check: p => !!(p.achFlags||{}).chainReaction },
+        { id: 'clockwork',       icon: '🎯', name: 'Clockwork',           desc: 'Gold the same level 3 separate times',
+          check: p => Object.values(p.goldPerLevel||{}).some(n => n >= 3) },
+        { id: 'wrecking_ball',   icon: '⚡', name: 'Wrecking Ball',       desc: 'Break all crystals in under 8 seconds',
+          check: p => !!(p.achFlags||{}).wreckingBall },
+        { id: 'orbs_to_spare',   icon: '🌀', name: 'Orbs to Spare',       desc: 'Complete a level with 4 or more orbs unused',
+          check: p => !!(p.achFlags||{}).orbsSpare },
+        { id: 'last_crystal',    icon: '🎱', name: 'Last Crystal',        desc: 'Break the final crystal with your last orb',
+          check: p => !!(p.achFlags||{}).lastCrystal },
+
+        // ── COMPLETIONIST ────────────────────────────────────────────────────
+        { id: 'cartographer',    icon: '🗺️', name: 'Cartographer',       desc: 'Complete all 50 levels',
+          check: p => (p.highestLevel||0) >= 50 },
+        { id: 'bronze_age',      icon: '🥉', name: 'Bronze Age',          desc: 'Bronze or better on every level',
+          check: p => {
+              const tiers = p.bestTiers || {};
+              return Array.from({length:50},(_,i)=>i+1).every(n => tiers[n] && tiers[n] !== 'none');
+          }},
+        { id: 'silver_lining',   icon: '🥈', name: 'Silver Lining',       desc: 'Silver or better on every level',
+          check: p => {
+              const tiers = p.bestTiers || {};
+              return Array.from({length:50},(_,i)=>i+1).every(n => tiers[n] === 'silver' || tiers[n] === 'gold');
+          }},
+        { id: 'all_that_glitters', icon: '🥇', name: 'All That Glitters', desc: 'Gold on every single level',
+          check: p => {
+              const tiers = p.bestTiers || {};
+              return Array.from({length:50},(_,i)=>i+1).every(n => tiers[n] === 'gold');
+          }},
+
+        // ── GOLD QUANTITY ────────────────────────────────────────────────────
+        { id: 'golden_touch',    icon: '✨', name: 'Golden Touch',        desc: 'Earn 10 gold medals',
+          check: p => (p.totalGolds||0) >= 10 },
+        { id: 'gold_rush',       icon: '🏅', name: 'Gold Rush',            desc: 'Earn 25 gold medals',
+          check: p => (p.totalGolds||0) >= 25 },
+        { id: 'gold_standard',   icon: '🌟', name: 'Gold Standard',        desc: 'Earn 50 gold medals',
+          check: p => (p.totalGolds||0) >= 50 },
+        { id: 'midas',           icon: '👑', name: 'Midas',                desc: 'Earn 100 gold medals',
+          check: p => (p.totalGolds||0) >= 100 },
+
+        // ── VOLUME ───────────────────────────────────────────────────────────
+        { id: 'century',         icon: '💯', name: 'Century',              desc: 'Complete 100 levels',
+          check: p => (p.totalClears||0) >= 100 },
+        { id: 'five_hundred',    icon: '🚀', name: 'Five Hundred',          desc: 'Complete 500 levels',
+          check: p => (p.totalClears||0) >= 500 },
+        { id: 'thousandaire',    icon: '🌌', name: 'Thousandaire',          desc: 'Complete 1000 levels',
+          check: p => (p.totalClears||0) >= 1000 },
+        { id: 'legend',          icon: '🔥', name: 'Legend',                desc: 'Hit 10,000 orbs',
+          check: p => (p.totalOrbsHit||0) >= 10000 },
+
     ];
 
     function getMenuProgress() { return loadProgress(); }
@@ -327,3 +380,76 @@
     document.getElementById('menu-reset-btn').addEventListener('click', openLevelSelect);
     document.getElementById('ls-close').addEventListener('click', closeLevelSelect);
     document.getElementById('ls-overlay').addEventListener('click', closeLevelSelect);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  ACHIEVEMENT TOAST SYSTEM
+    //
+    //  checkAndToastAchievements(prevP, newP)
+    //    Called after every saveProgress in showFloatingEnd.
+    //    Diffs the two snapshots to find achievements that flipped from
+    //    locked → unlocked in this exact save, then queues them.
+    //
+    //  Queue: multiple achievements can unlock simultaneously (e.g. Hat Trick
+    //    + Golden Touch on the same gold). They show one at a time, 600ms apart.
+    // ═══════════════════════════════════════════════════════════════════════
+
+    const _toastQueue  = [];
+    let   _toastActive = false;
+
+    function checkAndToastAchievements(prevP, newP) {
+        ACHIEVEMENTS.forEach(ach => {
+            const wasUnlocked = ach.check(prevP);
+            const nowUnlocked = ach.check(newP);
+            if (!wasUnlocked && nowUnlocked) {
+                _toastQueue.push(ach);
+            }
+        });
+        if (!_toastActive) _drainToastQueue();
+    }
+
+    function _drainToastQueue() {
+        if (_toastQueue.length === 0) { _toastActive = false; return; }
+        _toastActive = true;
+        const ach = _toastQueue.shift();
+        _showToast(ach, () => {
+            // 600ms gap between consecutive toasts
+            setTimeout(_drainToastQueue, 600);
+        });
+    }
+
+    function _showToast(ach, onDone) {
+        const el    = document.getElementById('ach-toast');
+        const icon  = document.getElementById('ach-toast-icon');
+        const name  = document.getElementById('ach-toast-name');
+        const desc  = document.getElementById('ach-toast-desc');
+        if (!el) { onDone(); return; }
+
+        // Populate
+        icon.textContent = ach.icon;
+        name.textContent = ach.name;
+        desc.textContent = ach.desc;
+
+        // Reset to hidden state instantly (no transition), then trigger show
+        el.classList.remove('show', 'hide');
+        el.style.transition = 'none';
+        // Force reflow so removing classes takes effect before we add 'show'
+        void el.offsetHeight;
+        el.style.transition = '';
+
+        // Drop in
+        requestAnimationFrame(() => {
+            el.classList.add('show');
+        });
+
+        // Hold for 2.8s then exit
+        const HOLD_MS = 2800;
+        setTimeout(() => {
+            el.classList.remove('show');
+            el.classList.add('hide');
+            // After exit transition (~300ms), clean up and call onDone
+            setTimeout(() => {
+                el.classList.remove('hide');
+                onDone();
+            }, 320);
+        }, HOLD_MS);
+    }
