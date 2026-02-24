@@ -145,8 +145,12 @@
     function buildAchievements(p) {
         const list = document.getElementById('ach-list');
         list.innerHTML = '';
+        const earned = p.earnedAchievements || {};
         ACHIEVEMENTS.forEach(ach => {
-            const unlocked = ach.check(p);
+            // Use earnedAchievements as the canonical unlock record,
+            // with check(p) as fallback for achievements earned before
+            // earnedAchievements was introduced.
+            const unlocked = earned[ach.id] || ach.check(p);
             const item = document.createElement('div');
             item.className = `ach-item${unlocked ? '' : ' locked'}`;
             item.innerHTML = `
@@ -397,13 +401,29 @@
     let   _toastActive = false;
 
     function checkAndToastAchievements(prevP, newP) {
+        // earnedAchievements is the permanent record of every achievement
+        // that has ever fired. Once an id is in here it never fires again,
+        // regardless of whether the underlying check value fluctuates
+        // (e.g. goldStreak resets to 0 then rises to 3 again — Hat Trick
+        // should only ever fire once).
+        const alreadyEarned = newP.earnedAchievements || {};
+        const newlyEarned   = {};
+
         ACHIEVEMENTS.forEach(ach => {
+            if (alreadyEarned[ach.id]) return;   // already earned — never re-fire
             const wasUnlocked = ach.check(prevP);
             const nowUnlocked = ach.check(newP);
             if (!wasUnlocked && nowUnlocked) {
                 _toastQueue.push(ach);
+                newlyEarned[ach.id] = true;
             }
         });
+
+        // Persist immediately so a rapid double-call can't re-queue the same ach
+        if (Object.keys(newlyEarned).length > 0) {
+            saveProgress({ earnedAchievements: { ...alreadyEarned, ...newlyEarned } });
+        }
+
         if (!_toastActive) _drainToastQueue();
     }
 
