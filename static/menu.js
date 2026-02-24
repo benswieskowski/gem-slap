@@ -18,25 +18,29 @@
         { id: 'first_blood',     icon: '✦',  name: 'First Blood',      desc: 'Complete your first level',
           check: p => (p.highestLevel||0) >= 2 },
         { id: 'committed',       icon: '📅', name: 'Committed',         desc: 'Play on 3 different days',
-          check: p => (p.daysPlayed||[]).length >= 3 },
+          check: p => (p.daysPlayed||[]).length >= 3,
+          progress: p => ({ val: (p.daysPlayed||[]).length, max: 3 }) },
         { id: 'dedicated',       icon: '⏱', name: 'Dedicated',         desc: 'Spend 30 minutes playing',
-          check: p => (p.totalPlaySecs||0) >= 1800 },
+          check: p => (p.totalPlaySecs||0) >= 1800,
+          progress: p => ({ val: Math.min(Math.floor((p.totalPlaySecs||0) / 60), 30), max: 30, suffix: 'min' }) },
 
         // ── STREAKS ───────────────────────────────────────────────────────────
         { id: 'hat_trick',       icon: '🔱', name: 'Hat Trick',         desc: 'Gold 3 levels in a row',
-          check: p => (p.goldStreak||0) >= 3 },
+          check: p => (p.goldStreak||0) >= 3,
+          progress: p => ({ val: Math.min(p.goldStreak||0, 3), max: 3 }) },
         { id: 'golden_run',      icon: '👑', name: 'Golden Run',         desc: 'Gold 5 levels in a row',
-          check: p => (p.goldStreak||0) >= 5 },
+          check: p => (p.goldStreak||0) >= 5,
+          progress: p => ({ val: Math.min(p.goldStreak||0, 5), max: 5 }) },
         { id: 'unstoppable',     icon: '🌊', name: 'Unstoppable',        desc: 'Gold 10 levels in a row',
-          check: p => (p.goldStreak||0) >= 10 },
-        { id: 'on_fire',         icon: '🔥', name: 'On Fire',            desc: 'Gold 3 levels in a single session',
-          check: p => (p.sessionGolds||0) >= 3 },
+          check: p => (p.goldStreak||0) >= 10,
+          progress: p => ({ val: Math.min(p.goldStreak||0, 10), max: 10 }) },
 
         // ── SKILL ────────────────────────────────────────────────────────────
         { id: 'chain_reaction',  icon: '💥', name: 'Chain Reaction',     desc: 'Break 2 crystals with a single orb hit',
           check: p => !!(p.achFlags||{}).chainReaction },
         { id: 'clockwork',       icon: '🎯', name: 'Clockwork',           desc: 'Gold the same level 3 separate times',
-          check: p => Object.values(p.goldPerLevel||{}).some(n => n >= 3) },
+          check: p => Object.values(p.goldPerLevel||{}).some(n => n >= 3),
+          progress: p => ({ val: Math.min(Math.max(...(Object.values(p.goldPerLevel||{}).length ? Object.values(p.goldPerLevel||{}) : [0])), 3), max: 3 }) },
         { id: 'wrecking_ball',   icon: '⚡', name: 'Wrecking Ball',       desc: 'Break all crystals in under 8 seconds',
           check: p => !!(p.achFlags||{}).wreckingBall },
         { id: 'orbs_to_spare',   icon: '🌀', name: 'Orbs to Spare',       desc: 'Complete a level with 4 or more orbs unused',
@@ -46,42 +50,74 @@
 
         // ── COMPLETIONIST ────────────────────────────────────────────────────
         { id: 'cartographer',    icon: '🗺️', name: 'Cartographer',       desc: 'Complete all 50 levels',
-          check: p => (p.highestLevel||0) >= 50 },
+          check: p => (p.highestLevel||0) >= 50,
+          progress: p => ({ val: Math.min(p.highestLevel||0, 50), max: 50 }) },
         { id: 'bronze_age',      icon: '🥉', name: 'Bronze Age',          desc: 'Bronze or better on every level',
           check: p => {
               const tiers = p.bestTiers || {};
               return Array.from({length:50},(_,i)=>i+1).every(n => tiers[n] && tiers[n] !== 'none');
+          },
+          progress: p => {
+              const tiers = p.bestTiers || {};
+              const val = Array.from({length:50},(_,i)=>i+1).filter(n => tiers[n] && tiers[n] !== 'none').length;
+              return { val, max: 50 };
           }},
         { id: 'silver_lining',   icon: '🥈', name: 'Silver Lining',       desc: 'Silver or better on every level',
           check: p => {
               const tiers = p.bestTiers || {};
               return Array.from({length:50},(_,i)=>i+1).every(n => tiers[n] === 'silver' || tiers[n] === 'gold');
+          },
+          progress: p => {
+              const tiers = p.bestTiers || {};
+              const val = Array.from({length:50},(_,i)=>i+1).filter(n => tiers[n] === 'silver' || tiers[n] === 'gold').length;
+              return { val, max: 50 };
           }},
         { id: 'all_that_glitters', icon: '🥇', name: 'All That Glitters', desc: 'Gold on every single level',
           check: p => {
               const tiers = p.bestTiers || {};
               return Array.from({length:50},(_,i)=>i+1).every(n => tiers[n] === 'gold');
+          },
+          progress: p => {
+              const tiers = p.bestTiers || {};
+              const val = Array.from({length:50},(_,i)=>i+1).filter(n => tiers[n] === 'gold').length;
+              return { val, max: 50 };
           }},
 
         // ── GOLD QUANTITY ────────────────────────────────────────────────────
+        { id: 'first_gold',      icon: '⭐', name: 'First Gold',          desc: 'Earn your first gold medal',
+          check: p => (p.totalGolds||0) >= 1 },
         { id: 'golden_touch',    icon: '✨', name: 'Golden Touch',        desc: 'Earn 10 gold medals',
-          check: p => (p.totalGolds||0) >= 10 },
+          check: p => (p.totalGolds||0) >= 10,
+          progress: p => ({ val: Math.min(p.totalGolds||0, 10), max: 10 }) },
         { id: 'gold_rush',       icon: '🏅', name: 'Gold Rush',            desc: 'Earn 25 gold medals',
-          check: p => (p.totalGolds||0) >= 25 },
+          check: p => (p.totalGolds||0) >= 25,
+          progress: p => ({ val: Math.min(p.totalGolds||0, 25), max: 25 }) },
         { id: 'gold_standard',   icon: '🌟', name: 'Gold Standard',        desc: 'Earn 50 gold medals',
-          check: p => (p.totalGolds||0) >= 50 },
+          check: p => (p.totalGolds||0) >= 50,
+          progress: p => ({ val: Math.min(p.totalGolds||0, 50), max: 50 }) },
         { id: 'midas',           icon: '👑', name: 'Midas',                desc: 'Earn 100 gold medals',
-          check: p => (p.totalGolds||0) >= 100 },
+          check: p => (p.totalGolds||0) >= 100,
+          progress: p => ({ val: Math.min(p.totalGolds||0, 100), max: 100 }) },
 
         // ── VOLUME ───────────────────────────────────────────────────────────
+        { id: 'getting_started', icon: '🌱', name: 'Getting Started',     desc: 'Complete 5 levels',
+          check: p => (p.totalClears||0) >= 5,
+          progress: p => ({ val: Math.min(p.totalClears||0, 5), max: 5 }) },
+        { id: 'orb_popper',      icon: '🫧', name: 'Orb Popper',          desc: 'Hit 100 orbs',
+          check: p => (p.totalOrbsHit||0) >= 100,
+          progress: p => ({ val: Math.min(p.totalOrbsHit||0, 100), max: 100 }) },
         { id: 'century',         icon: '💯', name: 'Century',              desc: 'Complete 100 levels',
-          check: p => (p.totalClears||0) >= 100 },
+          check: p => (p.totalClears||0) >= 100,
+          progress: p => ({ val: Math.min(p.totalClears||0, 100), max: 100 }) },
         { id: 'five_hundred',    icon: '🚀', name: 'Five Hundred',          desc: 'Complete 500 levels',
-          check: p => (p.totalClears||0) >= 500 },
+          check: p => (p.totalClears||0) >= 500,
+          progress: p => ({ val: Math.min(p.totalClears||0, 500), max: 500 }) },
         { id: 'thousandaire',    icon: '🌌', name: 'Thousandaire',          desc: 'Complete 1000 levels',
-          check: p => (p.totalClears||0) >= 1000 },
+          check: p => (p.totalClears||0) >= 1000,
+          progress: p => ({ val: Math.min(p.totalClears||0, 1000), max: 1000 }) },
         { id: 'legend',          icon: '🔥', name: 'Legend',                desc: 'Hit 10,000 orbs',
-          check: p => (p.totalOrbsHit||0) >= 10000 },
+          check: p => (p.totalOrbsHit||0) >= 10000,
+          progress: p => ({ val: Math.min(p.totalOrbsHit||0, 10000), max: 10000 }) },
 
     ];
 
@@ -147,17 +183,31 @@
         list.innerHTML = '';
         const earned = p.earnedAchievements || {};
         ACHIEVEMENTS.forEach(ach => {
-            // Use earnedAchievements as the canonical unlock record,
-            // with check(p) as fallback for achievements earned before
-            // earnedAchievements was introduced.
             const unlocked = earned[ach.id] || ach.check(p);
             const item = document.createElement('div');
             item.className = `ach-item${unlocked ? '' : ' locked'}`;
+
+            // Build progress bar HTML for locked countable achievements
+            let progressHtml = '';
+            if (!unlocked && ach.progress) {
+                const { val, max, suffix } = ach.progress(p);
+                const pct = max > 0 ? Math.min(100, (val / max) * 100) : 0;
+                const label = suffix ? `${val} / ${max} ${suffix}` : `${val.toLocaleString()} / ${max.toLocaleString()}`;
+                progressHtml = `
+                    <div class="ach-progress">
+                        <div class="ach-progress-bar">
+                            <div class="ach-progress-fill" style="width:${pct}%"></div>
+                        </div>
+                        <div class="ach-progress-label">${label}</div>
+                    </div>`;
+            }
+
             item.innerHTML = `
                 <div class="ach-icon">${ach.icon}</div>
                 <div class="ach-text">
                     <div class="ach-name">${ach.name}</div>
                     <div class="ach-desc">${ach.desc}</div>
+                    ${progressHtml}
                 </div>
                 <div class="ach-check">✓</div>`;
             list.appendChild(item);
