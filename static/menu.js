@@ -442,7 +442,7 @@
         });
 
         // Hold for 2.8s then exit
-        const HOLD_MS = 2800;
+        const HOLD_MS = 4500;
         setTimeout(() => {
             el.classList.remove('show');
             el.classList.add('hide');
