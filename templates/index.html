@@ -1214,6 +1214,8 @@
     //  PARTICLES & EFFECTS
     // ═══════════════════════════════════════
     let motes = [], bursts = [], crystalShards = [], energyMotes = [], crystalDust = [];
+    // Cache beat-dot elements — queried once at init instead of every frame in draw()
+    const _beatDots = Array.from(document.querySelectorAll('.beat-dot'));
 
     const SHOCK_RADIUS = 38;
     const SHOCK_STRENGTH = 10.0;
@@ -1586,7 +1588,7 @@
             const beatMs = state.measureMs / 4;
             const since = ((now - state.beatTime) % state.measureMs + state.measureMs) % state.measureMs;
             const curBeat = Math.floor(since / beatMs), beatProgress = (since % beatMs) / beatMs;
-            document.querySelectorAll('.beat-dot').forEach((d, i) => d.classList.toggle('active', i === curBeat && beatProgress < 0.15));
+            _beatDots.forEach((d, i) => d.classList.toggle('active', i === curBeat && beatProgress < 0.15));
         }
 
         ctx.restore();
@@ -2180,6 +2182,12 @@
 
     function startCountdown() {
         audio.stopBeat();
+        // Increment generation so any stale setTimeout from a previous countdown
+        // will see a mismatched generation and abort before calling spawnInitialOrbs
+        // or audio.startBeat. This fires whenever level-select jumps happen mid-countdown.
+        state._cdGen = (state._cdGen || 0) + 1;
+        const myGen = state._cdGen;
+
         state.countdown = 3; state.countdownStart = performance.now(); state.playing = false;
         const countMs = 550;
         const totalMs = 3 * countMs;
@@ -2230,6 +2238,7 @@
         // Fade out wrapper then start play
         setTimeout(() => wrap.classList.add('fade-out'), totalMs - 380);
         setTimeout(() => {
+            if (state._cdGen !== myGen) return; // stale — a newer countdown took over
             wrap.remove();
             state.countdown = 0; spawnInitialOrbs();
             const beatMs = (60000 / state.bpm);
