@@ -2071,6 +2071,7 @@
             state.score = 0; state.melody = []; state.complete = false; state.levelCleared = false;
             state.elapsed = 0; state.orbsHit = 0; state.orbsSpawned = 0;
             state._chainReactionEarned = false; state._lastCrystalUsed = false;
+            state._spawnStaggerPending = 0;
             state._wreckingBallEarned = false; state._orbsSpareEarned = false;
             state._reveal = null;
             state.bassStyle = bassParam;
@@ -2123,7 +2124,18 @@
 
     function spawnInitialOrbs() {
         const toSpawn = state.allOrbs.filter(o => !o.spawned).slice(0, state.visibleAtOnce);
-        toSpawn.forEach((orb, index) => { setTimeout(() => { if (!orb.spawned) spawnOrb(orb); }, index * 250); });
+        toSpawn.forEach((orb, index) => { setTimeout(() => { spawnOrb(orb); }, index * 250); });
+    }
+
+    function spawnInitialOrbs() {
+        const toSpawn = state.allOrbs.filter(o => !o.spawned).slice(0, state.visibleAtOnce);
+        state._spawnStaggerPending = toSpawn.length;
+        toSpawn.forEach((orb, index) => {
+            setTimeout(() => {
+                state._spawnStaggerPending = Math.max(0, (state._spawnStaggerPending || 0) - 1);
+                spawnOrb(orb);
+            }, index * 250);
+        });
     }
 
     function spawnOrb(orb) {
@@ -2139,6 +2151,11 @@
     }
 
     function trySpawnNext() {
+        // Don't spawn if stagger is still filling up to visibleAtOnce — those slots
+        // will arrive via setTimeout and we don't want to skip ahead of them
+        const inFlight = state._spawnStaggerPending || 0;
+        const liveOrbs = state.orbs.filter(o => !o.hit).length;
+        if (liveOrbs + inFlight >= state.visibleAtOnce) return;
         const unspawned = state.allOrbs.filter(o => !o.spawned);
         if (unspawned.length > 0) spawnOrb(unspawned[0]);
     }
