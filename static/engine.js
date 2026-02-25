@@ -1700,6 +1700,7 @@ function drawOrb(orb, now) {
                 brg.addColorStop(1,   rgba(rgb.r,rgb.g,rgb.b, 0));
                 ctx.fillStyle=brg; ctx.beginPath(); ctx.arc(p.x,p.y,brillR,0,Math.PI*2); ctx.fill();
             }
+        }
     }
     ctx.globalAlpha = 1;
 }
