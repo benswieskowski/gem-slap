@@ -42,7 +42,7 @@ function _buildBgCanvas(w, h) {
 // Orb path cache — wavy paths rebuilt every _PATH_SKIP frames instead of every frame.
 // On mobile (N=3) cuts ~11k trig ops/frame to ~3.7k with no visible difference.
 const _orbPathCache = new Map();
-const _PATH_SKIP = _isMobile ? 3 : 1;
+const _PATH_SKIP = 1; // paths rebuilt every frame for smooth animation
 let _drawFrameCount = 0;
 
 function _buildOrbPaths(p, R, T, b) {
@@ -1632,7 +1632,7 @@ function drawOrb(orb, now) {
     ctx.fillStyle=crg; _tracePath(ctx,core); ctx.fill();
 
     // ── Orbiting motes — capped on mobile ───────────────────────
-    const numMotes = _isMobile ? Math.min(10, 4+Math.floor(b*8)) : (10+Math.floor(b*16));
+    const numMotes = 10 + Math.floor(b * 16);
     for (let i = 0; i < numMotes; i++) {
         const golden = i*2.39996323, moteOrbit = R*(0.2+(i/numMotes)*0.7);
         const motePhase = T*(0.15+(i%7)*0.06)+golden, wobble = Math.sin(T*1.5+i*0.9)*4;
@@ -1665,12 +1665,7 @@ function drawOrb(orb, now) {
         blg.addColorStop(1,   rgba(rgb.r,rgb.g,rgb.b, 0));
         ctx.fillStyle=blg; ctx.beginPath(); ctx.arc(p.x,p.y,bloomR,0,Math.PI*2); ctx.fill();
 
-        if (_isMobile) {
-            // Single arc ring — replaces 3 wavy stroked rings + 18 burst gradients
-            const rp = Math.sin(T*7)*0.5+0.5;
-            ctx.beginPath(); ctx.arc(p.x,p.y, R*(1.04+peak*0.06), 0, Math.PI*2);
-            ctx.strokeStyle=rgba(hR,hG,hB, peak*0.5*rp); ctx.lineWidth=2+peak*1.5; ctx.stroke();
-        } else {
+        {
             for (let ring = 0; ring < 3; ring++) {
                 const ringR = R*(1.03+peak*(0.06+ring*0.045)), rp = Math.sin(T*7+ring*2.1)*0.5+0.5;
                 ctx.beginPath();
@@ -1705,7 +1700,6 @@ function drawOrb(orb, now) {
                 brg.addColorStop(1,   rgba(rgb.r,rgb.g,rgb.b, 0));
                 ctx.fillStyle=brg; ctx.beginPath(); ctx.arc(p.x,p.y,brillR,0,Math.PI*2); ctx.fill();
             }
-        }
     }
     ctx.globalAlpha = 1;
 }
