@@ -289,12 +289,19 @@
         footer.classList.remove('show');
         overlay.classList.remove('show');
         panel.classList.remove('show'); // triggers slide-down transition
-        // After transition: remove .animating → display:none (physically cannot render)
+        // Remove any previously-registered cleanup listener before adding the new one
+        // (prevents stacking up if closeLevelSelect is called multiple times rapidly)
+        if (panel._lsCleanupFn) {
+            panel.removeEventListener('transitionend', panel._lsCleanupFn);
+            panel._lsCleanupFn = null;
+        }
         const cleanup = () => {
             panel.classList.remove('animating');
             panel.removeEventListener('transitionend', cleanup);
+            panel._lsCleanupFn = null;
             document.getElementById('ls-scroll').innerHTML = '';
         };
+        panel._lsCleanupFn = cleanup;
         panel.addEventListener('transitionend', cleanup);
         // Safety fallback in case transitionend doesn't fire (e.g. tab hidden)
         setTimeout(cleanup, 500);
