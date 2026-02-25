@@ -395,6 +395,21 @@
         }
         .ef-btn-retry:active { transform: scale(0.97); color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.04); }
 
+        /* ── share button — absolute top-right corner, adds zero height ── */
+        .ef-btn-share {
+            position: absolute; top: 0.8rem; right: 0.9rem;
+            padding: 0.28rem 0.65rem;
+            font-size: 0.52rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+            border: 1px solid rgba(255,255,255,0.13); border-radius: 2rem;
+            cursor: pointer; background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.30);
+            transition: all 0.18s ease;
+            display: flex; align-items: center; gap: 0.28rem;
+            z-index: 2;
+        }
+        .ef-btn-share:active { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.22); }
+        .ef-card.tier-fail .ef-btn-share { display: none; }
+
         /* Fail state — hide continue, make retry fill the full width and look primary */
         .ef-card.tier-fail #ef-next  { display: none; }
         .ef-card.tier-fail .ef-btn-retry {
@@ -999,6 +1014,7 @@
                     <button class="ef-btn-retry" id="ef-retry">Retry</button>
                     <button class="ef-btn-continue" id="ef-next">Continue</button>
                 </div>
+                <button class="ef-btn-share" id="ef-share">↗ Share</button>
             </div>
         </div>
 
@@ -2418,6 +2434,253 @@
     // touchstart as final safety net: catches hard lock/unlock on iOS
     // where visibilitychange and pageshow both misfire after long sleep
     document.addEventListener('touchstart', _resurrectLoop, { passive: true });
+
+
+    // ═══════════════════════════════════════
+    //  SHARE CARD
+    //  Renders an off-screen 400×520 canvas and shares via Web Share API
+    //  (with download fallback for desktop / unsupported browsers).
+    //  Crystal dots are drawn at their actual level positions using the
+    //  same palette colours as the in-game crystals.
+    // ═══════════════════════════════════════
+
+    // Same palette as CRYSTAL_PALETTE in engine.js — colours only
+    const _SHARE_CRYSTAL_COLS = [
+        '#8EEAF4','#D4A7FF','#F9DB6D','#A0FFD6',
+        '#FFB3C6','#B3C6FF','#FFC6A0','#C4B5FD',
+    ];
+
+    function _hexToRgbShare(hex) {
+        const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : { r:142,g:234,b:244 };
+    }
+
+    function renderShareCard() {
+        const CW = 400, CH = 520;
+        const c  = document.createElement('canvas');
+        c.width  = CW; c.height = CH;
+        const cx = c.getContext('2d');
+
+        // ── Background ────────────────────────────────────────────────
+        const bg = cx.createLinearGradient(0, 0, 0, CH);
+        bg.addColorStop(0,   '#0a0a12');
+        bg.addColorStop(0.5, '#07070e');
+        bg.addColorStop(1,   '#050509');
+        cx.fillStyle = bg; cx.fillRect(0, 0, CW, CH);
+
+        // Faint vignette — corners slightly darker
+        const vg = cx.createRadialGradient(CW/2, CH/2, CW*0.28, CW/2, CH/2, CW*0.85);
+        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+        cx.fillStyle = vg; cx.fillRect(0, 0, CW, CH);
+
+        // ── Top accent line (tier colour) ─────────────────────────────
+        const { tier } = state.freePlayData
+            ? getTier(state.freePlayData.time, state.freePlayData.target)
+            : { tier: 'none' };
+        const tierLineCol = { gold:'#F9DB6D', silver:'#4ECDC4', bronze:'#7EC8F0', none:'rgba(255,255,255,0.10)' }[tier] || 'rgba(255,255,255,0.10)';
+        const lg = cx.createLinearGradient(CW*0.1, 0, CW*0.9, 0);
+        lg.addColorStop(0,   'rgba(0,0,0,0)');
+        lg.addColorStop(0.5, tierLineCol);
+        lg.addColorStop(1,   'rgba(0,0,0,0)');
+        cx.strokeStyle = lg; cx.lineWidth = 1.5;
+        cx.beginPath(); cx.moveTo(CW*0.1, 2); cx.lineTo(CW*0.9, 2); cx.stroke();
+
+        // ── Game name — top centre ─────────────────────────────────────
+        cx.save();
+        cx.globalAlpha  = 0.55;
+        cx.fillStyle    = '#ffffff';
+        cx.font         = '700 11px -apple-system,system-ui,sans-serif';
+        cx.textAlign    = 'center'; cx.textBaseline = 'top';
+        cx.letterSpacing = '0.26em';
+        cx.fillText('GEM SLAP', CW/2, 20);
+        cx.restore();
+
+        // ── Crystal dots — hero element ───────────────────────────────
+        // Map target % coords onto the card's crystal zone (top 55% of card,
+        // centred with 18% margin each side so dots never kiss the card edge).
+        const targets = state.targets || [];
+        const ZONE_X0 = CW * 0.18, ZONE_X1 = CW * 0.82;
+        const ZONE_Y0 = CH * 0.10, ZONE_Y1 = CH * 0.58;
+        const ZONE_W  = ZONE_X1 - ZONE_X0, ZONE_H = ZONE_Y1 - ZONE_Y0;
+
+        // Find bounding box of the actual shape so we centre it in the zone
+        if (targets.length > 0) {
+            const xs = targets.map(t => t.x), ys = targets.map(t => t.y);
+            const minX = Math.min(...xs), maxX = Math.max(...xs);
+            const minY = Math.min(...ys), maxY = Math.max(...ys);
+            const shapeW = maxX - minX || 1, shapeH = maxY - minY || 1;
+            // Scale shape to fit inside zone, preserving aspect ratio
+            const scale = Math.min(ZONE_W / shapeW, ZONE_H / shapeH) * 0.78;
+            const offX  = ZONE_X0 + ZONE_W/2 - ((minX + maxX)/2) * scale;
+            const offY  = ZONE_Y0 + ZONE_H/2 - ((minY + maxY)/2) * scale;
+
+            targets.forEach((t, i) => {
+                const px  = offX + t.x * scale;
+                const py  = offY + t.y * scale;
+                const col = _SHARE_CRYSTAL_COLS[i % _SHARE_CRYSTAL_COLS.length];
+                const rgb = _hexToRgbShare(col);
+
+                // Wide soft atmosphere
+                const atm = cx.createRadialGradient(px, py, 0, px, py, 28);
+                atm.addColorStop(0,   `rgba(${rgb.r},${rgb.g},${rgb.b},0.18)`);
+                atm.addColorStop(0.5, `rgba(${rgb.r},${rgb.g},${rgb.b},0.06)`);
+                atm.addColorStop(1,   `rgba(${rgb.r},${rgb.g},${rgb.b},0)`);
+                cx.fillStyle = atm; cx.beginPath(); cx.arc(px, py, 28, 0, Math.PI*2); cx.fill();
+
+                // Inner glow
+                const glow = cx.createRadialGradient(px, py, 0, px, py, 9);
+                glow.addColorStop(0,   `rgba(${rgb.r},${rgb.g},${rgb.b},0.85)`);
+                glow.addColorStop(0.6, `rgba(${rgb.r},${rgb.g},${rgb.b},0.40)`);
+                glow.addColorStop(1,   `rgba(${rgb.r},${rgb.g},${rgb.b},0)`);
+                cx.fillStyle = glow; cx.beginPath(); cx.arc(px, py, 9, 0, Math.PI*2); cx.fill();
+
+                // Bright core dot
+                cx.save();
+                cx.shadowColor = col; cx.shadowBlur = 10;
+                cx.fillStyle   = col;
+                cx.beginPath(); cx.arc(px, py, 3.2, 0, Math.PI*2); cx.fill();
+                // White specular
+                cx.shadowBlur  = 0;
+                cx.fillStyle   = 'rgba(255,255,255,0.9)';
+                cx.beginPath(); cx.arc(px - 0.8, py - 0.8, 1.1, 0, Math.PI*2); cx.fill();
+                cx.restore();
+            });
+        }
+
+        // ── Level name — large, below crystals ───────────────────────
+        const name = (state.patternName || '').toUpperCase();
+        if (name) {
+            cx.save();
+            cx.fillStyle    = '#ffffff';
+            cx.shadowColor  = 'rgba(142,234,244,0.45)';
+            cx.shadowBlur   = 22;
+            cx.font         = `700 ${name.length > 8 ? 36 : 42}px -apple-system,system-ui,sans-serif`;
+            cx.textAlign    = 'center'; cx.textBaseline = 'middle';
+            cx.fillText(name, CW/2, CH * 0.675);
+            cx.restore();
+        }
+
+        // ── Medal + time row ──────────────────────────────────────────
+        if (state.freePlayData && tier !== 'none') {
+            const { time } = state.freePlayData;
+            const medalEmoji = { gold:'🥇', silver:'🥈', bronze:'🥉' }[tier] || '';
+            const medalLabel = tier.toUpperCase();
+            const tierCol    = { gold:'#F9DB6D', silver:'#4ECDC4', bronze:'#7EC8F0' }[tier];
+            const timeStr    = `${time.toFixed(1)}s`;
+
+            // Thin separator line
+            cx.save();
+            const sep = cx.createLinearGradient(CW*0.3, 0, CW*0.7, 0);
+            sep.addColorStop(0,   'rgba(255,255,255,0)');
+            sep.addColorStop(0.5, 'rgba(255,255,255,0.10)');
+            sep.addColorStop(1,   'rgba(255,255,255,0)');
+            cx.strokeStyle = sep; cx.lineWidth = 1;
+            cx.beginPath(); cx.moveTo(CW*0.3, CH*0.74); cx.lineTo(CW*0.7, CH*0.74); cx.stroke();
+            cx.restore();
+
+            // Medal emoji + label + time
+            cx.save();
+            cx.font      = '500 13px -apple-system,system-ui,sans-serif';
+            cx.textAlign = 'center'; cx.textBaseline = 'middle';
+            cx.fillStyle = tierCol;
+            cx.shadowColor = tierCol; cx.shadowBlur = 8;
+            cx.fillText(`${medalEmoji}  ${medalLabel}  ·  ${timeStr}`, CW/2, CH * 0.795);
+            cx.restore();
+        } else if (state.freePlayData) {
+            // No medal — show time alone, smaller
+            const { time } = state.freePlayData;
+            cx.save();
+            cx.font         = '300 13px -apple-system,system-ui,sans-serif';
+            cx.textAlign    = 'center'; cx.textBaseline = 'middle';
+            cx.fillStyle    = 'rgba(255,255,255,0.30)';
+            cx.fillText(`${time.toFixed(1)}s`, CW/2, CH * 0.795);
+            cx.restore();
+        }
+
+        // ── URL badge — bottom centre, styled as a pill ──────────────
+        {
+            const label  = 'gemslap.com';
+            cx.font      = '500 11px -apple-system,system-ui,sans-serif';
+            const tw     = cx.measureText(label).width;
+            const ph     = 20, pw2 = tw + 24;
+            const bx     = (CW - pw2) / 2, by = CH - 38;
+            // Pill background
+            cx.save();
+            cx.globalAlpha = 0.55;
+            cx.fillStyle   = 'rgba(255,255,255,0.08)';
+            cx.strokeStyle = 'rgba(255,255,255,0.14)';
+            cx.lineWidth   = 1;
+            cx.beginPath();
+            cx.roundRect(bx, by, pw2, ph, ph/2);
+            cx.fill(); cx.stroke();
+            cx.restore();
+            // URL text
+            cx.save();
+            cx.globalAlpha   = 0.72;
+            cx.fillStyle     = '#ffffff';
+            cx.font          = '500 11px -apple-system,system-ui,sans-serif';
+            cx.textAlign     = 'center'; cx.textBaseline = 'middle';
+            cx.fillText(label, CW/2, by + ph/2);
+            cx.restore();
+        }
+
+        return c;
+    }
+
+    // ── Share button handler ───────────────────────────────────────────────────
+    $('ef-share').addEventListener('click', async () => {
+        const btn = $('ef-share');
+        btn.textContent = '…';
+        btn.style.pointerEvents = 'none';
+
+        try {
+            const card = renderShareCard();
+            const name  = (state.patternName || 'a level').toUpperCase();
+            const { tier } = state.freePlayData
+                ? getTier(state.freePlayData.time, state.freePlayData.target)
+                : { tier: 'none' };
+            const timeStr = state.freePlayData ? `${state.freePlayData.time.toFixed(1)}s` : '';
+
+            const caption = tier === 'gold'
+                ? `🥇 ${name} in ${timeStr} — can you beat it?\ngemslap.com`
+                : tier === 'silver'
+                ? `🥈 ${name} in ${timeStr} on Gem Slap — your turn\ngemslap.com`
+                : tier === 'bronze'
+                ? `🥉 just cleared ${name} on Gem Slap\ngemslap.com`
+                : `just cleared ${name} — try Gem Slap\ngemslap.com`;
+
+            // Try Web Share API with file support (iOS Safari, Chrome Android)
+            const blob = await new Promise(res => card.toBlob(res, 'image/png'));
+            const file = new File([blob], 'gemslap.png', { type: 'image/png' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: 'GEM SLAP',
+                    text:  caption,
+                    files: [file],
+                });
+            } else if (navigator.share) {
+                // Share API present but no file support — share URL + text only
+                await navigator.share({ title: 'GEM SLAP', text: caption, url: 'https://gemslap.com' });
+            } else {
+                // Desktop fallback — trigger image download
+                const url = URL.createObjectURL(blob);
+                const a   = document.createElement('a');
+                a.href    = url;
+                a.download = `gemslap-${(state.patternName || 'level').toLowerCase().replace(/\s+/g,'-')}.png`;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            }
+        } catch (e) {
+            // User dismissed share sheet — not an error
+            if (e.name !== 'AbortError') console.warn('Share failed:', e);
+        }
+
+        // Restore button
+        btn.innerHTML = '↗ Share';
+        btn.style.pointerEvents = '';
+    });
+
     </script>
 
     <!-- Menu, Level Select, Progress, Achievements -->
