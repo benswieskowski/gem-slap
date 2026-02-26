@@ -97,6 +97,8 @@ function getBrightness(orb, time) {
 //  PENTATONIC HARMONY SYSTEM
 // ═══════════════════════════════════════
 const PENTATONIC = [0, 3, 5, 7, 10]; // C minor pentatonic: C Eb F G Bb
+// All 15 music styles use C minor pentatonic so orb/crystal tones
+// always harmonise with the background music regardless of style.
 
 function snapToPentatonic(note) {
     const octave = Math.floor(note / 12);
@@ -398,11 +400,12 @@ class Audio {
         this._intentPlaying = false;
     }
 
-    setBassStyle(style) { this.bassStyle = style % 10; }
+    setBassStyle(style) { this.bassStyle = style % 15; }
 
     getBpm(style) {
-        const BPMS = [108,112,126,130,132,138,144,148,150,150]; // sorted low→high
-        return BPMS[(style % 10)] || 130;
+        const BPMS = [108,112,126,130,132,138,144,148,150,150,
+                      110,124,120,128,118]; // styles 10-14: Golden Hour, Candy Flip, Dawnbreak, Prism, Neon Pulse
+        return BPMS[(style % 15)] || 130;
     }
 
     // _fireStep: the heart of the scheduler — plays one 16th-note step.
@@ -416,7 +419,8 @@ class Audio {
         // ── Swing (styles 0 + 2 only) ──────────────────────────────────────
         // Off-beat 16th notes (odd steps) land 12% / 10% of a step later,
         // giving funk styles a lopsided, human groove.
-        const SWING = [0.12, 0, 0.10, 0, 0, 0, 0, 0, 0, 0];
+        const SWING = [0.12, 0, 0.10, 0, 0, 0, 0, 0, 0, 0,
+                       0.16, 0, 0.14, 0, 0]; // styles 10-14: Golden Hour 16%, Candy Flip 0%, Dawnbreak 14%, Prism 0%, Neon Pulse 0%
         const swingFrac = SWING[s] || 0;
         const scheduledAt = (swingFrac > 0 && step % 2 === 1)
             ? when + this._stepDur * swingFrac
@@ -496,6 +500,37 @@ class Audio {
                 [0,.60,.18],[0,.28,.10],null,null,[5,.56,.16],null,[7,.44,.14],[0,.20,.08],
                 [0,.60,.18],[0,.28,.10],null,null,[0,.56,.18],null,[10,.48,.16],null,
                 [7,.58,.18],[7,.26,.10],null,null,[5,.54,.16],[4,.20,.10],[7,.42,.14],null],
+            // 10 · Golden Hour — C minor, Cm7→Abmaj7→Ebmaj7→G7, 16% swing (110 bpm)
+            //      Ab(8) is the bVI "golden" lift; Eb(3) bar 3 adds warmth before G7 tension
+            10:[[0,.66,.20],null,[0,.24,.08],null,[7,.54,.16],null,[3,.44,.14],null,
+                [8,.64,.20],null,[8,.22,.08],null,[0,.52,.16],null,[3,.44,.14],[7,.20,.08],
+                [3,.64,.20],null,[3,.22,.08],null,[10,.52,.16],null,[7,.40,.14],null,
+                [7,.62,.20],null,[7,.22,.08],null,[2,.50,.16],null,[5,.38,.14],[10,.18,.08]],
+            // 11 · Candy Flip — Cm→Bb→Ab→G descending, straight (124 bpm)
+            //      Falling major triads over a minor root = pop hook energy, completely different arc to others
+            11:[[0,.68,.18],null,[0,.26,.08],null,[3,.56,.16],null,[7,.46,.14],null,
+                [10,.66,.18],null,[10,.26,.08],null,[2,.54,.16],null,[5,.44,.14],[7,.20,.08],
+                [8,.66,.18],null,[8,.24,.08],null,[3,.54,.16],null,[0,.44,.14],null,
+                [7,.64,.18],null,[7,.22,.08],null,[11,.52,.16],null,[2,.40,.14],[5,.20,.08]],
+            // 12 · Dawnbreak — Cm7→Abmaj7→Fm7→G7sus, 14% swing (120 bpm)
+            12:[[0,.64,.20],null,[0,.24,.08],null,[7,.52,.18],null,[3,.36,.14],null,
+                [8,.62,.20],null,[8,.22,.08],null,[3,.50,.16],null,[0,.40,.14],[7,.20,.08],
+                [5,.64,.20],null,[5,.22,.08],null,[0,.52,.18],null,[3,.38,.14],null,
+                [7,.62,.20],null,[7,.22,.08],null,[2,.50,.16],null,[0,.36,.14],[11,.18,.08]],
+            // 13 · Prism — Fm7→Bb7→Ebmaj7→Cm7 EWF funk, straight (128 bpm)
+            //      Starts on Fm (iv) not home — creates forward pull from bar 1.
+            //      Bass descends F→Bb→Eb→C (cycle of 4ths) = the most addictive root motion in funk.
+            13:[[5,.68,.16],null,[5,.26,.08],null,[0,.56,.14],null,[8,.36,.12],null,
+                [10,.64,.16],null,[10,.24,.08],null,[5,.52,.14],null,[8,.40,.12],[2,.20,.08],
+                [3,.62,.16],null,[3,.24,.08],null,[10,.50,.14],null,[7,.36,.12],null,
+                [0,.60,.16],null,[0,.24,.08],null,[7,.48,.14],null,[3,.38,.12],[8,.18,.08]],
+            // 14 · Neon Pulse — Gm7→C7→Fm7→Bb7 descending 4ths, straight (118 bpm)
+            //      Full cycle of 4ths: G→C→F→Bb. C7 bar 2 has E natural (blue note against C minor).
+            //      Loop restart back to Gm7 resolves Bb7 tension — every cycle satisfies.
+            14:[[7,.62,.18],null,[7,.22,.08],null,[10,.50,.18],null,[2,.28,.10],null,
+                [0,.56,.20],null,[0,.20,.08],null,[7,.48,.18],null,[4,.32,.12],null,
+                [5,.60,.18],null,[5,.18,.08],null,[0,.44,.16],[8,.22,.08],null,null,
+                [10,.54,.18],null,[3,.38,.14],null,[5,.46,.18],null,[2,.28,.10],[7,.16,.06]],
         };
         return S[style] || S[0];
     }
@@ -552,6 +587,38 @@ class Audio {
                 [[0,7,12],.46,'s'],null,null,null,null,null,[[5,12],.34,'s'],null,
                 [[0,7,12],.48,'s'],null,null,null,null,null,[[10,17],.36,'s'],null,
                 [[7,14],.44,'s'],null,null,null,null,null,[[0,5,7,12],.38,'s'],null],
+            // 10 · Golden Hour — Cm7→Abmaj7→Ebmaj7→G7, warble + stab (110 bpm)
+            10:[[[0,3,7,10],.46],null,null,null,null,null,null,null,
+                [[-4,0,3,7],.36,'s'],null,null,null,null,null,null,null,
+                [[3,7,10,14],.44],null,null,null,null,null,null,null,
+                [[7,11,14,17],.32,'s'],null,null,null,
+                [[0,3,7],.38,'s'],null,null,null],
+            // 11 · Candy Flip — Cm→Bb→Ab→G raw triads, all stabs (124 bpm)
+            //      No 7ths — pure triads for pop punch; Bb↓Ab↓G = falling momentum
+            11:[[[0,3,7],.48,'s'],null,null,null,null,null,null,null,
+                [[-2,2,5],.40,'s'],null,null,null,null,null,null,null,
+                [[-4,0,3],.44,'s'],null,null,null,null,null,null,null,
+                [[7,11,14],.36,'s'],null,null,null,
+                [[0,3,7],.40,'s'],null,null,null],
+            // 12 · Dawnbreak — Cm7→Abmaj7→Fm7→G7sus warm pads (120 bpm)
+            12:[[[0,3,7,10],.46],null,null,null,null,null,null,null,
+                [[-4,0,3,7],.36,'s'],null,null,null,null,null,null,null,
+                [[5,8,12,15],.44],null,null,null,null,null,null,null,
+                [[7,12,14,17],.34,'s'],null,null,null,
+                [[0,3,7],.36,'s'],null,null,null],
+            // 13 · Prism — Fm7→Bb7→Ebmaj7→Cm7, funk stabs + warble (128 bpm)
+            //      Fm7 warble opens; Bb7 stab punches (dominant); Ebmaj7 warble lifts bright; Cm7 stab lands home
+            13:[[[5,8,12,15],.44],null,null,null,null,null,null,null,
+                [[-2,2,5,8],.40,'s'],null,null,null,null,null,null,null,
+                [[3,7,10,14],.42],null,null,null,null,null,null,null,
+                [[0,3,7,10],.34,'s'],null,null,null,
+                [[0,3,7],.38,'s'],null,null,null],
+            // 14 · Neon Pulse — Gm7→C7→Fm7→Bb7, all punchy stabs (118 bpm)
+            //      All stabs — no warble, no sustain, pure rhythmic funk hits matching the syncopated bass
+            14:[[[7,10,14,17],.40,'s'],null,null,null,[[7,10,14],.36,'s'],null,null,null,
+                null,null,null,null,[[0,4,7,10],.34,'s'],null,null,null,
+                [[5,8,12,15],.38,'s'],null,null,null,[[5,8,12],.32,'s'],null,null,null,
+                null,null,null,null,[[-2,2,5,8],.30,'s'],null,null,null],
         };
         return P[style] || P[0];
     }
@@ -668,6 +735,51 @@ class Audio {
                     .34,.18,.26,.18,.34,.18,.26,.18,.34,.18,.26,.18,.34,.18,-.36,.18],
                  t:[.04,0,0,0,0,0,0,0,0,0,0,.04,0,0,0,0,
                     .04,0,0,0,0,0,0,0,0,0,0,.04,0,0,0,.04] },
+            // 10 · Golden Hour — neo-soul pocket groove, light 8th hats (110 bpm)
+            10:{ k:[.72,0,0,0,.28,0,.26,0,.62,0,0,0,.24,0,.22,0,
+                    .70,0,0,0,.26,0,.24,0,.60,0,0,0,.22,0,.20,0],
+                 s:[0,0,0,0,.50,0,0,.14,0,0,0,0,.46,0,.12,0,
+                    0,0,0,0,.48,0,0,.14,0,0,0,0,.44,0,.12,.16],
+                 h:[.28,0,-.32,0,.28,0,-.32,0,.28,0,-.32,0,.28,0,-.32,0,
+                    .28,0,-.32,0,.28,0,-.32,0,.28,0,-.32,0,.28,0,-.32,0],
+                 t:[0,0,.05,0,.05,0,0,0,0,0,.05,0,.05,0,0,0,
+                    0,0,.05,0,.05,0,0,0,0,0,.05,0,.05,0,0,0] },
+            // 11 · Candy Flip — pop bounce, steady 8th hats, upbeat kicks (124 bpm)
+            11:{ k:[.74,0,0,0,.28,0,.26,0,.64,0,0,0,.24,0,.22,0,
+                    .72,0,0,0,.28,0,.24,0,.62,0,.18,0,.22,0,0,0],
+                 s:[0,0,0,0,.56,0,.16,0,0,0,0,0,.52,0,.14,0,
+                    0,0,0,0,.54,0,.16,0,0,0,0,0,.50,0,.14,.18],
+                 h:[.28,.22,.28,.22,.28,.22,-.34,.22,.28,.22,.28,.22,.28,.22,-.34,.22,
+                    .28,.22,.28,.22,.28,.22,-.34,.22,.28,.22,.28,.22,.28,.22,-.34,.22],
+                 t:[0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,
+                    0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04] },
+            // 12 · Dawnbreak — floating upbeat kick, open-hat shimmer (120 bpm)
+            12:{ k:[.70,0,0,0,0,0,.28,0,.60,0,0,0,0,0,.26,0,
+                    .70,0,0,0,0,0,.26,0,.58,0,0,0,0,0,.24,0],
+                 s:[0,0,0,0,.46,0,0,.12,0,0,0,0,.44,0,.10,0,
+                    0,0,0,0,.44,0,0,.12,0,0,0,0,.42,0,.10,.14],
+                 h:[.22,0,-.28,0,.22,0,-.28,0,.22,0,-.28,0,.22,0,-.28,0,
+                    .22,0,-.28,0,.22,0,-.28,0,.22,0,-.28,0,.22,0,-.28,0],
+                 t:[0,0,.05,0,0,0,.05,0,0,0,.05,0,0,0,.05,0,
+                    0,0,.05,0,0,0,.05,0,0,0,.05,0,0,0,.05,0] },
+            // 13 · Prism — crystalline 16th hats, syncopated upbeat kicks (128 bpm)
+            13:{ k:[.72,0,0,0,.26,0,.24,0,.64,0,0,0,.22,0,.20,0,
+                    .70,0,0,0,.26,0,.22,0,.62,0,.18,0,.22,0,0,0],
+                 s:[0,0,.14,0,.54,0,.16,0,0,0,.14,0,.50,0,.14,0,
+                    0,0,.16,0,.52,0,.16,0,0,0,.14,0,.48,0,.14,.12],
+                 h:[.30,.18,.26,.18,.30,.18,-.34,.18,.30,.18,.26,.18,.30,.18,-.34,.18,
+                    .30,.18,.26,.18,.30,.18,-.34,.18,.30,.18,.26,.18,.30,.18,-.34,.18],
+                 t:[0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,
+                    0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,0,.03] },
+            // 14 · Neon Pulse — forward-drive 8th hats, upbeat kicks (118 bpm)
+            14:{ k:[.68,0,0,0,.24,0,0,0,.58,0,.18,0,.20,0,0,0,
+                    .66,0,0,0,.24,0,.16,0,.56,0,.18,0,.20,0,0,0],
+                 s:[0,0,0,0,.52,0,0,.14,0,0,0,0,.48,0,.12,0,
+                    0,0,0,0,.50,0,0,.12,0,0,0,0,.46,0,.12,.16],
+                 h:[.28,.14,.22,.14,.28,.14,-.32,.14,.28,.14,.22,.14,.28,.14,-.32,.14,
+                    .28,.14,.22,.14,.28,.14,-.32,.14,.28,.14,.22,.14,.28,.14,-.32,.14],
+                 t:[0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0,
+                    0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0] },
         };
         return R[style] || R[0];
     }
