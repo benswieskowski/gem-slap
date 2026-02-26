@@ -403,8 +403,8 @@ class Audio {
     setBassStyle(style) { this.bassStyle = style % 15; }
 
     getBpm(style) {
-        const BPMS = [108,112,126,130,132,138,144,148,150,150,
-                      110,124,120,128,118]; // styles 10-14: Golden Hour, Candy Flip, Dawnbreak, Prism, Neon Pulse
+        const BPMS = [108,112,126,130,132,138,132,136,140,142,
+                      110,124,120,128,118]; // styles 6-9 reduced; 10-14: Golden Hour, Candy Flip, Dawnbreak, Prism, Neon Pulse
         return BPMS[(style % 15)] || 130;
     }
 
@@ -517,13 +517,13 @@ class Audio {
                 [8,.62,.20],null,[8,.22,.08],null,[3,.50,.16],null,[0,.40,.14],[7,.20,.08],
                 [5,.64,.20],null,[5,.22,.08],null,[0,.52,.18],null,[3,.38,.14],null,
                 [7,.62,.20],null,[7,.22,.08],null,[2,.50,.16],null,[0,.36,.14],[11,.18,.08]],
-            // 13 · Prism — Fm7→Bb7→Ebmaj7→Cm7 EWF funk, straight (128 bpm)
-            //      Starts on Fm (iv) not home — creates forward pull from bar 1.
-            //      Bass descends F→Bb→Eb→C (cycle of 4ths) = the most addictive root motion in funk.
-            13:[[5,.68,.16],null,[5,.26,.08],null,[0,.56,.14],null,[8,.36,.12],null,
-                [10,.64,.16],null,[10,.24,.08],null,[5,.52,.14],null,[8,.40,.12],[2,.20,.08],
-                [3,.62,.16],null,[3,.24,.08],null,[10,.50,.14],null,[7,.36,.12],null,
-                [0,.60,.16],null,[0,.24,.08],null,[7,.48,.14],null,[3,.38,.12],[8,.18,.08]],
+            // 13 · Prism — Gm7→Ab→Bb7→Cm ascending stabs, straight (128 bpm)
+            //      Mirror of Candy Flip: same stab-only energy but RISES G→Ab→Bb→C vs Candy's fall.
+            //      Gm7 opener (v minor) creates pull toward Cm. Bb7 bar 3 is the dominant funk punch.
+            13:[[7,.68,.16],null,[7,.26,.08],null,[10,.56,.14],null,[5,.36,.12],null,
+                [8,.64,.16],null,[8,.24,.08],null,[3,.52,.14],null,[0,.40,.12],[3,.20,.08],
+                [10,.62,.16],null,[10,.24,.08],null,[5,.50,.14],null,[2,.36,.12],null,
+                [0,.60,.16],null,[0,.24,.08],null,[7,.48,.14],null,[3,.38,.12],[7,.18,.08]],
             // 14 · Neon Pulse — Gm7→C7→Fm7→Bb7 descending 4ths, straight (118 bpm)
             //      Full cycle of 4ths: G→C→F→Bb. C7 bar 2 has E natural (blue note against C minor).
             //      Loop restart back to Gm7 resolves Bb7 tension — every cycle satisfies.
@@ -606,13 +606,13 @@ class Audio {
                 [[5,8,12,15],.44],null,null,null,null,null,null,null,
                 [[7,12,14,17],.34,'s'],null,null,null,
                 [[0,3,7],.36,'s'],null,null,null],
-            // 13 · Prism — Fm7→Bb7→Ebmaj7→Cm7, funk stabs + warble (128 bpm)
-            //      Fm7 warble opens; Bb7 stab punches (dominant); Ebmaj7 warble lifts bright; Cm7 stab lands home
-            13:[[[5,8,12,15],.44],null,null,null,null,null,null,null,
-                [[-2,2,5,8],.40,'s'],null,null,null,null,null,null,null,
-                [[3,7,10,14],.42],null,null,null,null,null,null,null,
-                [[0,3,7,10],.34,'s'],null,null,null,
-                [[0,3,7],.38,'s'],null,null,null],
+            // 13 · Prism — Gm7→Ab→Bb7→Cm, all stabs ascending (128 bpm)
+            //      All stabs like Candy Flip, no warble. Gm7 with 7th, Ab triad, Bb7 dominant punch, Cm home.
+            13:[[[7,10,14],.44,'s'],null,null,null,null,null,null,null,
+                [[-4,0,3],.40,'s'],null,null,null,null,null,null,null,
+                [[-2,2,5,8],.42,'s'],null,null,null,null,null,null,null,
+                [[0,3,7],.36,'s'],null,null,null,
+                [[7,10,14],.38,'s'],null,null,null],
             // 14 · Neon Pulse — Gm7→C7→Fm7→Bb7, all punchy stabs (118 bpm)
             //      All stabs — no warble, no sustain, pure rhythmic funk hits matching the syncopated bass
             14:[[[7,10,14,17],.40,'s'],null,null,null,[[7,10,14],.36,'s'],null,null,null,
