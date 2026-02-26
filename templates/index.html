@@ -395,40 +395,6 @@
         }
         .ef-btn-retry:active { transform: scale(0.97); color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.04); }
 
-        /* ── share row — preview thumbnail + share button, win state only ── */
-        .ef-share-row {
-            width: 100%; max-width: 320px;
-            margin-top: 0.6rem;
-            display: flex; align-items: center; gap: 0.6rem;
-        }
-        .ef-card.tier-fail .ef-share-row { display: none; }
-
-        /* Thumbnail — small preview of the share card */
-        .ef-share-thumb {
-            width: 40px; height: 52px; flex-shrink: 0;
-            border-radius: 4px;
-            border: 1px solid rgba(255,255,255,0.10);
-            background: rgba(255,255,255,0.04);
-            overflow: hidden; cursor: pointer;
-            transition: border-color 0.18s ease;
-        }
-        .ef-share-thumb img {
-            width: 100%; height: 100%; object-fit: cover; display: block;
-        }
-        .ef-share-thumb:active { border-color: rgba(255,255,255,0.28); }
-
-        /* Share button — fills remaining width */
-        .ef-btn-share {
-            flex: 1; padding: 0.6rem 0;
-            font-size: 0.56rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
-            border: 1px solid rgba(255,255,255,0.10); border-radius: 2rem;
-            cursor: pointer; background: rgba(255,255,255,0.04);
-            color: rgba(255,255,255,0.32);
-            transition: all 0.18s ease;
-            display: flex; align-items: center; justify-content: center; gap: 0.3rem;
-        }
-        .ef-btn-share:active { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.22); }
-
         /* Fail state — hide continue, make retry fill the full width and look primary */
         .ef-card.tier-fail #ef-next  { display: none; }
         .ef-card.tier-fail .ef-btn-retry {
@@ -1032,10 +998,6 @@
                 <div class="ef-btns">
                     <button class="ef-btn-retry" id="ef-retry">Retry</button>
                     <button class="ef-btn-continue" id="ef-next">Continue</button>
-                </div>
-                <div class="ef-share-row">
-                    <div class="ef-share-thumb" id="ef-share-thumb"></div>
-                    <button class="ef-btn-share" id="ef-share">↗ &nbsp;Share</button>
                 </div>
             </div>
         </div>
@@ -2038,7 +2000,7 @@
             const n = fromLevel + i;
             // Stagger requests 250ms apart so we don't burst all 20 at once
             setTimeout(() => {
-                const bassParam = state.favBassStyle !== null ? state.favBassStyle : (n - 1) % 10;
+                const bassParam = state.favBassStyle !== null ? state.favBassStyle : (n - 1) % 15;
                 const url = `/api/level/${n}/bass/${bassParam}`;
                 navigator.serviceWorker.controller.postMessage({ type: 'CACHE_LEVEL', url });
             }, i * 250);
@@ -2055,7 +2017,7 @@
             shockwaves = []; crystalShards = []; energyMotes = []; crystalDust = []; bursts = [];
             screenShake.intensity = 0;
 
-            const bassParam = state.favBassStyle !== null ? state.favBassStyle : (n - 1) % 10;
+            const bassParam = state.favBassStyle !== null ? state.favBassStyle : (n - 1) % 15;
             const url = `/api/level/${n}/bass/${bassParam}`;
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2325,9 +2287,6 @@
             if (p < 1) requestAnimationFrame(tick);
         }
         setTimeout(() => requestAnimationFrame(tick), 200);
-
-        // Pre-render share card now so tap is instant and thumbnail is visible
-        setTimeout(_prebuildShareCard, 300);
     }
 
     function endLevel(cleared = true) {
@@ -2361,7 +2320,6 @@
         // Dismiss every overlay that could be open mid-game
         $('end-screen').classList.add('hidden');
         $('end-float').classList.remove('show');
-        state._shareCard = null; // invalidate cached share card
         $('offline-screen').classList.remove('show');
         // Remove any in-progress countdown panel
         document.querySelectorAll('.cd-wrap').forEach(el => el.remove());
@@ -2489,295 +2447,6 @@
     // where visibilitychange and pageshow both misfire after long sleep
     document.addEventListener('touchstart', _resurrectLoop, { passive: true });
 
-
-    // ═══════════════════════════════════════
-    //  SHARE CARD
-    //  Renders an off-screen 400×520 canvas (at 2× device pixel ratio for
-    //  retina sharpness) showing the crystal shape in the game's white-ice
-    //  diamond aesthetic, level name, tier/time row, and URL pill.
-    //  Pre-rendered at showFloatingEnd() time so the share tap is instant.
-    //  Web Share API (file) → Web Share API (url) → download fallback.
-    // ═══════════════════════════════════════
-
-    function _hexToRgbShare(hex) {
-        const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : { r:220,g:235,b:255 };
-    }
-
-    // roundRect polyfill — Safari < 15.4 and older Chrome don't support it
-    function _roundRect(ctx, x, y, w, h, r) {
-        if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y); ctx.arcTo(x+w, y,   x+w, y+r,   r);
-        ctx.lineTo(x + w, y + h - r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
-        ctx.lineTo(x + r, y + h); ctx.arcTo(x,   y+h, x,   y+h-r, r);
-        ctx.lineTo(x, y + r); ctx.arcTo(x,   y,   x+r, y,   r);
-        ctx.closePath();
-    }
-
-    // Spectral colours that rim each crystal — matches SPECTRAL array in engine.js
-    const _SPECTRAL = ['#FF2840','#FF7820','#F5D200','#28C858','#18C8E0','#A020E0'];
-
-    function renderShareCard() {
-        const SCALE = Math.min(window.devicePixelRatio || 1, 2); // 2× for retina
-        const VW = 400, VH = 520;      // virtual (CSS) dimensions
-        const CW = VW * SCALE, CH = VH * SCALE; // physical pixel dimensions
-
-        const c  = document.createElement('canvas');
-        c.width  = CW; c.height = CH;
-        const cx = c.getContext('2d');
-        cx.scale(SCALE, SCALE); // all drawing uses virtual coords
-
-        // ── Background ────────────────────────────────────────────────
-        const bg = cx.createLinearGradient(0, 0, 0, VH);
-        bg.addColorStop(0,   '#0a0a12');
-        bg.addColorStop(0.5, '#07070e');
-        bg.addColorStop(1,   '#050509');
-        cx.fillStyle = bg; cx.fillRect(0, 0, VW, VH);
-
-        // Corner vignette
-        const vg = cx.createRadialGradient(VW/2, VH/2, VW*0.28, VW/2, VH/2, VW*0.85);
-        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)');
-        cx.fillStyle = vg; cx.fillRect(0, 0, VW, VH);
-
-        // ── Top accent line (tier colour) ─────────────────────────────
-        const { tier } = state.freePlayData
-            ? getTier(state.freePlayData.time, state.freePlayData.target)
-            : { tier: 'none' };
-        const tierLineCol = { gold:'#F9DB6D', silver:'#4ECDC4', bronze:'#7EC8F0',
-                              none:'rgba(255,255,255,0.10)' }[tier] || 'rgba(255,255,255,0.10)';
-        const lg = cx.createLinearGradient(VW*0.08, 0, VW*0.92, 0);
-        lg.addColorStop(0,   'rgba(0,0,0,0)');
-        lg.addColorStop(0.5, tierLineCol);
-        lg.addColorStop(1,   'rgba(0,0,0,0)');
-        cx.strokeStyle = lg; cx.lineWidth = 1.5;
-        cx.beginPath(); cx.moveTo(VW*0.08, 2); cx.lineTo(VW*0.92, 2); cx.stroke();
-
-        // ── Game name — top centre ─────────────────────────────────────
-        cx.save();
-        cx.globalAlpha   = 0.55;
-        cx.fillStyle     = '#ffffff';
-        cx.font          = '700 11px -apple-system,system-ui,sans-serif';
-        cx.textAlign     = 'center'; cx.textBaseline = 'top';
-        cx.fillText('GEM SLAP', VW/2, 20);
-        cx.restore();
-
-        // ── Crystal dots — white-ice diamonds matching in-game look ──────
-        // Zone occupies the upper 55% of the card with 18% side margins
-        const targets = state.targets || [];
-        const ZONE_X0 = VW * 0.18, ZONE_X1 = VW * 0.82;
-        const ZONE_Y0 = VH * 0.10, ZONE_Y1 = VH * 0.60;
-        const ZONE_W  = ZONE_X1 - ZONE_X0, ZONE_H = ZONE_Y1 - ZONE_Y0;
-
-        if (targets.length > 0) {
-            const xs = targets.map(t => t.x), ys = targets.map(t => t.y);
-            const minX = Math.min(...xs), maxX = Math.max(...xs);
-            const minY = Math.min(...ys), maxY = Math.max(...ys);
-            // ── Linear/degenerate shape fix ──────────────────────────
-            // Enforce a minimum span of 12 units so a perfectly horizontal or
-            // vertical line doesn't produce a pathological scale factor.
-            const shapeW = Math.max(maxX - minX, 12);
-            const shapeH = Math.max(maxY - minY, 12);
-            const scale  = Math.min(ZONE_W / shapeW, ZONE_H / shapeH) * 0.78;
-            const offX   = ZONE_X0 + ZONE_W/2 - ((minX + maxX)/2) * scale;
-            const offY   = ZONE_Y0 + ZONE_H/2 - ((minY + maxY)/2) * scale;
-
-            targets.forEach((t, i) => {
-                const px = offX + t.x * scale;
-                const py = offY + t.y * scale;
-
-                // Wide soft ice-blue ambient glow — matches game crystal atmosphere
-                const atm = cx.createRadialGradient(px, py, 0, px, py, 30);
-                atm.addColorStop(0,   'rgba(200,225,255,0.16)');
-                atm.addColorStop(0.5, 'rgba(180,210,255,0.06)');
-                atm.addColorStop(1,   'rgba(180,210,255,0)');
-                cx.fillStyle = atm;
-                cx.beginPath(); cx.arc(px, py, 30, 0, Math.PI*2); cx.fill();
-
-                // Prismatic spectral rim — 6 short arcs, one per SPECTRAL color
-                // Matches the rotating rainbow rim in drawCrystal()
-                const rimR  = 9;
-                const numS  = _SPECTRAL.length;
-                for (let s = 0; s < numS; s++) {
-                    const a1 = (s / numS) * Math.PI * 2 - Math.PI / 2;
-                    const a2 = ((s + 0.82) / numS) * Math.PI * 2 - Math.PI / 2;
-                    cx.save();
-                    cx.strokeStyle = _SPECTRAL[s];
-                    cx.lineWidth   = 1.5;
-                    cx.globalAlpha = 0.55;
-                    cx.shadowColor = _SPECTRAL[s]; cx.shadowBlur = 4;
-                    cx.beginPath(); cx.arc(px, py, rimR, a1, a2); cx.stroke();
-                    cx.restore();
-                }
-
-                // White/silver faceted glow — the main body of the alive crystal
-                const body = cx.createRadialGradient(px - 1.5, py - 1.5, 0, px, py, 8);
-                body.addColorStop(0,   'rgba(255,255,255,0.95)');
-                body.addColorStop(0.4, 'rgba(220,235,255,0.65)');
-                body.addColorStop(0.8, 'rgba(200,220,255,0.20)');
-                body.addColorStop(1,   'rgba(180,210,255,0)');
-                cx.save();
-                cx.shadowColor = 'rgba(210,230,255,0.8)'; cx.shadowBlur = 8;
-                cx.fillStyle   = body;
-                cx.beginPath(); cx.arc(px, py, 8, 0, Math.PI*2); cx.fill();
-                cx.restore();
-
-                // Bright white core pinpoint
-                cx.save();
-                cx.fillStyle   = '#ffffff';
-                cx.shadowColor = '#ffffff'; cx.shadowBlur = 6;
-                cx.beginPath(); cx.arc(px, py, 2.5, 0, Math.PI*2); cx.fill();
-                cx.restore();
-            });
-        }
-
-        // ── Level name — large, confident, below crystal zone ────────
-        const name = (state.patternName || '').toUpperCase();
-        if (name) {
-            cx.save();
-            cx.fillStyle   = '#ffffff';
-            cx.shadowColor = 'rgba(200,225,255,0.5)';
-            cx.shadowBlur  = 20;
-            cx.font        = `700 ${name.length > 8 ? 34 : 42}px -apple-system,system-ui,sans-serif`;
-            cx.textAlign   = 'center'; cx.textBaseline = 'middle';
-            cx.fillText(name, VW/2, VH * 0.675);
-            cx.restore();
-        }
-
-        // ── Medal + time row ──────────────────────────────────────────
-        if (state.freePlayData && tier !== 'none') {
-            const { time } = state.freePlayData;
-            const medalEmoji = { gold:'🥇', silver:'🥈', bronze:'🥉' }[tier] || '';
-            const medalLabel = tier.toUpperCase();
-            const tierCol    = { gold:'#F9DB6D', silver:'#4ECDC4', bronze:'#7EC8F0' }[tier];
-            const timeStr    = `${time.toFixed(1)}s`;
-
-            // Separator line
-            const sep = cx.createLinearGradient(VW*0.3, 0, VW*0.7, 0);
-            sep.addColorStop(0,   'rgba(255,255,255,0)');
-            sep.addColorStop(0.5, 'rgba(255,255,255,0.10)');
-            sep.addColorStop(1,   'rgba(255,255,255,0)');
-            cx.save();
-            cx.strokeStyle = sep; cx.lineWidth = 1;
-            cx.beginPath(); cx.moveTo(VW*0.3, VH*0.74); cx.lineTo(VW*0.7, VH*0.74); cx.stroke();
-            cx.restore();
-
-            cx.save();
-            cx.font        = '500 13px -apple-system,system-ui,sans-serif';
-            cx.textAlign   = 'center'; cx.textBaseline = 'middle';
-            cx.fillStyle   = tierCol;
-            cx.shadowColor = tierCol; cx.shadowBlur = 8;
-            cx.fillText(`${medalEmoji}  ${medalLabel}  ·  ${timeStr}`, VW/2, VH * 0.795);
-            cx.restore();
-        } else if (state.freePlayData) {
-            const { time } = state.freePlayData;
-            cx.save();
-            cx.font        = '300 13px -apple-system,system-ui,sans-serif';
-            cx.textAlign   = 'center'; cx.textBaseline = 'middle';
-            cx.fillStyle   = 'rgba(255,255,255,0.30)';
-            cx.fillText(`${time.toFixed(1)}s`, VW/2, VH * 0.795);
-            cx.restore();
-        }
-
-        // ── URL pill — bottom centre ───────────────────────────────────
-        {
-            const label = 'gemslap.com';
-            cx.font = '500 11px -apple-system,system-ui,sans-serif';
-            const tw  = cx.measureText(label).width;
-            const ph  = 20, pw2 = tw + 28;
-            const bx  = (VW - pw2) / 2, by = VH - 40;
-
-            // Pill background — polyfilled roundRect
-            cx.save();
-            cx.globalAlpha = 0.55;
-            cx.fillStyle   = 'rgba(255,255,255,0.08)';
-            cx.strokeStyle = 'rgba(255,255,255,0.18)';
-            cx.lineWidth   = 1;
-            cx.beginPath(); _roundRect(cx, bx, by, pw2, ph, ph/2); cx.fill(); cx.stroke();
-            cx.restore();
-
-            // URL text
-            cx.save();
-            cx.globalAlpha   = 0.75;
-            cx.fillStyle     = '#ffffff';
-            cx.font          = '500 11px -apple-system,system-ui,sans-serif';
-            cx.textAlign     = 'center'; cx.textBaseline = 'middle';
-            cx.fillText(label, VW/2, by + ph/2);
-            cx.restore();
-        }
-
-        return c;
-    }
-
-    // Pre-render the card and populate the thumbnail as soon as the drawer opens.
-    // This way the share tap is instant and the preview is visible immediately.
-    function _prebuildShareCard() {
-        try {
-            const card = renderShareCard();
-            // Thumbnail — scale canvas down to img src via toDataURL
-            const thumb = $('ef-share-thumb');
-            if (thumb) {
-                const img = new Image();
-                img.src = card.toDataURL('image/png');
-                img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:3px;';
-                thumb.innerHTML = '';
-                thumb.appendChild(img);
-                // Tapping thumbnail also triggers share
-                thumb.onclick = () => $('ef-share').click();
-            }
-            // Store canvas on state so share handler reuses it, no re-render
-            state._shareCard = card;
-        } catch(e) { console.warn('Share card pre-render failed:', e); }
-    }
-
-    // ── Share button handler ───────────────────────────────────────────────────
-    $('ef-share').addEventListener('click', async () => {
-        const btn = $('ef-share');
-        btn.innerHTML = '↗ &nbsp;…';
-        btn.style.pointerEvents = 'none';
-
-        try {
-            // Use pre-rendered card if available, otherwise render now
-            const card = state._shareCard || renderShareCard();
-            const name  = (state.patternName || 'a level').toUpperCase();
-            const { tier } = state.freePlayData
-                ? getTier(state.freePlayData.time, state.freePlayData.target)
-                : { tier: 'none' };
-            const timeStr = state.freePlayData ? `${state.freePlayData.time.toFixed(1)}s` : '';
-
-            const caption = tier === 'gold'
-                ? `🥇 ${name} in ${timeStr} — can you beat it?\ngemslap.com`
-                : tier === 'silver'
-                ? `🥈 ${name} in ${timeStr} on Gem Slap — your turn\ngemslap.com`
-                : tier === 'bronze'
-                ? `🥉 just cleared ${name} on Gem Slap\ngemslap.com`
-                : `just cleared ${name} — try Gem Slap\ngemslap.com`;
-
-            // Try Web Share API with file support (iOS Safari, Chrome Android)
-            const blob = await new Promise(res => card.toBlob(res, 'image/png'));
-            const file = new File([blob], 'gemslap.png', { type: 'image/png' });
-
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({ title: 'GEM SLAP', text: caption, files: [file] });
-            } else if (navigator.share) {
-                // Share API present but no file support — share URL + text only
-                await navigator.share({ title: 'GEM SLAP', text: caption, url: 'https://gemslap.com' });
-            } else {
-                // Desktop fallback — download the image
-                const url = URL.createObjectURL(blob);
-                const a   = document.createElement('a');
-                a.href    = url;
-                a.download = `gemslap-${(state.patternName || 'level').toLowerCase().replace(/\s+/g,'-')}.png`;
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(url), 5000);
-            }
-        } catch (e) {
-            if (e.name !== 'AbortError') console.warn('Share failed:', e);
-        }
-
-        btn.innerHTML = '↗ &nbsp;Share';
-        btn.style.pointerEvents = '';
-    });
 
         </script>
 
