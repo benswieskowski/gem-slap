@@ -2000,7 +2000,10 @@
             const n = fromLevel + i;
             // Stagger requests 250ms apart so we don't burst all 20 at once
             setTimeout(() => {
-                const bassParam = state.favBassStyle !== null ? state.favBassStyle : (n - 1) % 15;
+                // Mountain ordering: 10→14→11→3→5→7→8→9→6→4→13→2→12→1→0
+                // Smooth BPM arc: 110→118→124→130→138→136→140→142→132→132→128→126→120→112→108 →(loop +2)→110
+                const STYLE_ORDER = [10,14,11,3,13,4,7,8,9,5,6,2,12,1,0];
+                const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 15];
                 const url = `/api/level/${n}/bass/${bassParam}`;
                 navigator.serviceWorker.controller.postMessage({ type: 'CACHE_LEVEL', url });
             }, i * 250);
@@ -2017,7 +2020,9 @@
             shockwaves = []; crystalShards = []; energyMotes = []; crystalDust = []; bursts = [];
             screenShake.intensity = 0;
 
-            const bassParam = state.favBassStyle !== null ? state.favBassStyle : (n - 1) % 15;
+            // Mountain ordering: 10→14→11→3→5→7→8→9→6→4→13→2→12→1→0
+            const STYLE_ORDER = [10,14,11,3,13,4,7,8,9,5,6,2,12,1,0];
+            const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 15];
             const url = `/api/level/${n}/bass/${bassParam}`;
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
