@@ -29,7 +29,6 @@ def service_worker():
     response = make_response(
         send_from_directory(os.path.join(app.root_path, 'static'), 'service-worker.js')
     )
-    # Service worker itself must NOT be cached, so the browser always gets updates
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Service-Worker-Allowed'] = '/'
     return response
@@ -50,24 +49,34 @@ def transpose_in_scale(melody, steps):
 def generate_level(level_num, bass_style=None):
     random.seed(level_num * 77)
 
-    batch_idx = min((level_num - 1) // 10, len(LEVEL_BATCHES) - 1)
-    batch = LEVEL_BATCHES[batch_idx]
-    level_in_set = ((level_num - 1) % 10) + 1
-    set_num = (level_num - 1) // 10
+    # ── Flat pattern indexing over all 41 levels ───────────────────────────────
+    # Single batch of 41 patterns ordered by difficulty score.
+    # level_in_set runs 1–41 then cycles; used only for phrase feel selection.
+    all_patterns = LEVEL_BATCHES[0]['patterns']
+    total_patterns = len(all_patterns)
+    pattern_idx = (level_num - 1) % total_patterns
+    level_in_set = pattern_idx + 1          # 1–41
+    set_num = (level_num - 1) // total_patterns
 
-    visible_at_once = 8   # standardized across all levels
+    batch = LEVEL_BATCHES[0]
 
+    visible_at_once = 8
     total_orbs = STANDARD_TOTAL_ORBS
-    bpm = 80 + (level_in_set - 1) * 3
-    base_speed = 0.12     # standardized across all levels
-    target_time = total_orbs * (1.7 - (level_in_set - 1) * 0.04)
+    bpm = 108                               # client ignores this; BPM comes from engine.js
+    base_speed = 0.12
+    target_time = total_orbs * 1.5         # client overwrites this with its own formula
     current_bass = bass_style if bass_style is not None else set_num % 10
 
+    # ── Phrase feel selection ──────────────────────────────────────────────────
+    # Scaled to 41-level range: chill first ~25%, chill+groove next ~35%, all after
     phrase_lib = create_phrase_library()
     suffix = f'_{visible_at_once}'
     available = {k: v for k, v in phrase_lib.items() if k.endswith(suffix)}
-    if level_in_set <= 3:   available = {k: v for k, v in available.items() if v['feel'] == 'chill'}
-    elif level_in_set <= 6: available = {k: v for k, v in available.items() if v['feel'] in ['chill', 'groove']}
+    if level_in_set <= 10:
+        available = {k: v for k, v in available.items() if v['feel'] == 'chill'}
+    elif level_in_set <= 25:
+        available = {k: v for k, v in available.items() if v['feel'] in ['chill', 'groove']}
+    # levels 26–41: all feels (chill, groove, funky)
     keys = list(available.keys())
     random.shuffle(keys)
     selected = (keys[:3] + keys[:3])[:3]
@@ -111,8 +120,7 @@ def generate_level(level_num, bass_style=None):
             orb_id += 1
         wave += 1
 
-    pattern_idx = (level_num - 1) % 10
-    pattern = batch['patterns'][pattern_idx]
+    pattern = all_patterns[pattern_idx]
     targets = [{'id': i, 'x': c['x'], 'y': c['y']} for i, c in enumerate(pattern['cells'])]
 
     return {
@@ -146,14 +154,13 @@ def get_bass_styles():
 
 @app.route('/api/batches')
 def get_batches():
-    return jsonify([
-        {
-            'index': i, 'name': b['name'],
-            'levelRange': [i * 10 + 1, (i + 1) * 10],
-            'patternNames': [p['name'] for p in b['patterns']],
-        }
-        for i, b in enumerate(LEVEL_BATCHES)
-    ])
+    all_patterns = LEVEL_BATCHES[0]['patterns']
+    return jsonify([{
+        'index': 0,
+        'name': LEVEL_BATCHES[0]['name'],
+        'levelRange': [1, len(all_patterns)],
+        'patternNames': [p['name'] for p in all_patterns],
+    }])
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
