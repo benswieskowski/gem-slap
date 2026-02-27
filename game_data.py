@@ -104,21 +104,25 @@ def create_phrase_library():
 NEW_PATTERNS = [
 
     # 1 · Lightning Bolt · 10 crystals
-    # Z-shape: 3-dot top bar (right) + 4-dot diagonal + 3-dot bottom bar (left-center)
+    # True ⚡ shape: single tip → long diagonal → short rightward kink → long diagonal → single tail
     #
-    # FIX: The canvas is ~390pt wide × ~673pt tall, so 1 y-unit = 1.73× 1 x-unit.
-    # Old design used step(-8,+8) → visual angle 60° (near-vertical!), gap 26pt (disconnected).
-    # New design uses step(-9,+5) → visual angle 43.8° ≈ 45°, gap 12.6pt (clean).
+    # KEY INSIGHT: Z has horizontal bars at top and bottom. ⚡ has NO horizontal bars.
+    # ⚡ is two long diagonal segments connected by a SHORT rightward kink (a "tooth").
+    # The kink must be shorter than the diagonals, or it reads as letter Z.
     #
-    # Layout:
-    #   Top bar:    (46,26)·(58,26)·(70,26)          — horizontal, right side
-    #   Diagonal:   (61,31)·(52,36)·(43,41)·(34,46)  — step(-9,+5), visually 44°
-    #   Bottom bar: (34,46)·(43,46)·(52,46)·(61,46)  — horizontal, left-center
-    #   (the diagonal's last dot is the bottom bar's leftmost dot — clean Z elbow)
+    # Layout (all diagonals use step(-9,+5) = visual 44°):
+    #   Tip:            (70,29)                          — single upper-right point
+    #   Upper diagonal: (61,34)·(52,39)·(43,44)·(34,49) — 4 steps down-left
+    #   Rightward kink: (34,49)·(43,49)·(52,49)         — 2 steps right (the notch/tooth)
+    #   Lower diagonal: (52,49)·(43,54)·(34,59)·(25,64) — 3 steps down-left
+    #   Tail:           (25,64)                          — single lower-left point
+    #
+    # Kink spans 18 x-units; each diagonal spans 27 x-units — diagonals are longer ✓
     {'name': 'Lightning Bolt', 'cells': [
-        {'x': 46, 'y': 26}, {'x': 58, 'y': 26}, {'x': 70, 'y': 26},
-        {'x': 61, 'y': 31}, {'x': 52, 'y': 36}, {'x': 43, 'y': 41}, {'x': 34, 'y': 46},
-        {'x': 43, 'y': 46}, {'x': 52, 'y': 46}, {'x': 61, 'y': 46},
+        {'x': 70, 'y': 29},
+        {'x': 61, 'y': 34}, {'x': 52, 'y': 39}, {'x': 43, 'y': 44}, {'x': 34, 'y': 49},
+        {'x': 43, 'y': 49}, {'x': 52, 'y': 49},
+        {'x': 43, 'y': 54}, {'x': 34, 'y': 59}, {'x': 25, 'y': 64},
     ]},
 
     # 2 · Bullseye · 9 crystals
