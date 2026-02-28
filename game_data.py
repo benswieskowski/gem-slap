@@ -97,615 +97,261 @@ def create_phrase_library():
     return library
 
 
-# ═══════════════════════════════════════════════════════════════
-# NEW SHAPES (levels 1–30) — sorted easy→hard
-# score = crystals × 0.6 + normalised_spread × 0.4
-# ═══════════════════════════════════════════════════════════════
-NEW_PATTERNS = [
-
-    # 1 · Lightning Bolt · 10 crystals
-    # True ⚡ shape: single tip → long diagonal → short rightward kink → long diagonal → single tail
-    #
-    # KEY INSIGHT v3: Previous fix used step(-9,+5) = 44° from horizontal.
-    # That made the bolt run nearly DIAGONALLY across the screen — wider than tall!
-    # Pixel dimensions: 176pt wide × 236pt tall (aspect 1.34) — looks like a diagonal line.
-    #
-    # FIX: Use step(-5,+6) = 64° from horizontal (26° from vertical).
-    # Each diagonal leans mostly DOWNWARD with a small leftward drift — like a real bolt.
-    # New pixel dimensions: 78pt wide × 283pt tall (aspect 3.6) — clearly vertical ✓
-    #
-    # Layout (all diagonals use step(-5,+6) = visual 64°, gap=8.8pt):
-    #   Tip:            (60,27)                          — single upper-right point
-    #   Upper diagonal: (55,33)·(50,39)·(45,45)·(40,51) — 4 steps down-left
-    #   Rightward kink: (40,51)·(49,51)·(58,51)         — 2 steps right (+9,0)
-    #   Lower diagonal: (53,57)·(48,63)·(43,69)         — 3 steps down-left from kink-R
-    #   (58,51)→(53,57) is the kink-R→first-lower-diag junction
-    {'name': 'Lightning Bolt', 'cells': [
-        {'x': 60, 'y': 27},
-        {'x': 55, 'y': 33}, {'x': 50, 'y': 39}, {'x': 45, 'y': 45}, {'x': 40, 'y': 51},
-        {'x': 49, 'y': 51}, {'x': 58, 'y': 51},
-        {'x': 53, 'y': 57}, {'x': 48, 'y': 63}, {'x': 43, 'y': 69},
-    ]},
-
-    # 2 · Bullseye · 12 crystals
-    # Center + connected inner hexagon (6 dots) + sparse outer pentagon (5 dots) = target
-    #
-    # ROOT CAUSE OF OLD FAILURE: inner ring had gap=-0.3pt from center (literally touching).
-    # All three tiers were crammed within 87pt radius → everything merged into one blob.
-    #
-    # NEW DESIGN — three clearly separate tiers:
-    #   Center alone:   gap to inner ring = 14.7–18.4pt ✓ (clearly distinct dot)
-    #   Inner hexagon:  rx=13,ry=8 units, visual r≈52pt, ring gaps 14.7–18.4pt ✓ (connected ring)
-    #   Outer pentagon: rx=26,ry=15 units, visual r≈101pt = 1.93× inner radius
-    #                   Each outer dot is 11–24pt from nearest inner dot ✓ (clearly outer ring)
-    # The inner ring is a fully connected hexagon the player can trace.
-    # The outer ring is sparse but at such a clearly larger radius it reads as a second ring.
-    {'name': 'Bullseye', 'cells': [
-        {'x': 50, 'y': 50},                                              # center
-        {'x': 63, 'y': 50}, {'x': 57, 'y': 57}, {'x': 44, 'y': 57},  # inner hexagon
-        {'x': 37, 'y': 50}, {'x': 44, 'y': 43}, {'x': 57, 'y': 43},  # inner hexagon (cont.)
-        {'x': 76, 'y': 50}, {'x': 58, 'y': 64},                        # outer pentagon
-        {'x': 29, 'y': 59}, {'x': 29, 'y': 41}, {'x': 58, 'y': 36},  # outer pentagon (cont.)
-    ]},
-
-    # 3 · Eye · 12 crystals
-    # Almond/lens outline with pointed left+right tips — no pupil (empty interior)
-    #
-    # ASPECT RATIO FIX: old design had x-span=44, y-span=40 → 172pt × 269pt (taller than wide!)
-    # New design:  x-span=52 units (203pt),  y-span=18 units (121pt)  → W/H = 1.67 ✓
-    # For x-span 52 units and y-span 18 units the shape is clearly wider than tall,
-    # like a real eye. All arc gaps ≤11pt, all tip→arc gaps ≤5pt.
-    #
-    # Tips: (24,50) and (76,50) — extreme left and right points of the almond
-    # Upper arc: 5 dots curving from left tip to right tip through y=41 (apex)
-    # Lower arc: 5 dots curving from right tip to left tip through y=59 (nadir)
-    # No pupil — the empty interior and pointed tips distinguish this from Bullseye
-    {'name': 'Eye', 'cells': [
-        {'x': 24, 'y': 50}, {'x': 76, 'y': 50},                        # left and right tips
-        {'x': 30, 'y': 45}, {'x': 38, 'y': 42}, {'x': 50, 'y': 41},  # upper arc
-        {'x': 62, 'y': 42}, {'x': 70, 'y': 45},                        # upper arc (right)
-        {'x': 70, 'y': 55}, {'x': 62, 'y': 58}, {'x': 50, 'y': 59},  # lower arc
-        {'x': 38, 'y': 58}, {'x': 30, 'y': 55},                        # lower arc (left)
-    ]},
-
-    # 4 · Crescent · 10 crystals
-    # Classic moon crescent: outer arc (large right-bulging C) + inner arc (shallow right curve)
-    # Both arcs share the same top (50,37) and bottom (50,63) tips.
-    #
-    # ROOT CAUSE OF OLD FAILURE: old arc steps were 14+ y-units = 94pt → all gaps 50-66pt.
-    # Every dot was completely disconnected. Inner arc had only 4 dots spanning 40 y-units.
-    #
-    # NEW DESIGN uses proper ellipse math: rx=22 units (86pt), ry=13 units (87pt) → round ✓
-    #   Outer arc 7 dots, all gaps 6-10pt ✓
-    #   Inner arc 5 dots, tips touching (gap=1pt), middle gaps 18pt ✓
-    #
-    # Outer arc reaches x=72. Inner arc reaches only x=56. The 62pt gap between them
-    # at the midpoint is the visible concave "bite" of the crescent.
-    {'name': 'Crescent', 'cells': [
-        {'x': 50, 'y': 37}, {'x': 50, 'y': 63},                        # shared tips (top, bottom)
-        {'x': 61, 'y': 39}, {'x': 69, 'y': 44}, {'x': 72, 'y': 50},  # outer arc (right bulge)
-        {'x': 69, 'y': 56}, {'x': 61, 'y': 61},                        # outer arc (lower)
-        {'x': 54, 'y': 42}, {'x': 56, 'y': 50}, {'x': 54, 'y': 58},  # inner arc (shallow curve)
-    ]},
-
-    # 5 · Compass · score 5.617 · 9 crystals
-    {'name': 'Compass', 'cells': [
-        {'x': 50, 'y': 24}, {'x': 76, 'y': 50}, {'x': 50, 'y': 76}, {'x': 24, 'y': 50},
-        {'x': 62, 'y': 38}, {'x': 62, 'y': 62}, {'x': 38, 'y': 62}, {'x': 38, 'y': 38},
-        {'x': 50, 'y': 50},
-    ]},
-
-    # 6 · Arch · score 5.678 · 9 crystals
-    {'name': 'Arch', 'cells': [
-        {'x': 30, 'y': 72}, {'x': 30, 'y': 60}, {'x': 30, 'y': 48},
-        {'x': 38, 'y': 36}, {'x': 50, 'y': 28}, {'x': 62, 'y': 36},
-        {'x': 70, 'y': 48}, {'x': 70, 'y': 60}, {'x': 70, 'y': 72},
-    ]},
-
-    # 7 · Bowtie · 10 crystals
-    {'name': 'Bowtie', 'cells': [
-        {'x': 26, 'y': 30}, {'x': 74, 'y': 30},
-        {'x': 38, 'y': 38}, {'x': 62, 'y': 38},
-        {'x': 44, 'y': 50}, {'x': 56, 'y': 50},
-        {'x': 38, 'y': 62}, {'x': 62, 'y': 62},
-        {'x': 26, 'y': 70}, {'x': 74, 'y': 70},
-    ]},
-
-    # 8 · Parabola · 12 crystals
-    {'name': 'Parabola', 'cells': [
-        {'x': 50, 'y': 76},
-        {'x': 44, 'y': 68}, {'x': 56, 'y': 68},
-        {'x': 36, 'y': 58}, {'x': 64, 'y': 58},
-        {'x': 28, 'y': 46}, {'x': 72, 'y': 46},
-        {'x': 26, 'y': 32}, {'x': 74, 'y': 32},
-        {'x': 36, 'y': 24}, {'x': 50, 'y': 24}, {'x': 64, 'y': 24},
-    ]},
-
-    # 9 · Hourglass · score 5.726 · 11 crystals
-    {'name': 'Hourglass', 'cells': [
-        {'x': 26, 'y': 24}, {'x': 50, 'y': 24}, {'x': 74, 'y': 24},
-        {'x': 38, 'y': 36}, {'x': 62, 'y': 36},
-        {'x': 50, 'y': 50},
-        {'x': 38, 'y': 64}, {'x': 62, 'y': 64},
-        {'x': 26, 'y': 76}, {'x': 50, 'y': 76}, {'x': 74, 'y': 76},
-    ]},
-
-    # 10 · Magnet · 11 crystals
-    {'name': 'Magnet', 'cells': [
-        {'x': 38, 'y': 24}, {'x': 50, 'y': 20}, {'x': 62, 'y': 24},
-        {'x': 30, 'y': 32}, {'x': 70, 'y': 32},
-        {'x': 28, 'y': 46}, {'x': 72, 'y': 46},
-        {'x': 28, 'y': 60}, {'x': 72, 'y': 60},
-        {'x': 28, 'y': 72}, {'x': 72, 'y': 72},
-    ]},
-
-    # 11 · Trident · score 6.034 · 10 crystals
-    {'name': 'Trident', 'cells': [
-        {'x': 50, 'y': 74}, {'x': 50, 'y': 62},
-        {'x': 36, 'y': 52}, {'x': 50, 'y': 52}, {'x': 64, 'y': 52},
-        {'x': 36, 'y': 40}, {'x': 36, 'y': 28},
-        {'x': 64, 'y': 40}, {'x': 64, 'y': 28},
-        {'x': 50, 'y': 40}, {'x': 50, 'y': 28},
-    ]},
-
-    # 12 · Pawn · 12 crystals
-    {'name': 'Pawn', 'cells': [
-        {'x': 50, 'y': 24},
-        {'x': 40, 'y': 30}, {'x': 60, 'y': 30},
-        {'x': 36, 'y': 40}, {'x': 64, 'y': 40},
-        {'x': 42, 'y': 50}, {'x': 58, 'y': 50},
-        {'x': 36, 'y': 60}, {'x': 64, 'y': 60},
-        {'x': 34, 'y': 70}, {'x': 50, 'y': 70}, {'x': 66, 'y': 70},
-    ]},
-
-    # 13 · Martini · 12 crystals
-    {'name': 'Martini', 'cells': [
-        {'x': 34, 'y': 26}, {'x': 50, 'y': 26}, {'x': 66, 'y': 26},
-        {'x': 40, 'y': 36}, {'x': 60, 'y': 36},
-        {'x': 44, 'y': 46}, {'x': 56, 'y': 46},
-        {'x': 50, 'y': 56},
-        {'x': 50, 'y': 66},
-        {'x': 36, 'y': 74}, {'x': 50, 'y': 74}, {'x': 64, 'y': 74},
-    ]},
-
-    # 14 · Rocket · 11 crystals
-    {'name': 'Rocket', 'cells': [
-        {'x': 50, 'y': 24},
-        {'x': 42, 'y': 32}, {'x': 58, 'y': 32},
-        {'x': 40, 'y': 44}, {'x': 60, 'y': 44},
-        {'x': 40, 'y': 56}, {'x': 60, 'y': 56},
-        {'x': 30, 'y': 64}, {'x': 70, 'y': 64},
-        {'x': 36, 'y': 74}, {'x': 64, 'y': 74},
-    ]},
-
-    # 15 · Peace Sign · 12 crystals
-    {'name': 'Peace Sign', 'cells': [
-        {'x': 50, 'y': 28}, {'x': 66, 'y': 34}, {'x': 72, 'y': 50},
-        {'x': 66, 'y': 66}, {'x': 50, 'y': 72}, {'x': 34, 'y': 66},
-        {'x': 28, 'y': 50}, {'x': 34, 'y': 34},
-        {'x': 50, 'y': 38}, {'x': 50, 'y': 50},
-        {'x': 40, 'y': 62}, {'x': 60, 'y': 62},
-    ]},
-
-    # 16 · Ice Cream Cone · 11 crystals
-    {'name': 'Ice Cream Cone', 'cells': [
-        {'x': 50, 'y': 28}, {'x': 62, 'y': 32}, {'x': 70, 'y': 46},
-        {'x': 38, 'y': 32}, {'x': 30, 'y': 46},
-        {'x': 34, 'y': 56}, {'x': 50, 'y': 56}, {'x': 66, 'y': 56},
-        {'x': 40, 'y': 67}, {'x': 60, 'y': 67},
-        {'x': 50, 'y': 76},
-    ]},
-
-    # 17 · Flame · 10 crystals
-    {'name': 'Flame', 'cells': [
-        {'x': 50, 'y': 72}, {'x': 38, 'y': 66}, {'x': 62, 'y': 66},
-        {'x': 30, 'y': 56}, {'x': 70, 'y': 56},
-        {'x': 34, 'y': 44}, {'x': 66, 'y': 44},
-        {'x': 40, 'y': 34}, {'x': 60, 'y': 34},
-        {'x': 50, 'y': 24},
-    ]},
-
-    # 18 · Mountain · 12 crystals
-    {'name': 'Mountain', 'cells': [
-        {'x': 26, 'y': 70}, {'x': 38, 'y': 70}, {'x': 50, 'y': 70},
-        {'x': 62, 'y': 70}, {'x': 74, 'y': 70},
-        {'x': 28, 'y': 54}, {'x': 32, 'y': 40},
-        {'x': 40, 'y': 50}, {'x': 50, 'y': 58},
-        {'x': 60, 'y': 50}, {'x': 68, 'y': 40}, {'x': 72, 'y': 54},
-    ]},
-
-    # 19 · Heart · 12 crystals
-    {'name': 'Heart', 'cells': [
-        {'x': 36, 'y': 28}, {'x': 50, 'y': 36}, {'x': 64, 'y': 28},
-        {'x': 30, 'y': 36}, {'x': 70, 'y': 36},
-        {'x': 28, 'y': 44}, {'x': 72, 'y': 44},
-        {'x': 28, 'y': 58}, {'x': 72, 'y': 58},
-        {'x': 38, 'y': 68}, {'x': 62, 'y': 68},
-        {'x': 50, 'y': 76},
-    ]},
-
-    # 20 · Mushroom · 12 crystals
-    {'name': 'Mushroom', 'cells': [
-        {'x': 50, 'y': 26},
-        {'x': 38, 'y': 30}, {'x': 30, 'y': 42}, {'x': 34, 'y': 56},
-        {'x': 62, 'y': 30}, {'x': 70, 'y': 42}, {'x': 66, 'y': 56},
-        {'x': 50, 'y': 56},
-        {'x': 42, 'y': 64}, {'x': 58, 'y': 64},
-        {'x': 44, 'y': 74}, {'x': 56, 'y': 74},
-    ]},
-
-    # 21 · Bell · 11 crystals
-    {'name': 'Bell', 'cells': [
-        {'x': 50, 'y': 24},
-        {'x': 38, 'y': 28}, {'x': 28, 'y': 40}, {'x': 30, 'y': 56}, {'x': 34, 'y': 68},
-        {'x': 62, 'y': 28}, {'x': 72, 'y': 40}, {'x': 70, 'y': 56}, {'x': 66, 'y': 68},
-        {'x': 50, 'y': 68},
-        {'x': 50, 'y': 76},
-    ]},
-
-    # 22 · UFO · 12 crystals
-    {'name': 'UFO', 'cells': [
-        {'x': 40, 'y': 44}, {'x': 50, 'y': 38}, {'x': 60, 'y': 44},
-        {'x': 38, 'y': 50}, {'x': 50, 'y': 48}, {'x': 62, 'y': 50},
-        {'x': 30, 'y': 56}, {'x': 50, 'y': 56}, {'x': 70, 'y': 56},
-        {'x': 34, 'y': 64}, {'x': 50, 'y': 66}, {'x': 66, 'y': 64},
-    ]},
-
-    # 23 · Cactus · 11 crystals
-    {'name': 'Cactus', 'cells': [
-        {'x': 50, 'y': 72}, {'x': 50, 'y': 60}, {'x': 50, 'y': 48},
-        {'x': 50, 'y': 36}, {'x': 50, 'y': 24},
-        {'x': 38, 'y': 48}, {'x': 30, 'y': 48}, {'x': 30, 'y': 36},
-        {'x': 62, 'y': 48}, {'x': 70, 'y': 48}, {'x': 70, 'y': 36},
-    ]},
-
-    # 24 · Thumbs Up · 12 crystals
-    {'name': 'Thumbs Up', 'cells': [
-        {'x': 38, 'y': 74}, {'x': 52, 'y': 74},
-        {'x': 64, 'y': 70}, {'x': 66, 'y': 58}, {'x': 64, 'y': 50},
-        {'x': 52, 'y': 50}, {'x': 40, 'y': 50},
-        {'x': 34, 'y': 60},
-        {'x': 34, 'y': 40}, {'x': 32, 'y': 28},
-        {'x': 38, 'y': 24}, {'x': 46, 'y': 24},
-    ]},
-
-    # 25 · Anchor · 12 crystals
-    {'name': 'Anchor', 'cells': [
-        {'x': 50, 'y': 24},
-        {'x': 64, 'y': 30}, {'x': 70, 'y': 44}, {'x': 62, 'y': 56},
-        {'x': 50, 'y': 60},
-        {'x': 38, 'y': 56}, {'x': 30, 'y': 44}, {'x': 36, 'y': 30},
-        {'x': 50, 'y': 64},
-        {'x': 38, 'y': 64}, {'x': 62, 'y': 64},
-        {'x': 50, 'y': 74},
-    ]},
-
-    # 26 · Pyramid · 11 crystals
-    {'name': 'Pyramid', 'cells': [
-        {'x': 50, 'y': 24},
-        {'x': 42, 'y': 38}, {'x': 58, 'y': 38},
-        {'x': 34, 'y': 52}, {'x': 50, 'y': 52}, {'x': 66, 'y': 52},
-        {'x': 28, 'y': 66}, {'x': 38, 'y': 66}, {'x': 50, 'y': 66},
-        {'x': 62, 'y': 66}, {'x': 72, 'y': 66},
-    ]},
-
-    # 27 · Fork · score 7.238 · 12 crystals
-    {'name': 'Fork', 'cells': [
-        {'x': 50, 'y': 74}, {'x': 50, 'y': 64}, {'x': 50, 'y': 54},
-        {'x': 40, 'y': 44}, {'x': 50, 'y': 44}, {'x': 60, 'y': 44},
-        {'x': 36, 'y': 34}, {'x': 34, 'y': 24},
-        {'x': 50, 'y': 34}, {'x': 50, 'y': 24},
-        {'x': 64, 'y': 34}, {'x': 66, 'y': 24},
-    ]},
-
-    # 28 · Saturn · 12 crystals
-    {'name': 'Saturn', 'cells': [
-        {'x': 50, 'y': 36}, {'x': 62, 'y': 44}, {'x': 64, 'y': 56},
-        {'x': 50, 'y': 64}, {'x': 38, 'y': 56}, {'x': 36, 'y': 44},
-        {'x': 26, 'y': 62}, {'x': 36, 'y': 56}, {'x': 46, 'y': 50},
-        {'x': 54, 'y': 48}, {'x': 64, 'y': 42}, {'x': 74, 'y': 36},
-    ]},
-
-    # 29 · Happy Face · 12 crystals
-    # 2 eye dots + 10-dot wide smile arc — no face circle.
-    #
-    # OLD DESIGN had a 7-dot face circle with gaps 25–66pt (all disconnected) and only
-    # a 3-dot smile that was also disconnected from the circle. Nothing read correctly.
-    #
-    # NEW DESIGN: no circle needed — just eyes + a big expressive grin.
-    #   Eyes: (40,37) and (60,37) — two isolated dots in the upper area
-    #   Smile: 10 dots equally spaced along a parabolic arc x=26→74, dip to y=65
-    #          Arc length 296pt, gap per step ≈33pt → actual pixel gap −5 to 0pt
-    #          (crystals lightly touching = solid smooth arc = unmistakable grin)
-    #   Eye-to-smile vertical gap: 87pt — large enough to clearly read as a face
-    #   Smile pixel width: 187pt — wide, joyful, impossible to misread
-    {'name': 'Happy Face', 'cells': [
-        {'x': 40, 'y': 37}, {'x': 60, 'y': 37},                        # eyes
-        {'x': 26, 'y': 50}, {'x': 30, 'y': 54}, {'x': 34, 'y': 58},  # smile left
-        {'x': 39, 'y': 62}, {'x': 46, 'y': 65}, {'x': 54, 'y': 65},  # smile bottom
-        {'x': 61, 'y': 62}, {'x': 66, 'y': 58}, {'x': 70, 'y': 54},  # smile right
-        {'x': 74, 'y': 50},                                              # smile end
-    ]},
-
-    # 30 · Eiffel Tower · 12 crystals
-    {'name': 'Eiffel Tower', 'cells': [
-        {'x': 50, 'y': 24},
-        {'x': 45, 'y': 34}, {'x': 55, 'y': 34},
-        {'x': 41, 'y': 46}, {'x': 59, 'y': 46},
-        {'x': 36, 'y': 58}, {'x': 50, 'y': 64}, {'x': 64, 'y': 58},
-        {'x': 31, 'y': 70}, {'x': 69, 'y': 70},
-        {'x': 26, 'y': 76}, {'x': 74, 'y': 76},
-    ]},
-]
-
 
 # ═══════════════════════════════════════════════════════════════
-# ORIGINAL 41 LEVELS (levels 31–71) — sorted easy→hard
-# score = crystals × 0.6 + normalised_spread × 0.4
+# ORDERED PATTERNS — 71 levels in 6 categories
+# Categories: Shapes → Symbols → Space → Animals → Objects → Misc
+# Within each category: sorted easiest → hardest by crystal count
 # ═══════════════════════════════════════════════════════════════
-ORIGINAL_PATTERNS = [
+ORDERED_PATTERNS = [
 
-    # 31 · Triangle · score 1.800 · 3 crystals
-    {'name': 'Triangle', 'cells': [
-        {'x': 50, 'y': 36}, {'x': 38, 'y': 60}, {'x': 62, 'y': 60},
-    ]},
+    # ─────────────────────────────────────────────────────────────
+    # SHAPES — 15 levels · pure geometry
+    # ─────────────────────────────────────────────────────────────
 
-    # 32 · Line · score 2.468 · 4 crystals
-    {'name': 'Line', 'cells': [
-        {'x': 25, 'y': 50}, {'x': 42, 'y': 50}, {'x': 58, 'y': 50}, {'x': 75, 'y': 50},
-    ]},
+    # 1 · Triangle · 3 crystals
+    {'name': 'Triangle', 'cells': [{'x': 50, 'y': 36}, {'x': 38, 'y': 60}, {'x': 62, 'y': 60}]},
 
-    # 33 · Crux · score 2.728 · 4 crystals
-    {'name': 'Crux', 'cells': [
-        {'x': 55, 'y': 76}, {'x': 32, 'y': 47}, {'x': 50, 'y': 24}, {'x': 68, 'y': 39},
-    ]},
+    # 2 · Line · 4 crystals
+    {'name': 'Line', 'cells': [{'x': 25, 'y': 50}, {'x': 42, 'y': 50}, {'x': 58, 'y': 50}, {'x': 75, 'y': 50}]},
 
-    # 34 · Square · score 2.735 · 4 crystals
-    {'name': 'Square', 'cells': [
-        {'x': 34, 'y': 34}, {'x': 66, 'y': 34}, {'x': 34, 'y': 66}, {'x': 66, 'y': 66},
-    ]},
+    # 3 · Square · 4 crystals
+    {'name': 'Square', 'cells': [{'x': 34, 'y': 34}, {'x': 66, 'y': 34}, {'x': 34, 'y': 66}, {'x': 66, 'y': 66}]},
 
-    # 35 · Diamond · score 2.751 · 4 crystals
-    {'name': 'Diamond', 'cells': [
-        {'x': 50, 'y': 27}, {'x': 27, 'y': 50}, {'x': 73, 'y': 50}, {'x': 50, 'y': 73},
-    ]},
+    # 4 · Diamond · 4 crystals
+    {'name': 'Diamond', 'cells': [{'x': 50, 'y': 27}, {'x': 27, 'y': 50}, {'x': 73, 'y': 50}, {'x': 50, 'y': 73}]},
 
-    # 36 · Quarter Note · score 3.003 · 5 crystals
-    {'name': 'Quarter Note', 'cells': [
-        {'x': 44, 'y': 68}, {'x': 51, 'y': 64}, {'x': 53, 'y': 52},
-        {'x': 53, 'y': 38}, {'x': 53, 'y': 24},
-    ]},
+    # 5 · Cross · 5 crystals
+    {'name': 'Cross', 'cells': [{'x': 50, 'y': 30}, {'x': 30, 'y': 50}, {'x': 50, 'y': 50}, {'x': 70, 'y': 50}, {'x': 50, 'y': 70}]},
 
-    # 37 · Cross · score 3.046 · 5 crystals
-    {'name': 'Cross', 'cells': [
-        {'x': 50, 'y': 30}, {'x': 30, 'y': 50}, {'x': 50, 'y': 50},
-        {'x': 70, 'y': 50}, {'x': 50, 'y': 70},
-    ]},
-
-    # 38 · Cassiopeia · score 3.145 · 5 crystals
-    {'name': 'Cassiopeia', 'cells': [
-        {'x': 76, 'y': 53}, {'x': 60, 'y': 66}, {'x': 51, 'y': 49},
-        {'x': 36, 'y': 50}, {'x': 24, 'y': 34},
-    ]},
-
-    # 39 · Lyra · score 3.354 · 5 crystals
-    {'name': 'Lyra', 'cells': [
-        {'x': 69, 'y': 24}, {'x': 56, 'y': 34}, {'x': 39, 'y': 40},
-        {'x': 47, 'y': 70}, {'x': 31, 'y': 76},
-    ]},
-
-    # 40 · Arrow · score 3.360 · 5 crystals
+    # 6 · Arrow · 9 crystals
+    # Horizontal shaft (5 dots, step=11) + ">" chevron at right tip (2-step arms, step(-9,±5))
+    # Old design was 5 scattered dots forming a diamond — nothing like an arrow.
+    # New: shaft runs x=24→68, tip at (68,50), arms open back-left at visual 44°.
+    # Width=172pt, Height=135pt → W/H=1.27, clearly horizontal ✓
+    # Shaft gaps=6.9pt ✓  Chevron arm gaps=12.6pt ✓
     {'name': 'Arrow', 'cells': [
-        {'x': 25, 'y': 42}, {'x': 25, 'y': 58}, {'x': 50, 'y': 28},
-        {'x': 50, 'y': 72}, {'x': 73, 'y': 50},
+        {'x': 24, 'y': 50}, {'x': 35, 'y': 50}, {'x': 46, 'y': 50}, {'x': 57, 'y': 50}, {'x': 68, 'y': 50},
+        {'x': 59, 'y': 45}, {'x': 50, 'y': 40},
+        {'x': 59, 'y': 55}, {'x': 50, 'y': 60},
     ]},
 
-    # 41 · Pentagon · score 3.363 · 5 crystals
-    {'name': 'Pentagon', 'cells': [
-        {'x': 50, 'y': 29}, {'x': 72, 'y': 45}, {'x': 64, 'y': 71},
-        {'x': 36, 'y': 71}, {'x': 28, 'y': 45},
-    ]},
+    # 7 · Pentagon · 5 crystals
+    {'name': 'Pentagon', 'cells': [{'x': 50, 'y': 29}, {'x': 72, 'y': 45}, {'x': 64, 'y': 71}, {'x': 36, 'y': 71}, {'x': 28, 'y': 45}]},
 
-    # 42 · Eighth Note · score 3.664 · 6 crystals
-    {'name': 'Eighth Note', 'cells': [
-        {'x': 38, 'y': 72}, {'x': 45, 'y': 68}, {'x': 47, 'y': 56},
-        {'x': 47, 'y': 38}, {'x': 61, 'y': 36}, {'x': 69, 'y': 47},
-    ]},
+    # 8 · Hexagon · 6 crystals
+    {'name': 'Hexagon', 'cells': [{'x': 50, 'y': 26}, {'x': 71, 'y': 38}, {'x': 71, 'y': 62}, {'x': 50, 'y': 74}, {'x': 29, 'y': 62}, {'x': 29, 'y': 38}]},
 
-    # 43 · Leo · score 3.723 · 6 crystals
-    {'name': 'Leo', 'cells': [
-        {'x': 76, 'y': 39}, {'x': 62, 'y': 47}, {'x': 68, 'y': 52},
-        {'x': 68, 'y': 61}, {'x': 40, 'y': 45}, {'x': 24, 'y': 55},
-    ]},
+    # 9 · = Equals · 8 crystals
+    {'name': '= Equals', 'cells': [{'x': 25, 'y': 40}, {'x': 42, 'y': 40}, {'x': 58, 'y': 40}, {'x': 75, 'y': 40}, {'x': 25, 'y': 60}, {'x': 42, 'y': 60}, {'x': 58, 'y': 60}, {'x': 75, 'y': 60}]},
 
-    # 44 · Hexagon · score 4.000 · 6 crystals
-    {'name': 'Hexagon', 'cells': [
-        {'x': 50, 'y': 26}, {'x': 71, 'y': 38}, {'x': 71, 'y': 62},
-        {'x': 50, 'y': 74}, {'x': 29, 'y': 62}, {'x': 29, 'y': 38},
-    ]},
+    # 10 · Δ Delta · 8 crystals
+    {'name': 'Δ Delta', 'cells': [{'x': 50, 'y': 25}, {'x': 38, 'y': 42}, {'x': 62, 'y': 42}, {'x': 29, 'y': 58}, {'x': 71, 'y': 58}, {'x': 26, 'y': 74}, {'x': 50, 'y': 74}, {'x': 74, 'y': 74}]},
 
-    # 45 · Flat · score 4.236 · 7 crystals
-    {'name': 'Flat', 'cells': [
-        {'x': 38, 'y': 26}, {'x': 38, 'y': 40}, {'x': 38, 'y': 54}, {'x': 38, 'y': 68},
-        {'x': 52, 'y': 52}, {'x': 58, 'y': 64}, {'x': 44, 'y': 74},
-    ]},
+    # 11 · + Plus · 9 crystals
+    {'name': '+ Plus', 'cells': [{'x': 50, 'y': 25}, {'x': 50, 'y': 37}, {'x': 25, 'y': 50}, {'x': 37, 'y': 50}, {'x': 50, 'y': 50}, {'x': 63, 'y': 50}, {'x': 75, 'y': 50}, {'x': 50, 'y': 63}, {'x': 50, 'y': 75}]},
 
-    # 46 · Big Dipper · score 4.346 · 7 crystals
-    {'name': 'Big Dipper', 'cells': [
-        {'x': 22, 'y': 54}, {'x': 28, 'y': 65}, {'x': 45, 'y': 60}, {'x': 45, 'y': 50},
-        {'x': 55, 'y': 43}, {'x': 62, 'y': 36}, {'x': 78, 'y': 35},
-    ]},
+    # 12 · Bowtie · 10 crystals
+    {'name': 'Bowtie', 'cells': [{'x': 26, 'y': 30}, {'x': 74, 'y': 30}, {'x': 38, 'y': 38}, {'x': 62, 'y': 38}, {'x': 44, 'y': 50}, {'x': 56, 'y': 50}, {'x': 38, 'y': 62}, {'x': 62, 'y': 62}, {'x': 26, 'y': 70}, {'x': 74, 'y': 70}]},
 
-    # 47 · Fermata · score 4.485 · 7 crystals
-    {'name': 'Fermata', 'cells': [
-        {'x': 24, 'y': 54}, {'x': 32, 'y': 36}, {'x': 42, 'y': 27}, {'x': 58, 'y': 27},
-        {'x': 68, 'y': 36}, {'x': 76, 'y': 54}, {'x': 50, 'y': 63},
-    ]},
+    # 13 · Hourglass · 11 crystals
+    {'name': 'Hourglass', 'cells': [{'x': 26, 'y': 24}, {'x': 50, 'y': 24}, {'x': 74, 'y': 24}, {'x': 38, 'y': 36}, {'x': 62, 'y': 36}, {'x': 50, 'y': 50}, {'x': 38, 'y': 64}, {'x': 62, 'y': 64}, {'x': 26, 'y': 76}, {'x': 50, 'y': 76}, {'x': 74, 'y': 76}]},
 
-    # 48 · Snowflake · score 4.488 · 7 crystals
-    {'name': 'Snowflake', 'cells': [
-        {'x': 50, 'y': 50}, {'x': 50, 'y': 25}, {'x': 72, 'y': 38},
-        {'x': 72, 'y': 62}, {'x': 50, 'y': 75}, {'x': 28, 'y': 63}, {'x': 28, 'y': 38},
-    ]},
+    # 14 · Pyramid · 11 crystals
+    {'name': 'Pyramid', 'cells': [{'x': 50, 'y': 24}, {'x': 42, 'y': 38}, {'x': 58, 'y': 38}, {'x': 34, 'y': 52}, {'x': 50, 'y': 52}, {'x': 66, 'y': 52}, {'x': 28, 'y': 66}, {'x': 38, 'y': 66}, {'x': 50, 'y': 66}, {'x': 62, 'y': 66}, {'x': 72, 'y': 66}]},
 
-    # 49 · Corona Borealis · score 4.512 · 7 crystals
-    {'name': 'Corona Borealis', 'cells': [
-        {'x': 68, 'y': 31}, {'x': 76, 'y': 47}, {'x': 66, 'y': 64}, {'x': 53, 'y': 67},
-        {'x': 42, 'y': 69}, {'x': 30, 'y': 63}, {'x': 24, 'y': 42},
-    ]},
+    # 15 · Parabola · 12 crystals
+    {'name': 'Parabola', 'cells': [{'x': 50, 'y': 76}, {'x': 44, 'y': 68}, {'x': 56, 'y': 68}, {'x': 36, 'y': 58}, {'x': 64, 'y': 58}, {'x': 28, 'y': 46}, {'x': 72, 'y': 46}, {'x': 26, 'y': 32}, {'x': 74, 'y': 32}, {'x': 36, 'y': 24}, {'x': 50, 'y': 24}, {'x': 64, 'y': 24}]},
 
-    # 50 · Fish · score 4.965 · 8 crystals
-    {'name': 'Fish', 'cells': [
-        {'x': 26, 'y': 50}, {'x': 36, 'y': 43}, {'x': 48, 'y': 36}, {'x': 62, 'y': 40},
-        {'x': 48, 'y': 64}, {'x': 62, 'y': 60}, {'x': 74, 'y': 38}, {'x': 74, 'y': 62},
-    ]},
+    # ─────────────────────────────────────────────────────────────
+    # SYMBOLS — 12 levels · music, math & Greek
+    # ─────────────────────────────────────────────────────────────
 
-    # 51 · Scorpius · score 5.012 · 8 crystals
-    {'name': 'Scorpius', 'cells': [
-        {'x': 70, 'y': 24}, {'x': 72, 'y': 30}, {'x': 61, 'y': 36}, {'x': 57, 'y': 38},
-        {'x': 54, 'y': 42}, {'x': 47, 'y': 55}, {'x': 28, 'y': 76}, {'x': 28, 'y': 63},
-    ]},
+    # 16 · Crux · 4 crystals
+    {'name': 'Crux', 'cells': [{'x': 55, 'y': 76}, {'x': 32, 'y': 47}, {'x': 50, 'y': 24}, {'x': 68, 'y': 39}]},
 
-    # 52 · = Equals · score 5.014 · 8 crystals
-    {'name': '= Equals', 'cells': [
-        {'x': 25, 'y': 40}, {'x': 42, 'y': 40}, {'x': 58, 'y': 40}, {'x': 75, 'y': 40},
-        {'x': 25, 'y': 60}, {'x': 42, 'y': 60}, {'x': 58, 'y': 60}, {'x': 75, 'y': 60},
-    ]},
+    # 17 · Quarter Note · 5 crystals
+    {'name': 'Quarter Note', 'cells': [{'x': 44, 'y': 68}, {'x': 51, 'y': 64}, {'x': 53, 'y': 52}, {'x': 53, 'y': 38}, {'x': 53, 'y': 24}]},
 
-    # 53 · Sharp · score 5.021 · 8 crystals
-    {'name': 'Sharp', 'cells': [
-        {'x': 40, 'y': 27}, {'x': 37, 'y': 69}, {'x': 56, 'y': 23}, {'x': 53, 'y': 65},
-        {'x': 31, 'y': 40}, {'x': 62, 'y': 36}, {'x': 31, 'y': 56}, {'x': 62, 'y': 52},
-    ]},
+    # 18 · Eighth Note · 6 crystals
+    {'name': 'Eighth Note', 'cells': [{'x': 38, 'y': 72}, {'x': 45, 'y': 68}, {'x': 47, 'y': 56}, {'x': 47, 'y': 38}, {'x': 61, 'y': 36}, {'x': 69, 'y': 47}]},
 
-    # 54 · Beamed Notes · score 5.082 · 8 crystals
-    {'name': 'Beamed Notes', 'cells': [
-        {'x': 26, 'y': 74}, {'x': 33, 'y': 70}, {'x': 35, 'y': 56}, {'x': 35, 'y': 34},
-        {'x': 63, 'y': 28}, {'x': 63, 'y': 50}, {'x': 60, 'y': 66}, {'x': 67, 'y': 62},
-    ]},
+    # 19 · Flat · 7 crystals
+    {'name': 'Flat', 'cells': [{'x': 38, 'y': 26}, {'x': 38, 'y': 40}, {'x': 38, 'y': 54}, {'x': 38, 'y': 68}, {'x': 52, 'y': 52}, {'x': 58, 'y': 64}, {'x': 44, 'y': 74}]},
 
-    # 55 · Δ Delta · score 5.173 · 8 crystals
-    {'name': 'Δ Delta', 'cells': [
-        {'x': 50, 'y': 25}, {'x': 38, 'y': 42}, {'x': 62, 'y': 42}, {'x': 29, 'y': 58},
-        {'x': 71, 'y': 58}, {'x': 26, 'y': 74}, {'x': 50, 'y': 74}, {'x': 74, 'y': 74},
-    ]},
+    # 20 · Fermata · 7 crystals
+    {'name': 'Fermata', 'cells': [{'x': 24, 'y': 54}, {'x': 32, 'y': 36}, {'x': 42, 'y': 27}, {'x': 58, 'y': 27}, {'x': 68, 'y': 36}, {'x': 76, 'y': 54}, {'x': 50, 'y': 63}]},
 
-    # 56 · Orion · score 5.447 · 9 crystals
-    {'name': 'Orion', 'cells': [
-        {'x': 50, 'y': 24}, {'x': 37, 'y': 31}, {'x': 56, 'y': 34}, {'x': 52, 'y': 51},
-        {'x': 49, 'y': 54}, {'x': 46, 'y': 55}, {'x': 50, 'y': 65}, {'x': 42, 'y': 76},
-        {'x': 63, 'y': 72},
-    ]},
+    # 21 · Sharp · 8 crystals
+    {'name': 'Sharp', 'cells': [{'x': 40, 'y': 27}, {'x': 37, 'y': 69}, {'x': 56, 'y': 23}, {'x': 53, 'y': 65}, {'x': 31, 'y': 40}, {'x': 62, 'y': 36}, {'x': 31, 'y': 56}, {'x': 62, 'y': 52}]},
 
-    # 57 · Swan · score 5.453 · 9 crystals
-    {'name': 'Swan', 'cells': [
-        {'x': 68, 'y': 26}, {'x': 62, 'y': 34}, {'x': 54, 'y': 42}, {'x': 46, 'y': 50},
-        {'x': 30, 'y': 52}, {'x': 34, 'y': 62}, {'x': 48, 'y': 68}, {'x': 62, 'y': 64},
-        {'x': 50, 'y': 56},
-    ]},
+    # 22 · Beamed Notes · 8 crystals
+    {'name': 'Beamed Notes', 'cells': [{'x': 26, 'y': 74}, {'x': 33, 'y': 70}, {'x': 35, 'y': 56}, {'x': 35, 'y': 34}, {'x': 63, 'y': 28}, {'x': 63, 'y': 50}, {'x': 60, 'y': 66}, {'x': 67, 'y': 62}]},
 
-    # 58 · + Plus · score 5.485 · 9 crystals
-    {'name': '+ Plus', 'cells': [
-        {'x': 50, 'y': 25}, {'x': 50, 'y': 37}, {'x': 25, 'y': 50}, {'x': 37, 'y': 50},
-        {'x': 50, 'y': 50}, {'x': 63, 'y': 50}, {'x': 75, 'y': 50}, {'x': 50, 'y': 63},
-        {'x': 50, 'y': 75},
-    ]},
+    # 23 · θ Theta · 9 crystals
+    {'name': 'θ Theta', 'cells': [{'x': 50, 'y': 27}, {'x': 69, 'y': 38}, {'x': 69, 'y': 62}, {'x': 50, 'y': 73}, {'x': 31, 'y': 62}, {'x': 31, 'y': 38}, {'x': 36, 'y': 50}, {'x': 50, 'y': 50}, {'x': 64, 'y': 50}]},
 
-    # 59 · Bird · score 5.506 · 9 crystals
-    {'name': 'Bird', 'cells': [
-        {'x': 24, 'y': 44}, {'x': 35, 'y': 30}, {'x': 43, 'y': 40}, {'x': 50, 'y': 46},
-        {'x': 57, 'y': 40}, {'x': 65, 'y': 30}, {'x': 76, 'y': 44}, {'x': 44, 'y': 66},
-        {'x': 56, 'y': 66},
-    ]},
+    # 24 · √ Root · 9 crystals
+    {'name': '√ Root', 'cells': [{'x': 23, 'y': 56}, {'x': 30, 'y': 64}, {'x': 36, 'y': 72}, {'x': 43, 'y': 61}, {'x': 50, 'y': 49}, {'x': 56, 'y': 35}, {'x': 61, 'y': 30}, {'x': 70, 'y': 30}, {'x': 78, 'y': 30}]},
 
-    # 60 · θ Theta · score 5.542 · 9 crystals
-    {'name': 'θ Theta', 'cells': [
-        {'x': 50, 'y': 27}, {'x': 69, 'y': 38}, {'x': 69, 'y': 62}, {'x': 50, 'y': 73},
-        {'x': 31, 'y': 62}, {'x': 31, 'y': 38}, {'x': 36, 'y': 50}, {'x': 50, 'y': 50},
-        {'x': 64, 'y': 50},
-    ]},
+    # 25 · Σ Sigma · 9 crystals
+    {'name': 'Σ Sigma', 'cells': [{'x': 33, 'y': 28}, {'x': 51, 'y': 28}, {'x': 70, 'y': 28}, {'x': 54, 'y': 40}, {'x': 35, 'y': 50}, {'x': 54, 'y': 60}, {'x': 33, 'y': 72}, {'x': 51, 'y': 72}, {'x': 70, 'y': 72}]},
 
-    # 61 · Rabbit · score 5.615 · 9 crystals
-    {'name': 'Rabbit', 'cells': [
-        {'x': 40, 'y': 24}, {'x': 42, 'y': 36}, {'x': 58, 'y': 36}, {'x': 60, 'y': 24},
-        {'x': 50, 'y': 48}, {'x': 50, 'y': 64}, {'x': 36, 'y': 74}, {'x': 64, 'y': 74},
-        {'x': 68, 'y': 60},
-    ]},
+    # 26 · × Times · 9 crystals
+    {'name': '× Times', 'cells': [{'x': 28, 'y': 26}, {'x': 39, 'y': 37}, {'x': 61, 'y': 37}, {'x': 72, 'y': 26}, {'x': 50, 'y': 50}, {'x': 39, 'y': 63}, {'x': 28, 'y': 74}, {'x': 61, 'y': 63}, {'x': 72, 'y': 74}]},
 
-    # 62 · √ Root · score 5.685 · 9 crystals
-    {'name': '√ Root', 'cells': [
-        {'x': 23, 'y': 56}, {'x': 30, 'y': 64}, {'x': 36, 'y': 72}, {'x': 43, 'y': 61},
-        {'x': 50, 'y': 49}, {'x': 56, 'y': 35}, {'x': 61, 'y': 30}, {'x': 70, 'y': 30},
-        {'x': 78, 'y': 30},
-    ]},
+    # 27 · π Pi · 10 crystals
+    {'name': 'π Pi', 'cells': [{'x': 25, 'y': 30}, {'x': 42, 'y': 30}, {'x': 58, 'y': 30}, {'x': 75, 'y': 30}, {'x': 35, 'y': 44}, {'x': 32, 'y': 58}, {'x': 29, 'y': 72}, {'x': 65, 'y': 44}, {'x': 68, 'y': 58}, {'x': 71, 'y': 72}]},
 
-    # 63 · Σ Sigma · score 5.696 · 9 crystals
-    {'name': 'Σ Sigma', 'cells': [
-        {'x': 33, 'y': 28}, {'x': 51, 'y': 28}, {'x': 70, 'y': 28}, {'x': 54, 'y': 40},
-        {'x': 35, 'y': 50}, {'x': 54, 'y': 60}, {'x': 33, 'y': 72}, {'x': 51, 'y': 72},
-        {'x': 70, 'y': 72},
-    ]},
+    # ─────────────────────────────────────────────────────────────
+    # SPACE & CONSTELLATIONS — 10 levels · celestial
+    # ─────────────────────────────────────────────────────────────
 
-    # 64 · × Times · score 5.709 · 9 crystals
-    {'name': '× Times', 'cells': [
-        {'x': 28, 'y': 26}, {'x': 39, 'y': 37}, {'x': 61, 'y': 37}, {'x': 72, 'y': 26},
-        {'x': 50, 'y': 50}, {'x': 39, 'y': 63}, {'x': 28, 'y': 74}, {'x': 61, 'y': 63},
-        {'x': 72, 'y': 74},
-    ]},
+    # 28 · Cassiopeia · 5 crystals
+    {'name': 'Cassiopeia', 'cells': [{'x': 76, 'y': 53}, {'x': 60, 'y': 66}, {'x': 51, 'y': 49}, {'x': 36, 'y': 50}, {'x': 24, 'y': 34}]},
 
-    # 65 · Butterfly · score 6.166 · 10 crystals
-    {'name': 'Butterfly', 'cells': [
-        {'x': 26, 'y': 38}, {'x': 36, 'y': 26}, {'x': 64, 'y': 26}, {'x': 74, 'y': 38},
-        {'x': 40, 'y': 46}, {'x': 60, 'y': 46}, {'x': 50, 'y': 42}, {'x': 50, 'y': 60},
-        {'x': 32, 'y': 64}, {'x': 68, 'y': 64},
-    ]},
+    # 29 · Lyra · 5 crystals
+    {'name': 'Lyra', 'cells': [{'x': 69, 'y': 24}, {'x': 56, 'y': 34}, {'x': 39, 'y': 40}, {'x': 47, 'y': 70}, {'x': 31, 'y': 76}]},
 
-    # 66 · Crab · score 6.210 · 10 crystals
-    {'name': 'Crab', 'cells': [
-        {'x': 22, 'y': 28}, {'x': 28, 'y': 40}, {'x': 36, 'y': 50}, {'x': 44, 'y': 58},
-        {'x': 50, 'y': 54}, {'x': 56, 'y': 58}, {'x': 64, 'y': 50}, {'x': 72, 'y': 40},
-        {'x': 78, 'y': 28}, {'x': 50, 'y': 72},
-    ]},
+    # 30 · Leo · 6 crystals
+    {'name': 'Leo', 'cells': [{'x': 76, 'y': 39}, {'x': 62, 'y': 47}, {'x': 68, 'y': 52}, {'x': 68, 'y': 61}, {'x': 40, 'y': 45}, {'x': 24, 'y': 55}]},
 
-    # 67 · Snail · score 6.286 · 10 crystals
-    {'name': 'Snail', 'cells': [
-        {'x': 64, 'y': 28}, {'x': 76, 'y': 44}, {'x': 74, 'y': 60}, {'x': 62, 'y': 70},
-        {'x': 50, 'y': 64}, {'x': 60, 'y': 50}, {'x': 42, 'y': 72}, {'x': 30, 'y': 70},
-        {'x': 26, 'y': 60}, {'x': 24, 'y': 48},
-    ]},
+    # 31 · Big Dipper · 7 crystals
+    {'name': 'Big Dipper', 'cells': [{'x': 22, 'y': 54}, {'x': 28, 'y': 65}, {'x': 45, 'y': 60}, {'x': 45, 'y': 50}, {'x': 55, 'y': 43}, {'x': 62, 'y': 36}, {'x': 78, 'y': 35}]},
 
-    # 68 · Whale · score 6.299 · 10 crystals
-    {'name': 'Whale', 'cells': [
-        {'x': 24, 'y': 50}, {'x': 26, 'y': 58}, {'x': 32, 'y': 42}, {'x': 42, 'y': 32},
-        {'x': 56, 'y': 28}, {'x': 68, 'y': 32}, {'x': 44, 'y': 58}, {'x': 60, 'y': 60},
-        {'x': 76, 'y': 38}, {'x': 76, 'y': 62},
-    ]},
+    # 32 · Snowflake · 7 crystals
+    {'name': 'Snowflake', 'cells': [{'x': 50, 'y': 50}, {'x': 50, 'y': 25}, {'x': 72, 'y': 38}, {'x': 72, 'y': 62}, {'x': 50, 'y': 75}, {'x': 28, 'y': 63}, {'x': 28, 'y': 38}]},
 
-    # 69 · Spider · score 6.350 · 10 crystals
-    {'name': 'Spider', 'cells': [
-        {'x': 50, 'y': 38}, {'x': 50, 'y': 58}, {'x': 34, 'y': 28}, {'x': 24, 'y': 36},
-        {'x': 30, 'y': 52}, {'x': 22, 'y': 62}, {'x': 66, 'y': 28}, {'x': 76, 'y': 36},
-        {'x': 70, 'y': 52}, {'x': 78, 'y': 62},
-    ]},
+    # 33 · Corona Borealis · 7 crystals
+    {'name': 'Corona Borealis', 'cells': [{'x': 68, 'y': 31}, {'x': 76, 'y': 47}, {'x': 66, 'y': 64}, {'x': 53, 'y': 67}, {'x': 42, 'y': 69}, {'x': 30, 'y': 63}, {'x': 24, 'y': 42}]},
 
-    # 70 · π Pi · score 6.377 · 10 crystals
-    {'name': 'π Pi', 'cells': [
-        {'x': 25, 'y': 30}, {'x': 42, 'y': 30}, {'x': 58, 'y': 30}, {'x': 75, 'y': 30},
-        {'x': 35, 'y': 44}, {'x': 32, 'y': 58}, {'x': 29, 'y': 72}, {'x': 65, 'y': 44},
-        {'x': 68, 'y': 58}, {'x': 71, 'y': 72},
-    ]},
+    # 34 · Scorpius · 8 crystals
+    {'name': 'Scorpius', 'cells': [{'x': 70, 'y': 24}, {'x': 72, 'y': 30}, {'x': 61, 'y': 36}, {'x': 57, 'y': 38}, {'x': 54, 'y': 42}, {'x': 47, 'y': 55}, {'x': 28, 'y': 76}, {'x': 28, 'y': 63}]},
 
-    # 71 · Turtle · score 6.965 · 11 crystals
-    {'name': 'Turtle', 'cells': [
-        {'x': 50, 'y': 28}, {'x': 38, 'y': 36}, {'x': 62, 'y': 36},
-        {'x': 30, 'y': 54}, {'x': 70, 'y': 54},
-        {'x': 38, 'y': 68}, {'x': 62, 'y': 68},
-        {'x': 24, 'y': 40}, {'x': 76, 'y': 40},
-        {'x': 26, 'y': 66}, {'x': 74, 'y': 66},
-    ]},
+    # 35 · Orion · 9 crystals
+    {'name': 'Orion', 'cells': [{'x': 50, 'y': 24}, {'x': 37, 'y': 31}, {'x': 56, 'y': 34}, {'x': 52, 'y': 51}, {'x': 49, 'y': 54}, {'x': 46, 'y': 55}, {'x': 50, 'y': 65}, {'x': 42, 'y': 76}, {'x': 63, 'y': 72}]},
+
+    # 36 · Swan · 9 crystals
+    {'name': 'Swan', 'cells': [{'x': 68, 'y': 26}, {'x': 62, 'y': 34}, {'x': 54, 'y': 42}, {'x': 46, 'y': 50}, {'x': 30, 'y': 52}, {'x': 34, 'y': 62}, {'x': 48, 'y': 68}, {'x': 62, 'y': 64}, {'x': 50, 'y': 56}]},
+
+    # 37 · Crescent · 10 crystals
+    {'name': 'Crescent', 'cells': [{'x': 50, 'y': 37}, {'x': 50, 'y': 63}, {'x': 61, 'y': 39}, {'x': 69, 'y': 44}, {'x': 72, 'y': 50}, {'x': 69, 'y': 56}, {'x': 61, 'y': 61}, {'x': 54, 'y': 42}, {'x': 56, 'y': 50}, {'x': 54, 'y': 58}]},
+
+    # ─────────────────────────────────────────────────────────────
+    # ANIMALS — 9 levels · creatures
+    # ─────────────────────────────────────────────────────────────
+
+    # 38 · Fish · 8 crystals
+    {'name': 'Fish', 'cells': [{'x': 26, 'y': 50}, {'x': 36, 'y': 43}, {'x': 48, 'y': 36}, {'x': 62, 'y': 40}, {'x': 48, 'y': 64}, {'x': 62, 'y': 60}, {'x': 74, 'y': 38}, {'x': 74, 'y': 62}]},
+
+    # 39 · Bird · 9 crystals
+    {'name': 'Bird', 'cells': [{'x': 24, 'y': 44}, {'x': 35, 'y': 30}, {'x': 43, 'y': 40}, {'x': 50, 'y': 46}, {'x': 57, 'y': 40}, {'x': 65, 'y': 30}, {'x': 76, 'y': 44}, {'x': 44, 'y': 66}, {'x': 56, 'y': 66}]},
+
+    # 40 · Rabbit · 9 crystals
+    {'name': 'Rabbit', 'cells': [{'x': 40, 'y': 24}, {'x': 42, 'y': 36}, {'x': 58, 'y': 36}, {'x': 60, 'y': 24}, {'x': 50, 'y': 48}, {'x': 50, 'y': 64}, {'x': 36, 'y': 74}, {'x': 64, 'y': 74}, {'x': 68, 'y': 60}]},
+
+    # 41 · Butterfly · 10 crystals
+    {'name': 'Butterfly', 'cells': [{'x': 26, 'y': 38}, {'x': 36, 'y': 26}, {'x': 64, 'y': 26}, {'x': 74, 'y': 38}, {'x': 40, 'y': 46}, {'x': 60, 'y': 46}, {'x': 50, 'y': 42}, {'x': 50, 'y': 60}, {'x': 32, 'y': 64}, {'x': 68, 'y': 64}]},
+
+    # 42 · Crab · 10 crystals
+    {'name': 'Crab', 'cells': [{'x': 22, 'y': 28}, {'x': 28, 'y': 40}, {'x': 36, 'y': 50}, {'x': 44, 'y': 58}, {'x': 50, 'y': 54}, {'x': 56, 'y': 58}, {'x': 64, 'y': 50}, {'x': 72, 'y': 40}, {'x': 78, 'y': 28}, {'x': 50, 'y': 72}]},
+
+    # 43 · Snail · 10 crystals
+    {'name': 'Snail', 'cells': [{'x': 64, 'y': 28}, {'x': 76, 'y': 44}, {'x': 74, 'y': 60}, {'x': 62, 'y': 70}, {'x': 50, 'y': 64}, {'x': 60, 'y': 50}, {'x': 42, 'y': 72}, {'x': 30, 'y': 70}, {'x': 26, 'y': 60}, {'x': 24, 'y': 48}]},
+
+    # 44 · Whale · 10 crystals
+    {'name': 'Whale', 'cells': [{'x': 24, 'y': 50}, {'x': 26, 'y': 58}, {'x': 32, 'y': 42}, {'x': 42, 'y': 32}, {'x': 56, 'y': 28}, {'x': 68, 'y': 32}, {'x': 44, 'y': 58}, {'x': 60, 'y': 60}, {'x': 76, 'y': 38}, {'x': 76, 'y': 62}]},
+
+    # 45 · Spider · 10 crystals
+    {'name': 'Spider', 'cells': [{'x': 50, 'y': 38}, {'x': 50, 'y': 58}, {'x': 34, 'y': 28}, {'x': 24, 'y': 36}, {'x': 30, 'y': 52}, {'x': 22, 'y': 62}, {'x': 66, 'y': 28}, {'x': 76, 'y': 36}, {'x': 70, 'y': 52}, {'x': 78, 'y': 62}]},
+
+    # 46 · Turtle · 11 crystals
+    {'name': 'Turtle', 'cells': [{'x': 50, 'y': 28}, {'x': 38, 'y': 36}, {'x': 62, 'y': 36}, {'x': 30, 'y': 54}, {'x': 70, 'y': 54}, {'x': 38, 'y': 68}, {'x': 62, 'y': 68}, {'x': 24, 'y': 40}, {'x': 76, 'y': 40}, {'x': 26, 'y': 66}, {'x': 74, 'y': 66}]},
+
+    # ─────────────────────────────────────────────────────────────
+    # OBJECTS — 17 levels · man-made things
+    # ─────────────────────────────────────────────────────────────
+
+    # 47 · Compass · 9 crystals
+    {'name': 'Compass', 'cells': [{'x': 50, 'y': 24}, {'x': 76, 'y': 50}, {'x': 50, 'y': 76}, {'x': 24, 'y': 50}, {'x': 62, 'y': 38}, {'x': 62, 'y': 62}, {'x': 38, 'y': 62}, {'x': 38, 'y': 38}, {'x': 50, 'y': 50}]},
+
+    # 48 · Arch · 9 crystals
+    {'name': 'Arch', 'cells': [{'x': 30, 'y': 72}, {'x': 30, 'y': 60}, {'x': 30, 'y': 48}, {'x': 38, 'y': 36}, {'x': 50, 'y': 28}, {'x': 62, 'y': 36}, {'x': 70, 'y': 48}, {'x': 70, 'y': 60}, {'x': 70, 'y': 72}]},
+
+    # 49 · Lightning Bolt · 10 crystals
+    {'name': 'Lightning Bolt', 'cells': [{'x': 60, 'y': 27}, {'x': 55, 'y': 33}, {'x': 50, 'y': 39}, {'x': 45, 'y': 45}, {'x': 40, 'y': 51}, {'x': 49, 'y': 51}, {'x': 58, 'y': 51}, {'x': 53, 'y': 57}, {'x': 48, 'y': 63}, {'x': 43, 'y': 69}]},
+
+    # 50 · Bell · 11 crystals
+    {'name': 'Bell', 'cells': [{'x': 50, 'y': 24}, {'x': 38, 'y': 28}, {'x': 28, 'y': 40}, {'x': 30, 'y': 56}, {'x': 34, 'y': 68}, {'x': 62, 'y': 28}, {'x': 72, 'y': 40}, {'x': 70, 'y': 56}, {'x': 66, 'y': 68}, {'x': 50, 'y': 68}, {'x': 50, 'y': 76}]},
+
+    # 51 · Cactus · 11 crystals
+    {'name': 'Cactus', 'cells': [{'x': 50, 'y': 72}, {'x': 50, 'y': 60}, {'x': 50, 'y': 48}, {'x': 50, 'y': 36}, {'x': 50, 'y': 24}, {'x': 38, 'y': 48}, {'x': 30, 'y': 48}, {'x': 30, 'y': 36}, {'x': 62, 'y': 48}, {'x': 70, 'y': 48}, {'x': 70, 'y': 36}]},
+
+    # 52 · Ice Cream Cone · 11 crystals
+    {'name': 'Ice Cream Cone', 'cells': [{'x': 50, 'y': 28}, {'x': 62, 'y': 32}, {'x': 70, 'y': 46}, {'x': 38, 'y': 32}, {'x': 30, 'y': 46}, {'x': 34, 'y': 56}, {'x': 50, 'y': 56}, {'x': 66, 'y': 56}, {'x': 40, 'y': 67}, {'x': 60, 'y': 67}, {'x': 50, 'y': 76}]},
+
+    # 53 · Magnet · 11 crystals
+    {'name': 'Magnet', 'cells': [{'x': 38, 'y': 24}, {'x': 50, 'y': 20}, {'x': 62, 'y': 24}, {'x': 30, 'y': 32}, {'x': 70, 'y': 32}, {'x': 28, 'y': 46}, {'x': 72, 'y': 46}, {'x': 28, 'y': 60}, {'x': 72, 'y': 60}, {'x': 28, 'y': 72}, {'x': 72, 'y': 72}]},
+
+    # 54 · Rocket · 11 crystals
+    {'name': 'Rocket', 'cells': [{'x': 50, 'y': 24}, {'x': 42, 'y': 32}, {'x': 58, 'y': 32}, {'x': 40, 'y': 44}, {'x': 60, 'y': 44}, {'x': 40, 'y': 56}, {'x': 60, 'y': 56}, {'x': 30, 'y': 64}, {'x': 70, 'y': 64}, {'x': 36, 'y': 74}, {'x': 64, 'y': 74}]},
+
+    # 55 · Trident · 11 crystals
+    {'name': 'Trident', 'cells': [{'x': 50, 'y': 74}, {'x': 50, 'y': 62}, {'x': 36, 'y': 52}, {'x': 50, 'y': 52}, {'x': 64, 'y': 52}, {'x': 36, 'y': 40}, {'x': 36, 'y': 28}, {'x': 64, 'y': 40}, {'x': 64, 'y': 28}, {'x': 50, 'y': 40}, {'x': 50, 'y': 28}]},
+
+    # 56 · Anchor · 12 crystals
+    {'name': 'Anchor', 'cells': [{'x': 50, 'y': 24}, {'x': 64, 'y': 30}, {'x': 70, 'y': 44}, {'x': 62, 'y': 56}, {'x': 50, 'y': 60}, {'x': 38, 'y': 56}, {'x': 30, 'y': 44}, {'x': 36, 'y': 30}, {'x': 50, 'y': 64}, {'x': 38, 'y': 64}, {'x': 62, 'y': 64}, {'x': 50, 'y': 74}]},
+
+    # 57 · Fork · 12 crystals
+    {'name': 'Fork', 'cells': [{'x': 50, 'y': 74}, {'x': 50, 'y': 64}, {'x': 50, 'y': 54}, {'x': 40, 'y': 44}, {'x': 50, 'y': 44}, {'x': 60, 'y': 44}, {'x': 36, 'y': 34}, {'x': 34, 'y': 24}, {'x': 50, 'y': 34}, {'x': 50, 'y': 24}, {'x': 64, 'y': 34}, {'x': 66, 'y': 24}]},
+
+    # 58 · Martini · 12 crystals
+    {'name': 'Martini', 'cells': [{'x': 34, 'y': 26}, {'x': 50, 'y': 26}, {'x': 66, 'y': 26}, {'x': 40, 'y': 36}, {'x': 60, 'y': 36}, {'x': 44, 'y': 46}, {'x': 56, 'y': 46}, {'x': 50, 'y': 56}, {'x': 50, 'y': 66}, {'x': 36, 'y': 74}, {'x': 50, 'y': 74}, {'x': 64, 'y': 74}]},
+
+    # 59 · Mushroom · 12 crystals
+    {'name': 'Mushroom', 'cells': [{'x': 50, 'y': 26}, {'x': 38, 'y': 30}, {'x': 30, 'y': 42}, {'x': 34, 'y': 56}, {'x': 62, 'y': 30}, {'x': 70, 'y': 42}, {'x': 66, 'y': 56}, {'x': 50, 'y': 56}, {'x': 42, 'y': 64}, {'x': 58, 'y': 64}, {'x': 44, 'y': 74}, {'x': 56, 'y': 74}]},
+
+    # 60 · Pawn · 12 crystals
+    {'name': 'Pawn', 'cells': [{'x': 50, 'y': 24}, {'x': 40, 'y': 30}, {'x': 60, 'y': 30}, {'x': 36, 'y': 40}, {'x': 64, 'y': 40}, {'x': 42, 'y': 50}, {'x': 58, 'y': 50}, {'x': 36, 'y': 60}, {'x': 64, 'y': 60}, {'x': 34, 'y': 70}, {'x': 50, 'y': 70}, {'x': 66, 'y': 70}]},
+
+    # 61 · Saturn · 12 crystals
+    {'name': 'Saturn', 'cells': [{'x': 50, 'y': 36}, {'x': 62, 'y': 44}, {'x': 64, 'y': 56}, {'x': 50, 'y': 64}, {'x': 38, 'y': 56}, {'x': 36, 'y': 44}, {'x': 26, 'y': 62}, {'x': 36, 'y': 56}, {'x': 46, 'y': 50}, {'x': 54, 'y': 48}, {'x': 64, 'y': 42}, {'x': 74, 'y': 36}]},
+
+    # 62 · UFO · 12 crystals
+    {'name': 'UFO', 'cells': [{'x': 40, 'y': 44}, {'x': 50, 'y': 38}, {'x': 60, 'y': 44}, {'x': 38, 'y': 50}, {'x': 50, 'y': 48}, {'x': 62, 'y': 50}, {'x': 30, 'y': 56}, {'x': 50, 'y': 56}, {'x': 70, 'y': 56}, {'x': 34, 'y': 64}, {'x': 50, 'y': 66}, {'x': 66, 'y': 64}]},
+
+    # 63 · Eiffel Tower · 12 crystals
+    {'name': 'Eiffel Tower', 'cells': [{'x': 50, 'y': 24}, {'x': 45, 'y': 34}, {'x': 55, 'y': 34}, {'x': 41, 'y': 46}, {'x': 59, 'y': 46}, {'x': 36, 'y': 58}, {'x': 50, 'y': 64}, {'x': 64, 'y': 58}, {'x': 31, 'y': 70}, {'x': 69, 'y': 70}, {'x': 26, 'y': 76}, {'x': 74, 'y': 76}]},
+
+    # ─────────────────────────────────────────────────────────────
+    # PEOPLE, NATURE & MISC — 8 levels · everything else
+    # ─────────────────────────────────────────────────────────────
+
+    # 64 · Flame · 10 crystals
+    {'name': 'Flame', 'cells': [{'x': 50, 'y': 72}, {'x': 38, 'y': 66}, {'x': 62, 'y': 66}, {'x': 30, 'y': 56}, {'x': 70, 'y': 56}, {'x': 34, 'y': 44}, {'x': 66, 'y': 44}, {'x': 40, 'y': 34}, {'x': 60, 'y': 34}, {'x': 50, 'y': 24}]},
+
+    # 65 · Eye · 12 crystals
+    {'name': 'Eye', 'cells': [{'x': 24, 'y': 50}, {'x': 76, 'y': 50}, {'x': 30, 'y': 45}, {'x': 38, 'y': 42}, {'x': 50, 'y': 41}, {'x': 62, 'y': 42}, {'x': 70, 'y': 45}, {'x': 70, 'y': 55}, {'x': 62, 'y': 58}, {'x': 50, 'y': 59}, {'x': 38, 'y': 58}, {'x': 30, 'y': 55}]},
+
+    # 66 · Bullseye · 12 crystals
+    {'name': 'Bullseye', 'cells': [{'x': 50, 'y': 50}, {'x': 63, 'y': 50}, {'x': 57, 'y': 57}, {'x': 44, 'y': 57}, {'x': 37, 'y': 50}, {'x': 44, 'y': 43}, {'x': 57, 'y': 43}, {'x': 76, 'y': 50}, {'x': 58, 'y': 64}, {'x': 29, 'y': 59}, {'x': 29, 'y': 41}, {'x': 58, 'y': 36}]},
+
+    # 67 · Mountain · 12 crystals
+    {'name': 'Mountain', 'cells': [{'x': 26, 'y': 70}, {'x': 38, 'y': 70}, {'x': 50, 'y': 70}, {'x': 62, 'y': 70}, {'x': 74, 'y': 70}, {'x': 28, 'y': 54}, {'x': 32, 'y': 40}, {'x': 40, 'y': 50}, {'x': 50, 'y': 58}, {'x': 60, 'y': 50}, {'x': 68, 'y': 40}, {'x': 72, 'y': 54}]},
+
+    # 68 · Heart · 12 crystals
+    {'name': 'Heart', 'cells': [{'x': 36, 'y': 28}, {'x': 50, 'y': 36}, {'x': 64, 'y': 28}, {'x': 30, 'y': 36}, {'x': 70, 'y': 36}, {'x': 28, 'y': 44}, {'x': 72, 'y': 44}, {'x': 28, 'y': 58}, {'x': 72, 'y': 58}, {'x': 38, 'y': 68}, {'x': 62, 'y': 68}, {'x': 50, 'y': 76}]},
+
+    # 69 · Peace Sign · 12 crystals
+    {'name': 'Peace Sign', 'cells': [{'x': 50, 'y': 28}, {'x': 66, 'y': 34}, {'x': 72, 'y': 50}, {'x': 66, 'y': 66}, {'x': 50, 'y': 72}, {'x': 34, 'y': 66}, {'x': 28, 'y': 50}, {'x': 34, 'y': 34}, {'x': 50, 'y': 38}, {'x': 50, 'y': 50}, {'x': 40, 'y': 62}, {'x': 60, 'y': 62}]},
+
+    # 70 · Happy Face · 12 crystals
+    {'name': 'Happy Face', 'cells': [{'x': 40, 'y': 37}, {'x': 60, 'y': 37}, {'x': 26, 'y': 50}, {'x': 30, 'y': 54}, {'x': 34, 'y': 58}, {'x': 39, 'y': 62}, {'x': 46, 'y': 65}, {'x': 54, 'y': 65}, {'x': 61, 'y': 62}, {'x': 66, 'y': 58}, {'x': 70, 'y': 54}, {'x': 74, 'y': 50}]},
+
+    # 71 · Thumbs Up · 12 crystals
+    {'name': 'Thumbs Up', 'cells': [{'x': 38, 'y': 74}, {'x': 52, 'y': 74}, {'x': 64, 'y': 70}, {'x': 66, 'y': 58}, {'x': 64, 'y': 50}, {'x': 52, 'y': 50}, {'x': 40, 'y': 50}, {'x': 34, 'y': 60}, {'x': 34, 'y': 40}, {'x': 32, 'y': 28}, {'x': 38, 'y': 24}, {'x': 46, 'y': 24}]},
+
 ]
-
-ORDERED_PATTERNS = NEW_PATTERNS + ORIGINAL_PATTERNS
 
 
 # ═══════════════════════════════════════════════════════════════
