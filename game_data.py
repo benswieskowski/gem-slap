@@ -106,23 +106,25 @@ NEW_PATTERNS = [
     # 1 · Lightning Bolt · 10 crystals
     # True ⚡ shape: single tip → long diagonal → short rightward kink → long diagonal → single tail
     #
-    # KEY INSIGHT: Z has horizontal bars at top and bottom. ⚡ has NO horizontal bars.
-    # ⚡ is two long diagonal segments connected by a SHORT rightward kink (a "tooth").
-    # The kink must be shorter than the diagonals, or it reads as letter Z.
+    # KEY INSIGHT v3: Previous fix used step(-9,+5) = 44° from horizontal.
+    # That made the bolt run nearly DIAGONALLY across the screen — wider than tall!
+    # Pixel dimensions: 176pt wide × 236pt tall (aspect 1.34) — looks like a diagonal line.
     #
-    # Layout (all diagonals use step(-9,+5) = visual 44°):
-    #   Tip:            (70,29)                          — single upper-right point
-    #   Upper diagonal: (61,34)·(52,39)·(43,44)·(34,49) — 4 steps down-left
-    #   Rightward kink: (34,49)·(43,49)·(52,49)         — 2 steps right (the notch/tooth)
-    #   Lower diagonal: (52,49)·(43,54)·(34,59)·(25,64) — 3 steps down-left
-    #   Tail:           (25,64)                          — single lower-left point
+    # FIX: Use step(-5,+6) = 64° from horizontal (26° from vertical).
+    # Each diagonal leans mostly DOWNWARD with a small leftward drift — like a real bolt.
+    # New pixel dimensions: 78pt wide × 283pt tall (aspect 3.6) — clearly vertical ✓
     #
-    # Kink spans 18 x-units; each diagonal spans 27 x-units — diagonals are longer ✓
+    # Layout (all diagonals use step(-5,+6) = visual 64°, gap=8.8pt):
+    #   Tip:            (60,27)                          — single upper-right point
+    #   Upper diagonal: (55,33)·(50,39)·(45,45)·(40,51) — 4 steps down-left
+    #   Rightward kink: (40,51)·(49,51)·(58,51)         — 2 steps right (+9,0)
+    #   Lower diagonal: (53,57)·(48,63)·(43,69)         — 3 steps down-left from kink-R
+    #   (58,51)→(53,57) is the kink-R→first-lower-diag junction
     {'name': 'Lightning Bolt', 'cells': [
-        {'x': 70, 'y': 29},
-        {'x': 61, 'y': 34}, {'x': 52, 'y': 39}, {'x': 43, 'y': 44}, {'x': 34, 'y': 49},
-        {'x': 43, 'y': 49}, {'x': 52, 'y': 49},
-        {'x': 43, 'y': 54}, {'x': 34, 'y': 59}, {'x': 25, 'y': 64},
+        {'x': 60, 'y': 27},
+        {'x': 55, 'y': 33}, {'x': 50, 'y': 39}, {'x': 45, 'y': 45}, {'x': 40, 'y': 51},
+        {'x': 49, 'y': 51}, {'x': 58, 'y': 51},
+        {'x': 53, 'y': 57}, {'x': 48, 'y': 63}, {'x': 43, 'y': 69},
     ]},
 
     # 2 · Bullseye · 9 crystals
