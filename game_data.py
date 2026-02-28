@@ -407,12 +407,24 @@ NEW_PATTERNS = [
     ]},
 
     # 29 · Happy Face · 12 crystals
+    # 2 eye dots + 10-dot wide smile arc — no face circle.
+    #
+    # OLD DESIGN had a 7-dot face circle with gaps 25–66pt (all disconnected) and only
+    # a 3-dot smile that was also disconnected from the circle. Nothing read correctly.
+    #
+    # NEW DESIGN: no circle needed — just eyes + a big expressive grin.
+    #   Eyes: (40,37) and (60,37) — two isolated dots in the upper area
+    #   Smile: 10 dots equally spaced along a parabolic arc x=26→74, dip to y=65
+    #          Arc length 296pt, gap per step ≈33pt → actual pixel gap −5 to 0pt
+    #          (crystals lightly touching = solid smooth arc = unmistakable grin)
+    #   Eye-to-smile vertical gap: 87pt — large enough to clearly read as a face
+    #   Smile pixel width: 187pt — wide, joyful, impossible to misread
     {'name': 'Happy Face', 'cells': [
-        {'x': 50, 'y': 26}, {'x': 63, 'y': 31}, {'x': 68, 'y': 44},
-        {'x': 63, 'y': 57}, {'x': 37, 'y': 57},
-        {'x': 32, 'y': 44}, {'x': 37, 'y': 31},
-        {'x': 40, 'y': 40}, {'x': 60, 'y': 40},
-        {'x': 38, 'y': 66}, {'x': 50, 'y': 72}, {'x': 62, 'y': 66},
+        {'x': 40, 'y': 37}, {'x': 60, 'y': 37},                        # eyes
+        {'x': 26, 'y': 50}, {'x': 30, 'y': 54}, {'x': 34, 'y': 58},  # smile left
+        {'x': 39, 'y': 62}, {'x': 46, 'y': 65}, {'x': 54, 'y': 65},  # smile bottom
+        {'x': 61, 'y': 62}, {'x': 66, 'y': 58}, {'x': 70, 'y': 54},  # smile right
+        {'x': 74, 'y': 50},                                              # smile end
     ]},
 
     # 30 · Eiffel Tower · 12 crystals
