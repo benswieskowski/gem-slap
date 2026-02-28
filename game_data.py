@@ -128,23 +128,24 @@ NEW_PATTERNS = [
     ]},
 
     # 2 · Bullseye · 12 crystals
-    # Center + inner 4-dot ring + outer 7-dot ring — three concentric tiers = target
+    # Center + connected inner hexagon (6 dots) + sparse outer pentagon (5 dots) = target
     #
-    # ASPECT RATIO KEY: For a ring to appear circular, x-radius must be 1.73× y-radius.
-    #   Inner ring: rx=8 units (31pt), ry=5 units (34pt) → visually ~round ✓
-    #   Outer ring: rx=14 units (55pt), ry=8 units (54pt) → visually ~round ✓
+    # ROOT CAUSE OF OLD FAILURE: inner ring had gap=-0.3pt from center (literally touching).
+    # All three tiers were crammed within 87pt radius → everything merged into one blob.
     #
-    # Inner ring (4 dots, 45° rotated diamond): centers are literally touching the center
-    # crystal (gap=−0.3pt) — this is intentional, making it read as a tight inner ring.
-    # Outer ring uses 7 evenly-spaced dots (51.4° apart) so all edge gaps ≤15.5pt ✓
-    # Inner is 45° diamond, outer is 0°-offset heptagon — clearly two separate rings.
+    # NEW DESIGN — three clearly separate tiers:
+    #   Center alone:   gap to inner ring = 14.7–18.4pt ✓ (clearly distinct dot)
+    #   Inner hexagon:  rx=13,ry=8 units, visual r≈52pt, ring gaps 14.7–18.4pt ✓ (connected ring)
+    #   Outer pentagon: rx=26,ry=15 units, visual r≈101pt = 1.93× inner radius
+    #                   Each outer dot is 11–24pt from nearest inner dot ✓ (clearly outer ring)
+    # The inner ring is a fully connected hexagon the player can trace.
+    # The outer ring is sparse but at such a clearly larger radius it reads as a second ring.
     {'name': 'Bullseye', 'cells': [
-        {'x': 50, 'y': 50},                                             # center
-        {'x': 56, 'y': 54}, {'x': 44, 'y': 54},                        # inner ring (bottom)
-        {'x': 44, 'y': 46}, {'x': 56, 'y': 46},                        # inner ring (top)
-        {'x': 64, 'y': 50}, {'x': 59, 'y': 56}, {'x': 47, 'y': 58},  # outer ring (right arc)
-        {'x': 37, 'y': 53}, {'x': 37, 'y': 47},                        # outer ring (left)
-        {'x': 47, 'y': 42}, {'x': 59, 'y': 44},                        # outer ring (top arc)
+        {'x': 50, 'y': 50},                                              # center
+        {'x': 63, 'y': 50}, {'x': 57, 'y': 57}, {'x': 44, 'y': 57},  # inner hexagon
+        {'x': 37, 'y': 50}, {'x': 44, 'y': 43}, {'x': 57, 'y': 43},  # inner hexagon (cont.)
+        {'x': 76, 'y': 50}, {'x': 58, 'y': 64},                        # outer pentagon
+        {'x': 29, 'y': 59}, {'x': 29, 'y': 41}, {'x': 58, 'y': 36},  # outer pentagon (cont.)
     ]},
 
     # 3 · Eye · 12 crystals
@@ -168,11 +169,23 @@ NEW_PATTERNS = [
     ]},
 
     # 4 · Crescent · 10 crystals
+    # Classic moon crescent: outer arc (large right-bulging C) + inner arc (shallow right curve)
+    # Both arcs share the same top (50,37) and bottom (50,63) tips.
+    #
+    # ROOT CAUSE OF OLD FAILURE: old arc steps were 14+ y-units = 94pt → all gaps 50-66pt.
+    # Every dot was completely disconnected. Inner arc had only 4 dots spanning 40 y-units.
+    #
+    # NEW DESIGN uses proper ellipse math: rx=22 units (86pt), ry=13 units (87pt) → round ✓
+    #   Outer arc 7 dots, all gaps 6-10pt ✓
+    #   Inner arc 5 dots, tips touching (gap=1pt), middle gaps 18pt ✓
+    #
+    # Outer arc reaches x=72. Inner arc reaches only x=56. The 62pt gap between them
+    # at the midpoint is the visible concave "bite" of the crescent.
     {'name': 'Crescent', 'cells': [
-        {'x': 52, 'y': 24}, {'x': 64, 'y': 28}, {'x': 74, 'y': 42},
-        {'x': 76, 'y': 56}, {'x': 66, 'y': 70}, {'x': 52, 'y': 76},
-        {'x': 44, 'y': 30}, {'x': 36, 'y': 44},
-        {'x': 36, 'y': 58}, {'x': 44, 'y': 70},
+        {'x': 50, 'y': 37}, {'x': 50, 'y': 63},                        # shared tips (top, bottom)
+        {'x': 61, 'y': 39}, {'x': 69, 'y': 44}, {'x': 72, 'y': 50},  # outer arc (right bulge)
+        {'x': 69, 'y': 56}, {'x': 61, 'y': 61},                        # outer arc (lower)
+        {'x': 54, 'y': 42}, {'x': 56, 'y': 50}, {'x': 54, 'y': 58},  # inner arc (shallow curve)
     ]},
 
     # 5 · Compass · score 5.617 · 9 crystals
