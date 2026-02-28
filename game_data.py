@@ -127,24 +127,44 @@ NEW_PATTERNS = [
         {'x': 53, 'y': 57}, {'x': 48, 'y': 63}, {'x': 43, 'y': 69},
     ]},
 
-    # 2 · Bullseye · 9 crystals
-    # Center + inner ring at 45° (diamond) + outer ring at 0° (cardinal cross)
-    # The 45° offset between rings is what makes it read as bullseye/target
-    # rather than two nested diamonds
+    # 2 · Bullseye · 12 crystals
+    # Center + inner 4-dot ring + outer 7-dot ring — three concentric tiers = target
+    #
+    # ASPECT RATIO KEY: For a ring to appear circular, x-radius must be 1.73× y-radius.
+    #   Inner ring: rx=8 units (31pt), ry=5 units (34pt) → visually ~round ✓
+    #   Outer ring: rx=14 units (55pt), ry=8 units (54pt) → visually ~round ✓
+    #
+    # Inner ring (4 dots, 45° rotated diamond): centers are literally touching the center
+    # crystal (gap=−0.3pt) — this is intentional, making it read as a tight inner ring.
+    # Outer ring uses 7 evenly-spaced dots (51.4° apart) so all edge gaps ≤15.5pt ✓
+    # Inner is 45° diamond, outer is 0°-offset heptagon — clearly two separate rings.
     {'name': 'Bullseye', 'cells': [
-        {'x': 50, 'y': 50},
-        {'x': 40, 'y': 40}, {'x': 60, 'y': 40}, {'x': 60, 'y': 60}, {'x': 40, 'y': 60},
-        {'x': 50, 'y': 26}, {'x': 74, 'y': 50}, {'x': 50, 'y': 74}, {'x': 26, 'y': 50},
+        {'x': 50, 'y': 50},                                             # center
+        {'x': 56, 'y': 54}, {'x': 44, 'y': 54},                        # inner ring (bottom)
+        {'x': 44, 'y': 46}, {'x': 56, 'y': 46},                        # inner ring (top)
+        {'x': 64, 'y': 50}, {'x': 59, 'y': 56}, {'x': 47, 'y': 58},  # outer ring (right arc)
+        {'x': 37, 'y': 53}, {'x': 37, 'y': 47},                        # outer ring (left)
+        {'x': 47, 'y': 42}, {'x': 59, 'y': 44},                        # outer ring (top arc)
     ]},
 
-    # 3 · Eye · 9 crystals
-    # Almond outline + pupil. Extreme points pulled to x=28/72 for small-screen safety
+    # 3 · Eye · 12 crystals
+    # Almond/lens outline with pointed left+right tips — no pupil (empty interior)
+    #
+    # ASPECT RATIO FIX: old design had x-span=44, y-span=40 → 172pt × 269pt (taller than wide!)
+    # New design:  x-span=52 units (203pt),  y-span=18 units (121pt)  → W/H = 1.67 ✓
+    # For x-span 52 units and y-span 18 units the shape is clearly wider than tall,
+    # like a real eye. All arc gaps ≤11pt, all tip→arc gaps ≤5pt.
+    #
+    # Tips: (24,50) and (76,50) — extreme left and right points of the almond
+    # Upper arc: 5 dots curving from left tip to right tip through y=41 (apex)
+    # Lower arc: 5 dots curving from right tip to left tip through y=59 (nadir)
+    # No pupil — the empty interior and pointed tips distinguish this from Bullseye
     {'name': 'Eye', 'cells': [
-        {'x': 28, 'y': 50},
-        {'x': 38, 'y': 38}, {'x': 50, 'y': 30}, {'x': 62, 'y': 38},
-        {'x': 72, 'y': 50},
-        {'x': 62, 'y': 62}, {'x': 50, 'y': 70}, {'x': 38, 'y': 62},
-        {'x': 50, 'y': 50},
+        {'x': 24, 'y': 50}, {'x': 76, 'y': 50},                        # left and right tips
+        {'x': 30, 'y': 45}, {'x': 38, 'y': 42}, {'x': 50, 'y': 41},  # upper arc
+        {'x': 62, 'y': 42}, {'x': 70, 'y': 45},                        # upper arc (right)
+        {'x': 70, 'y': 55}, {'x': 62, 'y': 58}, {'x': 50, 'y': 59},  # lower arc
+        {'x': 38, 'y': 58}, {'x': 30, 'y': 55},                        # lower arc (left)
     ]},
 
     # 4 · Crescent · 10 crystals
