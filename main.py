@@ -9,7 +9,7 @@ from game_data import (
     PERFECT_WINDOW, GREAT_WINDOW, GOOD_WINDOW,
     PERFECT_POINTS, GREAT_POINTS, GOOD_POINTS, MISS_POINTS,
     TARGET_DESTROY_RADIUS, STANDARD_TOTAL_ORBS,
-    LEVEL_BATCHES, BASS_STYLES,
+    LEVEL_BATCHES, BASS_STYLES, STYLE_ORDER,
     create_phrase_library,
 )
 
@@ -49,26 +49,26 @@ def transpose_in_scale(melody, steps):
 def generate_level(level_num, bass_style=None):
     random.seed(level_num * 77)
 
-    # ── Flat pattern indexing over all 41 levels ───────────────────────────────
-    # Single batch of 41 patterns ordered by difficulty score.
-    # level_in_set runs 1–41 then cycles; used only for phrase feel selection.
+    # ── Flat pattern indexing over all 71 levels ───────────────────────────────
     all_patterns = LEVEL_BATCHES[0]['patterns']
     total_patterns = len(all_patterns)
     pattern_idx = (level_num - 1) % total_patterns
-    level_in_set = pattern_idx + 1          # 1–41
+    level_in_set = pattern_idx + 1
     set_num = (level_num - 1) // total_patterns
 
     batch = LEVEL_BATCHES[0]
 
     visible_at_once = 8
     total_orbs = STANDARD_TOTAL_ORBS
-    bpm = 108                               # client ignores this; BPM comes from engine.js
+    bpm = 108
     base_speed = 0.12
-    target_time = total_orbs * 1.5         # client overwrites this with its own formula
-    current_bass = bass_style if bass_style is not None else set_num % 10
+    target_time = total_orbs * 1.5
+
+    # ── Bass style: use provided value or cycle through 5-track rotation ──────
+    num_styles = len(STYLE_ORDER)
+    current_bass = bass_style if bass_style is not None else STYLE_ORDER[(level_num - 1) % num_styles]
 
     # ── Phrase feel selection ──────────────────────────────────────────────────
-    # Scaled to 41-level range: chill first ~25%, chill+groove next ~35%, all after
     phrase_lib = create_phrase_library()
     suffix = f'_{visible_at_once}'
     available = {k: v for k, v in phrase_lib.items() if k.endswith(suffix)}
@@ -76,7 +76,6 @@ def generate_level(level_num, bass_style=None):
         available = {k: v for k, v in available.items() if v['feel'] == 'chill'}
     elif level_in_set <= 25:
         available = {k: v for k, v in available.items() if v['feel'] in ['chill', 'groove']}
-    # levels 26–41: all feels (chill, groove, funky)
     keys = list(available.keys())
     random.shuffle(keys)
     selected = (keys[:3] + keys[:3])[:3]
