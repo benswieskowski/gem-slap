@@ -1,5 +1,5 @@
 """
-AURA - Game Data
+Gem Slap - Game Data
 All level patterns, musical phrases, scoring constants, and note config.
 
 71 levels total: 30 new shapes (sorted easy→hard) + 41 original shapes (sorted easy→hard)
@@ -20,7 +20,7 @@ CANVAS ASPECT RATIO — CRITICAL DESIGN RULE
     appears at 60° from horizontal (nearly vertical!), not 45°.
 
   For a VISUALLY balanced 45° diagonal: Δx ≈ 1.73 × Δy
-  
+
   Canonical connected diagonal steps (crystal radius=18pt, target gap ≤15pt):
     Δ(9,5)  → dist=48.6pt, gap=12.6pt, visual angle=43.8°  ← recommended
     Δ(7,4)  → dist=38.3pt, gap= 2.3pt, visual angle=44.6°  ← tight/touching
@@ -125,11 +125,6 @@ ORDERED_PATTERNS = [
     {'name': 'Cross', 'cells': [{'x': 50, 'y': 30}, {'x': 30, 'y': 50}, {'x': 50, 'y': 50}, {'x': 70, 'y': 50}, {'x': 50, 'y': 70}]},
 
     # 6 · Arrow · 9 crystals
-    # Horizontal shaft (5 dots, step=11) + ">" chevron at right tip (2-step arms, step(-9,±5))
-    # Old design was 5 scattered dots forming a diamond — nothing like an arrow.
-    # New: shaft runs x=24→68, tip at (68,50), arms open back-left at visual 44°.
-    # Width=172pt, Height=135pt → W/H=1.27, clearly horizontal ✓
-    # Shaft gaps=6.9pt ✓  Chevron arm gaps=12.6pt ✓
     {'name': 'Arrow', 'cells': [
         {'x': 24, 'y': 50}, {'x': 35, 'y': 50}, {'x': 46, 'y': 50}, {'x': 57, 'y': 50}, {'x': 68, 'y': 50},
         {'x': 59, 'y': 45}, {'x': 50, 'y': 40},
@@ -161,17 +156,6 @@ ORDERED_PATTERNS = [
     {'name': 'Pyramid', 'cells': [{'x': 50, 'y': 24}, {'x': 42, 'y': 38}, {'x': 58, 'y': 38}, {'x': 34, 'y': 52}, {'x': 50, 'y': 52}, {'x': 66, 'y': 52}, {'x': 28, 'y': 66}, {'x': 38, 'y': 66}, {'x': 50, 'y': 66}, {'x': 62, 'y': 66}, {'x': 72, 'y': 66}]},
 
     # 15 · Parabola · 11 crystals
-    # Open-U shape: vertex at bottom, arms curve upward and outward, open top.
-    #
-    # OLD FAILURE: arms spread too fast — steps like (28,46)→(26,32) had Δy=14 = 94pt,
-    # giving 58pt gaps. Every segment was completely disconnected.
-    #
-    # FIX: Use Δy=6 per row (40pt vertical), with horizontal spread growing slowly
-    # (0,2,5,9,14,20 cumulative x-units). Each step stays 5–11pt gap ✓.
-    # The accelerating spread mimics the flaring shape of a true parabola.
-    # Open top = correct — a parabola has no rim, just two diverging arms.
-    #
-    # Vertex (50,72) → 5 symmetric pairs rising to open ends (30,42) and (70,42).
     {'name': 'Parabola', 'cells': [
         {'x': 50, 'y': 72},
         {'x': 48, 'y': 66}, {'x': 52, 'y': 66},
@@ -189,21 +173,12 @@ ORDERED_PATTERNS = [
     {'name': 'Crux', 'cells': [{'x': 55, 'y': 76}, {'x': 32, 'y': 47}, {'x': 50, 'y': 24}, {'x': 68, 'y': 39}]},
 
     # 17 · Quarter Note · 5 crystals
-    # Tilted filled notehead (2 dots) + vertical stem (3 more dots).
-    # OLD: stem steps of Δy=14 (94pt) → 45–58pt gaps, completely disconnected.
-    # NEW: notehead (45,68)→(52,65) gap=-2pt (touching = filled oval) ✓
-    #      stem Δy=7 per step → 11pt gap ✓. Crystal stem clearly rises above head.
     {'name': 'Quarter Note', 'cells': [
         {'x': 45, 'y': 68}, {'x': 52, 'y': 65},
         {'x': 52, 'y': 58}, {'x': 52, 'y': 51}, {'x': 52, 'y': 44},
     ]},
 
     # 18 · Eighth Note · 6 crystals
-    # Tilted notehead (2 dots) + stem (3 dots) + 1 flag dot angled upper-right.
-    # OLD: same Δy=14–18 stem disaster, flag completely disconnected (20–44pt gaps).
-    # NEW: same notehead style as Quarter Note, stem Δy=7 → 11pt gaps ✓
-    #      flag at (57,44): step (+7,−4) from stem top → 2.3pt gap ✓ (tight diagonal curl)
-    #      Distinct from Quarter Note: flag dot makes the stem top hook rightward.
     {'name': 'Eighth Note', 'cells': [
         {'x': 43, 'y': 72}, {'x': 50, 'y': 69},
         {'x': 50, 'y': 62}, {'x': 50, 'y': 55}, {'x': 50, 'y': 48},
@@ -269,23 +244,12 @@ ORDERED_PATTERNS = [
     {'name': 'Swan', 'cells': [{'x': 68, 'y': 26}, {'x': 62, 'y': 34}, {'x': 54, 'y': 42}, {'x': 46, 'y': 50}, {'x': 30, 'y': 52}, {'x': 34, 'y': 62}, {'x': 48, 'y': 68}, {'x': 62, 'y': 64}, {'x': 50, 'y': 56}]},
 
     # 37 · Crescent · 12 crystals
-    # Two concentric arcs sharing the same tips — classic moon crescent.
-    # Both arcs use Δy=6 steps so all gaps stay connected (4–18pt).
-    #
-    # OLD DESIGN: y=37-63 = 175pt tall. Outer arc had 50–66pt gaps (all disconnected).
-    # NEW DESIGN: y=32-68 = 242pt tall (38% improvement).
-    #
-    # Ellipse params: cx=50, cy=50, ry=18
-    #   Outer arc: rx=12 — 7 dots, gaps 5–18pt ✓  (bulges to x=62 at mid)
-    #   Inner arc: rx=3  — 7 dots, gaps 4–5pt  ✓  (barely curves to x=53 at mid)
-    # Tips (50,32) and (50,68) are shared by both arcs.
-    # Concavity: outer mid x=62, inner mid x=53 → 35pt gap = clearly visible bite.
     {'name': 'Crescent', 'cells': [
-        {'x': 50, 'y': 32}, {'x': 50, 'y': 68},                        # shared tips
-        {'x': 59, 'y': 38}, {'x': 61, 'y': 44}, {'x': 62, 'y': 50},  # outer arc
-        {'x': 61, 'y': 56}, {'x': 59, 'y': 62},                        # outer arc lower
-        {'x': 52, 'y': 38}, {'x': 53, 'y': 44}, {'x': 53, 'y': 50},  # inner arc
-        {'x': 53, 'y': 56}, {'x': 52, 'y': 62},                        # inner arc lower
+        {'x': 50, 'y': 32}, {'x': 50, 'y': 68},
+        {'x': 59, 'y': 38}, {'x': 61, 'y': 44}, {'x': 62, 'y': 50},
+        {'x': 61, 'y': 56}, {'x': 59, 'y': 62},
+        {'x': 52, 'y': 38}, {'x': 53, 'y': 44}, {'x': 53, 'y': 50},
+        {'x': 53, 'y': 56}, {'x': 52, 'y': 62},
     ]},
 
     # ─────────────────────────────────────────────────────────────
@@ -414,17 +378,21 @@ LEVEL_BATCHES = [
 
 
 # ═══════════════════════════════════════════════════════════════
-# BASS STYLES
+# BASS STYLES — active rotation: 5 tracks
+# Style numbers match engine.js:
+#   0  = Fourside Funk   (108 bpm)
+#   5  = Bright Flash    (138 bpm)
+#   12 = Dawnbreak       (120 bpm)
+#   13 = Prism           (128 bpm)
+#   15 = Makou Energy    (136 bpm)  ← new
 # ═══════════════════════════════════════════════════════════════
 BASS_STYLES = {
-    0: {'name': "Wily's Resolve",   'bpm': 150},
-    1: {'name': 'Fourside Funk',    'bpm': 108},
-    2: {'name': 'Snake Slither',    'bpm': 126},
-    3: {'name': 'Pharaoh Rush',     'bpm': 144},
-    4: {'name': 'Hard Corps',       'bpm': 150},
-    5: {'name': 'Bright Flash',     'bpm': 138},
-    6: {'name': 'Gemini Mirror',    'bpm': 132},
-    7: {'name': 'Sky World',        'bpm': 148},
-    8: {'name': 'Hyrule March',     'bpm': 112},
-    9: {'name': 'Guardia Festival', 'bpm': 130},
+    0:  {'name': 'Fourside Funk',  'bpm': 108},
+    5:  {'name': 'Bright Flash',   'bpm': 138},
+    12: {'name': 'Dawnbreak',      'bpm': 120},
+    13: {'name': 'Prism',          'bpm': 128},
+    15: {'name': 'Makou Energy',   'bpm': 136},
 }
+
+# Level rotation order — cycles every 5 levels across all 71 levels
+STYLE_ORDER = [0, 12, 13, 5, 15]
