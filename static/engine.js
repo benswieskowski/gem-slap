@@ -142,8 +142,8 @@ const SHARD_COLORS = [
 
 const WARM_RELEASE = ['#C41E3A','#D4380D','#E86420','#F07B18','#FAAB0C','#FFC107','#FFD43B','#FFF5C0'];
 
-// Active bass style names (5-track rotation)
-const BASS_NAMES = ["Fourside Funk","Dawnbreak","Prism","Bright Flash","Makou Energy"];
+// Active bass style names in rotation order
+const BASS_NAMES = ["Golden Hour","Neon Pulse","Candy Flip","Guardia Festival","Prism","Bright Flash","Pharaoh Rush","Snake Slither","Dawnbreak","Fourside Funk"];
 
 // ═══════════════════════════════════════
 //  AUDIO ENGINE
@@ -341,23 +341,20 @@ class Audio {
         this._intentPlaying = false;
     }
 
-    // ── Style 15 is Makou Energy; total 16 styles (0–15) ─────────────────────
-    setBassStyle(style) { this.bassStyle = style % 16; }
+    setBassStyle(style) { this.bassStyle = style % 15; }
 
     getBpm(style) {
-        // Indices 0–15: styles 0–14 (original) + style 15 (Makou Energy, 136 bpm)
         const BPMS = [108,112,126,130,132,138,132,136,140,142,
-                      110,124,120,128,118,136];
-        return BPMS[(style % 16)] || 130;
+                      110,124,120,128,118];
+        return BPMS[(style % 15)] || 130;
     }
 
     _fireStep(step, when) {
         if (!this._canPlay() || !this.beatOn) return;
         const s = this.bassStyle || 0;
 
-        // Swing: styles 0, 2, 10, 12 only
         const SWING = [0.12, 0, 0.10, 0, 0, 0, 0, 0, 0, 0,
-                       0.16, 0, 0.14, 0, 0, 0]; // style 15 = no swing
+                       0.16, 0, 0.14, 0, 0];
         const swingFrac = SWING[s] || 0;
         const scheduledAt = (swingFrac > 0 && step % 2 === 1)
             ? when + this._stepDur * swingFrac
@@ -460,13 +457,6 @@ class Audio {
                 [0,.56,.20],null,[0,.20,.08],null,[7,.48,.18],null,[4,.32,.12],null,
                 [5,.60,.18],null,[5,.18,.08],null,[0,.44,.16],[8,.22,.08],null,null,
                 [10,.54,.18],null,[3,.38,.14],null,[5,.46,.18],null,[2,.28,.10],[7,.16,.06]],
-            // 15 · Makou Energy (136 bpm) ← NEW
-            // Cm→Eb→bVI Ab→Fm→Gm. Bass climbs C→Eb→G then leaps to Bb, falls F→Eb→C.
-            // All stab pads. Uematsu bVI (Ab, semitone 8) is the signature sound.
-            15:[[0,.72,.12],null,null,[0,.16,.06],[3,.28,.10],null,[7,.62,.14],null,
-                [7,.54,.12],null,[5,.22,.08],null,[3,.28,.10],null,[10,.50,.12],null,
-                [0,.70,.12],null,[3,.20,.08],null,[5,.32,.10],[7,.24,.08],[7,.56,.12],null,
-                [10,.52,.12],null,[7,.20,.08],null,[5,.26,.10],[3,.18,.08],[0,.54,.12],null],
         };
         return S[style] || S[0];
     }
@@ -552,14 +542,6 @@ class Audio {
                 null,null,null,null,[[0,4,7,10],.34,'s'],null,null,null,
                 [[5,8,12,15],.38,'s'],null,null,null,[[5,8,12],.32,'s'],null,null,null,
                 null,null,null,null,[[-2,2,5,8],.30,'s'],null,null,null],
-            // 15 · Makou Energy (136 bpm) ← NEW
-            // Chord cycle: Cm7 → Eb (bIII) → Abmaj (bVI) → Fm → Gm
-            // All stabs — tight rhythmic punches, no warble sustain.
-            // bVI Ab (semitone 8,12,15) on steps 8+12 and 16+20 is the Uematsu signature.
-            15:[[[0,3,7,10],.52,'s'],null,null,null,null,null,null,null,
-                [[3,7,10],.44,'s'],null,null,null,[[8,12,15],.30,'s'],null,null,null,
-                [[5,8,12,15],.48,'s'],null,null,null,[[8,12,15],.26,'s'],null,null,null,
-                [[7,10,14],.40,'s'],null,null,null,[[0,3,7],.34,'s'],null,null,null],
         };
         return P[style] || P[0];
     }
@@ -701,17 +683,6 @@ class Audio {
                     .28,.14,.22,.14,.28,.14,-.32,.14,.28,.14,.22,.14,.28,.14,-.32,.14],
                  t:[0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0,
                     0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0] },
-            // 15 · Makou Energy (136 bpm) ← NEW
-            // All 32 closed hats — dry 16th pulse, no open hats at all.
-            // Ghost snare on "e" of beats 1 and 3; upbeat kick on "and of 1".
-            // Tight, mechanical, cinematic — the FF7 battle groove.
-            15:{ k:[.76,0,0,0,.30,0,.26,0,.64,0,.20,0,.22,0,0,0,
-                    .74,0,0,0,.28,0,.26,0,.62,0,.20,0,.24,0,0,0],
-                 s:[0,0,.12,0,.60,0,.14,0,0,0,.12,0,.58,0,0,.16,
-                    0,0,.14,0,.60,0,.14,0,0,0,.12,0,.56,0,.14,0],
-                 h:[.28,.14,.22,.14,.28,.14,.26,.14,.28,.14,.22,.14,.28,.14,.26,.14,
-                    .28,.14,.22,.14,.28,.14,.26,.14,.28,.14,.22,.14,.28,.14,.26,.14],
-                 t:new Array(32).fill(0) },
         };
         return R[style] || R[0];
     }
