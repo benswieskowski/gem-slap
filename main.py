@@ -64,7 +64,7 @@ def generate_level(level_num, bass_style=None):
     base_speed = 0.12
     target_time = total_orbs * 1.5
 
-    # ── Bass style: use provided value or cycle through 5-track rotation ──────
+    # ── Bass style: provided override or cycle through rotation ───────────────
     num_styles = len(STYLE_ORDER)
     current_bass = bass_style if bass_style is not None else STYLE_ORDER[(level_num - 1) % num_styles]
 
