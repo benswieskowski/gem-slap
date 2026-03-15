@@ -23,12 +23,8 @@
         .h-val .orbs-critical { color: #C41E3A; animation: orb-warn 0.6s ease-in-out infinite alternate; }
         @keyframes orb-warn { 0% { opacity: 0.7; } 100% { opacity: 1; } }
 
-        /* ── IMPROVED: header sub-labels ── */
         .h-lbl { font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.45; }
 
-
-
-        /* ── GEM SLAP wordmark in header ── */
         .gs-logo {
             font-size: clamp(1.05rem, 4.6vw, 1.28rem); font-weight: 800;
             letter-spacing: 0.18em; line-height: 1; white-space: nowrap;
@@ -40,7 +36,6 @@
             pointer-events: none;
         }
 
-        /* ── IMPROVED: tier pill ── */
         .tier-pill { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.07em; padding: 0.15rem 0.45rem; border-radius: 1rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.25); }
         .tier-pill.bronze { color: #7EC8F0; background: rgba(77,168,218,0.1); border-color: rgba(77,168,218,0.2); }
         .tier-pill.silver { color: #4ECDC4; background: rgba(78,205,196,0.1); border-color: rgba(78,205,196,0.2); }
@@ -72,7 +67,6 @@
         .pop.crystal-clear { color: #D6F0FF; font-size: 1.1rem !important; text-shadow: 0 0 20px rgba(126,224,240,0.7); animation: crystal-pop 0.8s ease-out forwards; }
         @keyframes crystal-pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); } 30% { transform: translate(-50%, -55%) scale(1.0); } 100% { opacity: 0; transform: translate(-50%, -80%); } }
 
-        /* ── Countdown sequence ── */
         .cd-wrap {
             position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -83,7 +77,6 @@
         @keyframes cd-wrap-in  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes cd-wrap-out { from { opacity: 1; } to { opacity: 0; } }
 
-        /* Frosted glass panel — sits behind the level label + name only */
         .cd-panel {
             display: flex; flex-direction: column; align-items: center;
             padding: 1.1rem 2.2rem 1.2rem;
@@ -92,7 +85,6 @@
             backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
             border-radius: 1.2rem;
             border: 1px solid rgba(255,255,255,0.07);
-            /* Prismatic top accent matching the logo */
             box-shadow: inset 0 1px 0 rgba(192,132,252,0.18),
                         0 8px 32px rgba(0,0,0,0.35);
         }
@@ -118,17 +110,17 @@
             text-shadow: 0 0 30px rgba(255,255,255,0.2);
             min-height: 5rem; display: flex; align-items: center; justify-content: center;
         }
-        .cd-number.c1 { /* aqua */
+        .cd-number.c1 {
             background: linear-gradient(135deg, #A8F7F4, #7EC8F0);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             filter: drop-shadow(0 0 16px rgba(127,244,240,0.5));
         }
-        .cd-number.c2 { /* violet */
+        .cd-number.c2 {
             background: linear-gradient(135deg, #D4A7FF, #B3C6FF);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             filter: drop-shadow(0 0 16px rgba(192,132,252,0.5));
         }
-        .cd-number.c3 { /* rose */
+        .cd-number.c3 {
             background: linear-gradient(135deg, #FFA7D4, #D4A7FF);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             filter: drop-shadow(0 0 16px rgba(255,167,212,0.5));
@@ -184,7 +176,7 @@
 
         .tut-hint {
             position: absolute;
-            top: 52%;          /* just below sceneY=44% + gem/orb height */
+            top: 52%;
             left: 0; right: 0;
             font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 500;
             opacity: 0; transition: opacity 0.35s ease, transform 0.35s ease;
@@ -194,7 +186,6 @@
         .tut-hint.tap-state   { color: rgba(160,80,255,0.9);  text-shadow: 0 0 14px rgba(160,80,255,0.35); }
         .tut-hint.shatter-state { color: rgba(127,244,240,0.9); text-shadow: 0 0 14px rgba(127,244,240,0.35); }
 
-        /* Wrapper carries all animations — button itself is static so iOS fires on first tap */
         .play-btn-wrap {
             width: 100%; pointer-events: auto;
             animation: btn-lift 2.4s ease-in-out infinite;
@@ -217,7 +208,7 @@
             padding: 1.05rem 0;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation; /* tell iOS: tap only, no gesture evaluation delay */
+            touch-action: manipulation;
             display: block;
         }
         .play-btn:active { opacity: 0.88; }
@@ -226,9 +217,6 @@
             color: rgba(255,255,255,0.18); pointer-events: none;
         }
 
-        /* ═══════════════════════════════════════════════════
-           FLOATING END CARD — fully improved typography
-        ═══════════════════════════════════════════════════ */
         .end-float {
             position: absolute;
             bottom: 0; left: 0; right: 0;
@@ -256,7 +244,6 @@
             display: flex; flex-direction: column; align-items: center;
             position: relative; overflow: hidden;
         }
-        /* Top accent glow bar */
         .ef-card::before {
             content: ''; position: absolute;
             top: 0; left: 10%; right: 10%; height: 2px;
@@ -266,10 +253,8 @@
         .ef-card.tier-silver::before { background: #4ECDC4; box-shadow: 0 0 18px rgba(78,205,196,0.4); }
         .ef-card.tier-bronze::before { background: #7EC8F0; box-shadow: 0 0 14px rgba(126,200,240,0.3); }
         .ef-card.tier-none::before { background: rgba(255,255,255,0.08); }
-        /* Fail state — very dim warm bar, no glow, not harsh */
         .ef-card.tier-fail::before { background: rgba(180,80,60,0.35); box-shadow: none; }
 
-        /* ── Fail-specific elements (hidden in win state) ── */
         .ef-fail-crystals {
             display: none;
             flex-direction: column; align-items: center;
@@ -294,24 +279,20 @@
         }
         .ef-card.tier-fail .ef-fail-msg { display: block; }
 
-        /* Hide win-only elements in fail state */
         .ef-card.tier-fail .ef-pb   { display: none; }
         .ef-card.tier-fail .ef-hero { display: none; }
 
-        /* ── level label in floating card ── */
         .ef-level {
             font-size: 0.86rem; letter-spacing: 0.1em; text-transform: uppercase;
             color: rgba(255,255,255,0.65); margin-bottom: 0.5rem; text-align: center; line-height: 1.3;
             font-weight: 400;
         }
 
-        /* ── tier + time hero area — single row ── */
         .ef-hero {
             display: flex; flex-direction: row; align-items: baseline;
             gap: 0.6rem; margin-bottom: 0.7rem;
         }
 
-        /* ── tier badge ── */
         .ef-tier-badge {
             font-size: 1.6rem; line-height: 1;
         }
@@ -326,7 +307,6 @@
             color: rgba(255,255,255,0.45);
         }
 
-        /* ── personal best row ── */
         .ef-pb {
             font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase;
             color: rgba(255,255,255,0.28); margin-bottom: 0.55rem;
@@ -346,15 +326,11 @@
         .ef-pb-badge.show { display: inline-block; animation: gem-grad 4s ease infinite, pb-pop 0.5s cubic-bezier(0.22,1,0.36,1) forwards; }
         @keyframes pb-pop { 0% { transform: scale(0.5); opacity:0; } 100% { transform: scale(1); opacity:1; } }
 
-
-
-        /* ── Buttons — side by side ── */
         .ef-btns {
             display: flex; flex-direction: row; gap: 0.5rem;
             width: 100%; max-width: 320px;
         }
 
-        /* ── continue button ── */
         .ef-btn-continue {
             flex: 2; padding: 0.75rem 0; font-size: 0.76rem;
             font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
@@ -384,7 +360,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
 
-        /* ── retry button ── */
         .ef-btn-retry {
             flex: 1; padding: 0.75rem 0; font-size: 0.62rem;
             font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
@@ -395,7 +370,6 @@
         }
         .ef-btn-retry:active { transform: scale(0.97); color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.04); }
 
-        /* Fail state — hide continue, make retry fill the full width and look primary */
         .ef-card.tier-fail #ef-next  { display: none; }
         .ef-card.tier-fail .ef-btn-retry {
             flex: 1;
@@ -409,11 +383,6 @@
             color: rgba(255,255,255,0.9);
         }
 
-
-
-        /* ═══════════════════════════════════════════════════
-           FULL END SCREEN — improved throughout
-        ═══════════════════════════════════════════════════ */
         #end-screen { display: flex; align-items: center; justify-content: center; }
         #end-screen::before { content: ''; position: absolute; inset: 0; background: rgba(5,5,8,0.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
         .end-card { position: relative; z-index: 1; width: calc(100% - 3rem); max-width: 300px; display: flex; flex-direction: column; align-items: center; padding: 1.6rem 1.2rem 1.4rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 1rem; }
@@ -424,26 +393,22 @@
         .end-card.tier-none::before { background: rgba(255,255,255,0.08); }
         .end-card.tier-fail::before { opacity: 0; }
 
-        /* ── end screen level label ── */
         .ec-level { font-size: 0.86rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.65; margin-bottom: 0.8rem; text-align: center; line-height: 1.3; font-weight: 400; }
 
         .ec-score { font-size: 3.5rem; font-weight: 100; line-height: 1; margin-bottom: 0.1rem; font-variant-numeric: tabular-nums; transition: color 0.4s; }
         .ec-score.c-gold { color: #F9DB6D; } .ec-score.c-silver { color: #4ECDC4; } .ec-score.c-bronze { color: #7EC8F0; }
         .ec-score.c-none { color: rgba(255,255,255,0.35); } .ec-score.c-fail { color: rgba(255,255,255,0.12); }
 
-        /* ── IMPROVED: tier text in end screen ── */
         .ec-tier { font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700; margin-bottom: 0.15rem; }
         .ec-tier.c-gold { color: #F9DB6D; } .ec-tier.c-silver { color: #4ECDC4; } .ec-tier.c-bronze { color: #7EC8F0; }
         .ec-tier.c-none { color: rgba(255,255,255,0.2); } .ec-tier.c-fail { color: rgba(255,255,255,0.15); }
 
-        /* ── IMPROVED: result message ── */
         .ec-msg { font-size: 0.62rem; opacity: 0.35; letter-spacing: 0.05em; margin-bottom: 1rem; }
 
         .ec-row { display: flex; width: 100%; margin-bottom: 1rem; background: rgba(255,255,255,0.015); border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.03); overflow: hidden; }
         .ec-cell { flex: 1; text-align: center; padding: 0.5rem 0.2rem; }
         .ec-cell + .ec-cell { border-left: 1px solid rgba(255,255,255,0.03); }
 
-        /* ── IMPROVED: stat values and labels ── */
         .ec-val { font-size: 0.88rem; font-weight: 300; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.7); }
         .ec-val.crystal { color: #7EC8F0; }
         .ec-lbl { font-size: 0.48rem; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.3; margin-top: 0.12rem; }
@@ -458,13 +423,11 @@
 
         .ec-btns { display: flex; gap: 0.5rem; align-items: center; width: 100%; justify-content: center; }
 
-        /* ── IMPROVED: general buttons — larger & more readable ── */
         .btn { padding: 0.55rem 1.1rem; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.45); cursor: pointer; border-radius: 2rem; transition: all 0.2s; }
         .btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); }
         .btn:active { transform: scale(0.96); }
         .btn:disabled { opacity: 0.1; pointer-events: none; }
 
-        /* ── IMPROVED: primary button ── */
         .btn.primary { padding: 0.7rem 2rem; font-size: 0.75rem; letter-spacing: 0.12em; background: linear-gradient(135deg, rgba(240,123,24,0.1), rgba(196,30,58,0.06)); border-color: rgba(240,123,24,0.18); color: rgba(255,255,255,0.85); box-shadow: 0 0 20px rgba(240,123,24,0.05); font-weight: 600; }
         .btn.primary:hover { background: linear-gradient(135deg, rgba(240,123,24,0.18), rgba(196,30,58,0.1)); box-shadow: 0 0 30px rgba(240,123,24,0.12); }
 
@@ -474,12 +437,9 @@
         .ec-inner.show { opacity: 1; transition: opacity 0.35s ease; }
         .ver { position: absolute; bottom: 2px; left: 4px; font-size: 7px; opacity: 0.15; }
 
-        /* ═══════════════════════════════════════════════════
-           ACHIEVEMENT TOAST — V2 Pill Drop
-        ═══════════════════════════════════════════════════ */
         #ach-toast {
             position: absolute;
-            top: 50px;                         /* just below progress bar */
+            top: 50px;
             left: 50%;
             transform: translateX(-50%) translateY(-140%);
             z-index: 250;
@@ -492,14 +452,11 @@
             pointer-events: none;
             box-shadow: 0 8px 32px rgba(0,0,0,0.55);
             white-space: nowrap;
-            /* spring drop */
             transition: transform 0.5s cubic-bezier(0.34,1.56,0.64,1),
                         opacity 0.3s ease;
             opacity: 0;
-            /* ensure it never overflows phone width */
             max-width: calc(100% - 32px);
         }
-        /* prismatic top accent */
         #ach-toast::before {
             content: '';
             position: absolute; top: -1px; left: 15%; right: 15%; height: 1.5px;
@@ -531,7 +488,6 @@
             line-height: 1.35; white-space: normal;
         }
 
-        /* ── Offline error screen ── */
         .offline-screen {
             position: absolute; inset: 0; z-index: 600;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -554,11 +510,6 @@
         }
         .offline-retry:active { transform: scale(0.96); }
 
-        /* ══════════════════════════════════════════════
-           MENU — bottom sheet, game keeps running
-        ══════════════════════════════════════════════ */
-
-        /* Small menu button — reused on intro + ef-card */
         .menu-btn-sm {
             width: 28px; height: 28px; border-radius: 8px;
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
@@ -569,7 +520,6 @@
         }
         .menu-btn-sm:active { background: rgba(255,255,255,0.16); }
 
-        /* Menu button in footer (lower-right) */
         .menu-btn {
             width: 34px; height: 34px; border-radius: 8px;
             background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
@@ -600,7 +550,6 @@
             display: flex; flex-direction: column;
             transform: translateY(100%);
             transition: transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94);
-            /* prismatic top accent */
             box-shadow: inset 0 1px 0 rgba(192,132,252,0.2), 0 -8px 40px rgba(0,0,0,0.6);
         }
         .menu-panel.show { transform: translateY(0); }
@@ -648,14 +597,12 @@
         .menu-pane { padding: 1.2rem 1.4rem; display: none; }
         .menu-pane.active { display: block; }
 
-        /* Section headers inside panes */
         .mpane-label {
             font-size: 0.48rem; letter-spacing: 0.22em; text-transform: uppercase;
             color: rgba(255,255,255,0.25); margin-bottom: 0.7rem; margin-top: 1.1rem;
         }
         .mpane-label:first-child { margin-top: 0; }
 
-        /* Progress: level reached hero */
         .mp-level-hero {
             display: flex; align-items: baseline; gap: 0.4rem;
             margin-bottom: 1.2rem;
@@ -666,7 +613,6 @@
         }
         .mp-level-lbl { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.3); }
 
-        /* Medal grid */
         .medal-grid {
             display: grid; grid-template-columns: repeat(10, 1fr);
             gap: 5px; margin-bottom: 0.5rem;
@@ -686,7 +632,6 @@
         }
         .medal-batch-label:first-child { margin-top: 0; }
 
-        /* Stats rows */
         .stat-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;
         }
@@ -700,7 +645,6 @@
         }
         .stat-lbl { font-size: 0.48rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.3); }
 
-        /* Achievements */
         .ach-list { display: flex; flex-direction: column; gap: 0.6rem; }
         .ach-item {
             display: flex; align-items: center; gap: 0.9rem;
@@ -722,7 +666,6 @@
         }
         .ach-item:not(.locked) .ach-check { opacity: 1; }
 
-        /* Progress bar — shown only on locked countable achievements */
         .ach-progress { margin-top: 0.4rem; display: flex; align-items: center; gap: 0.5rem; }
         .ach-progress-bar {
             flex: 1; height: 3px; border-radius: 2px;
@@ -738,7 +681,6 @@
             letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
         }
 
-        /* Footer: level select button */
         .menu-footer {
             flex-shrink: 0; padding: 0.8rem 1.4rem;
             padding-bottom: max(0.8rem, env(safe-area-inset-bottom, 0px));
@@ -754,9 +696,6 @@
         }
         .ls-open-btn:active { background: rgba(255,255,255,0.1); transform: scale(0.98); }
 
-        /* ══════════════════════════════════════════════
-           LEVEL SELECT SHEET
-        ══════════════════════════════════════════════ */
         .ls-overlay {
             position: absolute; inset: 0; z-index: 850;
             background: rgba(0,0,0,0.5);
@@ -774,16 +713,14 @@
             border-top: 1px solid rgba(255,255,255,0.07);
             border-radius: 1.4rem 1.4rem 0 0;
             box-shadow: inset 0 1px 0 rgba(168,247,244,0.15), 0 -8px 40px rgba(0,0,0,0.6);
-            display: none; flex-direction: column; /* display:none = cannot render at all */
+            display: none; flex-direction: column;
             overflow: hidden;
-            visibility: hidden;             /* belt-and-suspenders — covers any display glitch */
+            visibility: hidden;
             transform: translateY(100%);
             transition: transform 0.42s cubic-bezier(0.25,0.46,0.45,0.94);
             pointer-events: none;
         }
-        /* .animating: display:flex so transition can play, but still off-screen */
         .ls-panel.animating { display: flex; }
-        /* .show: fully visible and interactive */
         .ls-panel.show { display: flex; visibility: visible; transform: translateY(0); pointer-events: auto; }
 
         .ls-header {
@@ -865,7 +802,6 @@
         .ls-card-time.silver { color: rgba(78,205,196,0.7); }
         .ls-card-time.bronze { color: rgba(126,200,240,0.7); }
 
-        /* Reset at bottom of sheet */
         .ls-reset-wrap {
             padding: 1.4rem 1rem 0.5rem;
             display: flex; justify-content: center;
@@ -884,13 +820,11 @@
         }
         .ls-reset-btn:active { transform: scale(0.97); }
 
-        /* Selected card */
         .ls-card.selected {
             border-color: rgba(168,247,244,0.5);
             background: rgba(168,247,244,0.07);
         }
 
-        /* Sticky footer play bar */
         .ls-footer {
             flex-shrink: 0;
             display: flex; align-items: center; gap: 0.8rem;
@@ -948,7 +882,6 @@
             <button class="mute-btn" id="mute-btn">♫</button>
         </div>
 
-        <!-- Intro menu button sits OUTSIDE start-screen so its clicks never bubble into it -->
         <button id="intro-menu-btn" style="position:absolute;top:max(1.1rem,env(safe-area-inset-top,1.1rem));right:1rem;z-index:510;padding:0.45rem 0.9rem;font-size:0.58rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.18);border-radius:2rem;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7);cursor:pointer;-webkit-tap-highlight-color:transparent;display:none;">☰ MENU</button>
         <div class="overlay" id="start-screen">
             <canvas id="intro-canvas"></canvas>
@@ -968,7 +901,6 @@
             </div>
         </div>
 
-        <!-- Achievement toast -->
         <div id="ach-toast">
             <div class="ach-toast-icon" id="ach-toast-icon">🔱</div>
             <div class="ach-toast-text">
@@ -989,7 +921,6 @@
                     <div class="ef-tier-badge" id="ef-tier">GOLD</div>
                     <div class="ef-time" id="ef-time-big">0.0s</div>
                 </div>
-                <!-- Fail-state elements — hidden in win state via CSS -->
                 <div class="ef-fail-crystals">
                     <div class="ef-fail-crys-val" id="ef-fail-crys-val">0/0</div>
                     <div class="ef-fail-crys-label">crystals shattered</div>
@@ -1030,7 +961,6 @@
             <button class="offline-retry" id="offline-retry">Retry</button>
         </div>
 
-        <!-- ── MENU ── -->
         <div class="menu-overlay" id="menu-overlay"></div>
         <div class="menu-panel" id="menu-panel">
             <div class="menu-header">
@@ -1043,7 +973,6 @@
                 <button class="menu-tab" data-tab="achievements">Achievements</button>
             </div>
             <div class="menu-content">
-                <!-- PROGRESS TAB -->
                 <div class="menu-pane active" id="mpane-progress">
                     <div class="mpane-label">Level Reached</div>
                     <div class="mp-level-hero">
@@ -1053,7 +982,6 @@
                     <div class="mpane-label">Medal History</div>
                     <div id="mp-medal-grid"></div>
                 </div>
-                <!-- STATS TAB -->
                 <div class="menu-pane" id="mpane-stats">
                     <div class="mpane-label">All Time</div>
                     <div class="stat-grid">
@@ -1070,7 +998,6 @@
                         <div class="stat-cell"><div class="stat-val" id="ms-best-time">—</div><div class="stat-lbl">Fastest Level</div></div>
                     </div>
                 </div>
-                <!-- ACHIEVEMENTS TAB -->
                 <div class="menu-pane" id="mpane-achievements">
                     <div class="ach-list" id="ach-list"></div>
                 </div>
@@ -1080,7 +1007,6 @@
             </div>
         </div>
 
-        <!-- ── LEVEL SELECT — inside game-wrap for correct positioning ── -->
         <div class="ls-overlay" id="ls-overlay"></div>
         <div class="ls-panel" id="ls-panel">
             <div class="ls-header">
@@ -1098,14 +1024,13 @@
         </div>
     </div>
 
-    <!-- Engine: Audio, particles, draw functions, constants -->
     <script src="/static/engine.js"></script>
 
     <script>
     // ═══════════════════════════════════════
     //  PROGRESS — localStorage save/restore
     // ═══════════════════════════════════════
-    const TOTAL_LEVELS = 71; // wrap back to level 1 after this
+    const TOTAL_LEVELS = 71;
     const SAVE_KEY = 'gs_progress';
 
     function loadProgress() {
@@ -1120,7 +1045,7 @@
             const current = loadProgress();
             const next = Object.assign(current, patch);
             localStorage.setItem(SAVE_KEY, JSON.stringify(next));
-        } catch { /* storage unavailable — fail silently */ }
+        } catch { }
     }
 
     function getBestTime(level) {
@@ -1176,7 +1101,6 @@
     //  PARTICLES & EFFECTS
     // ═══════════════════════════════════════
     let motes = [], bursts = [], crystalShards = [], energyMotes = [], crystalDust = [];
-    // Cache beat-dot elements — queried once at init instead of every frame in draw()
     const _beatDots = Array.from(document.querySelectorAll('.beat-dot'));
 
     const SHOCK_RADIUS = 38;
@@ -1197,8 +1121,6 @@
         gameWrap = document.querySelector('.game-wrap'); if (!gameWrap) return;
         const wrapRect = gameWrap.getBoundingClientRect(), wrapW = wrapRect.width, wrapH = wrapRect.height;
         const safeTop = window.innerHeight !== document.documentElement.clientHeight ? Math.min(50, window.innerHeight - document.documentElement.clientHeight) : 0;
-        // Read safe-area-inset-bottom at runtime — probe div with env() padding
-        // gives us the real pixel value the browser computed for this device
         const _safeProbe = document.createElement('div');
         _safeProbe.style.cssText = 'position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none;';
         document.body.appendChild(_safeProbe);
@@ -1210,8 +1132,7 @@
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         canvas.width = canvasW * dpr; canvas.height = canvasH * dpr; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.scale(dpr, dpr);
         orbScale = Math.min(1, Math.min(canvasW, canvasH) / 350);
-        // Invalidate caches that depend on canvas dimensions
-        if (typeof _bgW !== 'undefined') { _bgW = 0; } // force bg rebuild
+        if (typeof _bgW !== 'undefined') { _bgW = 0; }
         if (typeof _orbPathCache !== 'undefined') _orbPathCache.clear();
         initMotes();
     }
@@ -1238,18 +1159,7 @@
 
     // ═══════════════════════════════════════
     //  LEVEL CELEBRATION — "Confetti Burst"
-    //
-    //  Physics: x(t) = x0 + vx·t + ½ax·t²  +  flutter_amp·sin(ffreq·t + fph)
-    //           y(t) = y0 + vy·t + ½g·t²
-    //  The flutter term is the key — it makes pieces wobble laterally like
-    //  real paper tumbling through air, not rigid computer squares.
-    //  Rendered width oscillates with |cos(flipFreq·t)| so each piece
-    //  visually "flips" between showing its face and its edge.
-    //
-    //  3 overlapping waves fired from two corner cannons + centre cannon.
-    //  500 total particles. Never auto-deactivates — end card slides over it.
     // ═══════════════════════════════════════
-
     const _CB_PALETTE = [
         '#FF2840','#FF6B35','#F5C800','#28C858',
         '#18C8E0','#A855F7','#EC4899','#FB923C',
@@ -1259,72 +1169,39 @@
     ];
 
     function startShapeReveal() {
-        // ── single wide-fan cannon at canvas centre-bottom ───────────────
-        // One source, ~160° spread, large origin scatter → reads as one
-        // unified explosion rather than three discrete columns.
         const GUN = { x: canvasW * 0.50, y: canvasH };
-
-        // ── 3 staggered waves: big pop → echo → lingering shower ─────────
         const WAVES = [
             { count: 320, delayBase: 0.00, delayJitter: 0.08, speedMin: 380, speedMax: 680 },
             { count: 260, delayBase: 0.20, delayJitter: 0.10, speedMin: 320, speedMax: 580 },
             { count: 220, delayBase: 0.48, delayJitter: 0.14, speedMin: 260, speedMax: 500 },
         ];
-
-        // Lower gravity → longer hang time, more leisurely rain-down
-        const G = 300; // px/s²
-
+        const G = 300;
         const particles = [];
         WAVES.forEach(wave => {
             for (let i = 0; i < wave.count; i++) {
-                // Full 160° fan centred on straight-up, uniform distribution
                 const angle = -Math.PI * 0.5 + (Math.random() - 0.5) * Math.PI * 1.78;
                 const speed = wave.speedMin + Math.random() * (wave.speedMax - wave.speedMin);
-
-                // Shape variety
                 const roll = Math.random();
                 let pw, ph, isCircle = false;
-                if (roll < 0.52) {          // wide flat rectangle (most visible face)
-                    pw = 7 + Math.random() * 7;
-                    ph = 4 + Math.random() * 5;
-                } else if (roll < 0.75) {   // narrow ribbon / streamer
-                    pw = 2.5 + Math.random() * 2;
-                    ph = 10  + Math.random() * 10;
-                } else {                    // circle dot
-                    pw = 4 + Math.random() * 4;
-                    ph = pw;
-                    isCircle = true;
-                }
-
+                if (roll < 0.52) { pw = 7 + Math.random() * 7; ph = 4 + Math.random() * 5; }
+                else if (roll < 0.75) { pw = 2.5 + Math.random() * 2; ph = 10 + Math.random() * 10; }
+                else { pw = 4 + Math.random() * 4; ph = pw; isCircle = true; }
                 particles.push({
-                    // Wide origin scatter (±30% of canvas width) so the single
-                    // source fans out naturally — no visible point-source clustering
                     x0: GUN.x + (Math.random() - 0.5) * canvasW * 0.60,
                     y0: GUN.y,
-                    // velocity
                     vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed,   // negative = upward
-                    // gravity — vary slightly per-particle so arcs differ
+                    vy: Math.sin(angle) * speed,
                     g:  G * (0.8 + Math.random() * 0.4),
-                    // weak horizontal drift (air current)
                     ax: (Math.random() - 0.5) * 30,
-                    // ── flutter: sinusoidal lateral wobble ──────────────────
-                    // Amplitude 12–28px, frequency 2–5 Hz — creates the
-                    // characteristic side-to-side tumble of real confetti
                     flutterAmp:  12 + Math.random() * 16,
                     flutterFreq: (2.0 + Math.random() * 3.0) * Math.PI * 2,
                     flutterPh:   Math.random() * Math.PI * 2,
-                    // ── flip: piece rotates about its long axis ─────────────
-                    // Rendered width oscillates as |cos(flipFreq·t + flipPh)|
-                    // so it visually narrows to an edge then widens back to face
                     flipFreq: (1.5 + Math.random() * 3.5) * Math.PI * 2,
                     flipPh:   Math.random() * Math.PI * 2,
-                    // visual
                     rot0:  Math.random() * Math.PI * 2,
-                    drot:  (Math.random() - 0.5) * 12,   // rad/s — moderate spin
+                    drot:  (Math.random() - 0.5) * 12,
                     pw, ph, isCircle,
                     col:   _CB_PALETTE[Math.floor(Math.random() * _CB_PALETTE.length)],
-                    // stagger within the wave window
                     delay: wave.delayBase + Math.random() * wave.delayJitter,
                 });
             }
@@ -1354,7 +1231,7 @@
     // ═══════════════════════════════════════
     function draw() {
         state._lastDrawTime = performance.now();
-        state._lastDrawWall = Date.now(); // wall clock — advances even when iOS freezes performance.now()
+        state._lastDrawWall = Date.now();
         const w = canvasW, h = canvasH, now = performance.now();
 
         ctx.save();
@@ -1365,7 +1242,6 @@
             ctx.translate(screenShake.x, screenShake.y);
         } else { screenShake.intensity = 0; }
 
-        // Background — pre-rendered offscreen canvas, rebuilt only on resize
         if (!_bgCanvas || _bgW !== w || _bgH !== h) _buildBgCanvas(w, h);
         ctx.drawImage(_bgCanvas, -5, -5, w + 10, h + 10);
 
@@ -1391,7 +1267,6 @@
 
         state.targets.forEach(t => drawCrystal(t, now));
 
-        // In-place dead removal — avoids allocating a new array every frame
         for (let i = bursts.length-1; i >= 0; i--)       { if (bursts[i].life <= 0)       bursts.splice(i,1); }
         bursts.forEach(b => { b.update(); b.draw(ctx); });
         for (let i = crystalShards.length-1; i >= 0; i--) { if (crystalShards[i].life <= 0) crystalShards.splice(i,1); }
@@ -1474,53 +1349,32 @@
             } catch (e) { console.error('Orb draw error:', e); }
         });
 
-        // ── Confetti Burst rendering ─────────────────────────────────────────
-        // Rendered AFTER orbs intentionally — confetti flies over everything,
-        // giving the screen a truly festive layered feel.
         const rev = state._reveal;
         if (rev && rev.active) {
             const revT = (performance.now() - rev.startTime) / 1000;
-
             rev.particles.forEach(p => {
                 const pt = revT - p.delay;
                 if (pt <= 0) return;
-
-                // ── Flutter physics (fully analytical) ───────────────────────
-                // Base projectile arc
                 const bx = p.x0 + p.vx * pt + 0.5 * p.ax * pt * pt;
                 const by = p.y0 + p.vy * pt + 0.5 * p.g  * pt * pt;
-                // Flutter: sinusoidal wobble perpendicular to travel direction
-                // As the piece falls the wobble becomes more prominent (gravity
-                // slows vertical speed while horizontal flutter stays constant)
                 const flutter = p.flutterAmp * Math.sin(p.flutterFreq * pt + p.flutterPh);
-                // Apply flutter along the perpendicular of the velocity vector
                 const spd = Math.hypot(p.vx, p.vy + p.g * pt) || 1;
-                const nx  = -(p.vy + p.g * pt) / spd; // perpendicular x
-                const ny  =   p.vx / spd;              // perpendicular y
+                const nx  = -(p.vy + p.g * pt) / spd;
+                const ny  =   p.vx / spd;
                 const x   = bx + flutter * nx;
                 const y   = by + flutter * ny;
-
-                // Cull permanently exited particles
                 if (y > canvasH + 40) return;
                 if (x < -80 || x > canvasW + 80) return;
-
-                // Alpha — fade in fast, hold, then fade out gracefully
-                // in the bottom 30% of canvas (organic "landing" effect)
                 const fadeIn  = Math.min(1, pt / 0.15);
                 const landA   = y > canvasH * 0.70
                     ? Math.max(0, 1 - (y - canvasH * 0.70) / (canvasH * 0.35))
                     : 1;
                 const a = fadeIn * landA * 0.95;
                 if (a < 0.018) return;
-
-                // Rotation and flip
                 const rot = p.rot0 + p.drot * pt;
-                // Flip: rendered width oscillates as |cos(...)| — piece shows
-                // face then edge then face, like real paper tumbling through air
                 const flipW = p.isCircle
                     ? p.pw
                     : p.pw * Math.max(0.12, Math.abs(Math.cos(p.flipFreq * pt + p.flipPh)));
-
                 const rgb = hexToRgb(p.col);
                 ctx.save();
                 ctx.globalAlpha = a;
@@ -1532,19 +1386,11 @@
                     ctx.arc(0, 0, p.pw * 0.5, 0, Math.PI * 2);
                     ctx.fill();
                 } else {
-                    // Use flipW for width — height stays constant
                     ctx.fillRect(-flipW * 0.5, -p.ph * 0.5, flipW, p.ph);
                 }
                 ctx.restore();
             });
-
-
-
-            // Never hard-deactivate — end card slides over at 3.6s, and if the
-            // player dismisses it quickly confetti is still falling beautifully.
-            // Only cleared by loadLevel() which nulls state._reveal.
         }
-        // ── End confetti burst ────────────────────────────────────────────────
 
         if (state.playing && state.measureMs > 0) {
             const beatMs = state.measureMs / 4;
@@ -1577,12 +1423,8 @@
     function levelLabel(style = 'text') {
         const name = state.patternName || '';
         const num  = state.level || 1;
-        if (style === 'header') {
-            return name || `Level ${num}`;
-        }
-        if (style === 'end') {
-            return name ? `Level ${num}: ${name}` : `Level ${num}`;
-        }
+        if (style === 'header') return name || `Level ${num}`;
+        if (style === 'end') return name ? `Level ${num}: ${name}` : `Level ${num}`;
         return name ? `Level ${num}: ${name}` : `Level ${num}`;
     }
 
@@ -1600,13 +1442,10 @@
             if (orbsLeft <= crystalsLeft) orbEl.className = 'orbs-critical';
             else if (orbsLeft <= crystalsLeft + 2) orbEl.className = 'orbs-low';
         }
-
         $('prog-fill').style.width = `${Math.min(100, (state.targetsDestroyed / state.totalTargets) * 100)}%`;
     }
 
-    function buildCrystalDots() {
-        // crystal dots removed from header — progress bar tracks crystals
-    }
+    function buildCrystalDots() { }
 
     // ═══════════════════════════════════════
     //  INTERACTION — HIT ORB + CRYSTAL CHECK
@@ -1620,7 +1459,6 @@
         orb.hit = true; orb.fade = 1; orb.hitTime = now;
         state.orbsHit++;
         state.melody.push({ note: orb.note, color: orb.color, rating });
-        // Lifetime orb counter
         const _op = loadProgress();
         saveProgress({ totalOrbsHit: (_op.totalOrbsHit||0) + 1 });
 
@@ -1770,17 +1608,14 @@
         const W = rect.width, H = rect.height;
         const T = now / 1000;
 
-        // ── Background ─────────────────────────────────────────────
         ictx.fillStyle = '#030308'; ictx.fillRect(0, 0, W, H);
 
-        // Subtle depth radial — very faint
         const depthG = ictx.createRadialGradient(W*0.5, H*0.48, 0, W*0.5, H*0.48, Math.max(W,H)*0.72);
         depthG.addColorStop(0,   'rgba(80,40,120,0.08)');
         depthG.addColorStop(0.5, 'rgba(40,20,80,0.04)');
         depthG.addColorStop(1,   'rgba(0,0,0,0)');
         ictx.fillStyle = depthG; ictx.fillRect(0, 0, W, H);
 
-        // ── Ambient gem sparkles (drifting upward) ──────────────────
         const spkCols = [[127,244,240],[148,170,255],[192,132,252],[244,114,182],[255,209,82],[130,255,170],[255,160,120],[168,247,200],[220,130,255],[255,200,140],[100,220,255]];
         for (let i = 0; i < 11; i++) {
             const seed = i * 2.618;
@@ -1800,7 +1635,6 @@
             ictx.restore();
         }
 
-        // ── Demo animation ─────────────────────────────────────────
         const cycle    = 4600;
         const t        = (now % cycle) / cycle;
         const sceneY   = H * 0.44;
@@ -1813,19 +1647,15 @@
         const crystalAlive = t < 0.50;
         const shockPhase   = t > 0.50 ? (t - 0.50) / 0.22 : -1;
 
-        // ── Crystal (white diamond gem) ─────────────────────────────
         if (crystalAlive) {
             const cR = Math.min(W, H) * 0.052;
             const R  = cR * (1 + Math.sin(T * 1.4) * 0.04);
-
-            // Outer glow
             const glow = ictx.createRadialGradient(crystalX, sceneY, R*0.4, crystalX, sceneY, R*4.2);
             glow.addColorStop(0,   'rgba(212,167,255,0.16)');
             glow.addColorStop(0.35,'rgba(168,247,244,0.07)');
             glow.addColorStop(1,   'rgba(0,0,0,0)');
             ictx.fillStyle = glow; ictx.beginPath(); ictx.arc(crystalX, sceneY, R*4.2, 0, Math.PI*2); ictx.fill();
 
-            // Diamond vertices
             const top    = { x: crystalX,          y: sceneY - R*1.3  };
             const right  = { x: crystalX + R*0.9,  y: sceneY - R*0.05 };
             const bottom = { x: crystalX,           y: sceneY + R*1.0  };
@@ -1833,14 +1663,12 @@
             const crL    = { x: crystalX - R*0.33,  y: sceneY - R*0.55 };
             const crR    = { x: crystalX + R*0.33,  y: sceneY - R*0.55 };
 
-            // Clipped fills
             ictx.save();
             ictx.beginPath();
             ictx.moveTo(top.x, top.y); ictx.lineTo(right.x, right.y);
             ictx.lineTo(bottom.x, bottom.y); ictx.lineTo(left.x, left.y);
             ictx.closePath(); ictx.clip();
 
-            // White gradient base
             const baseG = ictx.createLinearGradient(crystalX, top.y, crystalX, bottom.y);
             baseG.addColorStop(0,   'rgba(255,255,255,0.92)');
             baseG.addColorStop(0.28,'rgba(228,238,255,0.78)');
@@ -1848,7 +1676,6 @@
             baseG.addColorStop(1,   'rgba(168,198,255,0.36)');
             ictx.fillStyle = baseG; ictx.fillRect(crystalX-R*1.1, top.y-2, R*2.2, bottom.y-top.y+4);
 
-            // Prismatic shimmer (animated)
             [[127,244,240,0.22],[176,110,255,0.18],[255,167,212,0.14]].forEach(([r,g,b,a],i) => {
                 const pa = T*0.22 + i*(Math.PI*2/3);
                 const pg = ictx.createRadialGradient(
@@ -1858,28 +1685,24 @@
                 ictx.fillStyle = pg; ictx.fillRect(crystalX-R*1.1, top.y-2, R*2.2, bottom.y-top.y+4);
             });
 
-            // Top sparkle highlight
             const hl = ictx.createRadialGradient(crystalX, sceneY-R*0.58, 0, crystalX, sceneY-R*0.58, R*0.56);
             hl.addColorStop(0, `rgba(255,255,255,${0.78+Math.sin(T*1.9)*0.14})`);
             hl.addColorStop(0.55,'rgba(255,255,255,0.12)'); hl.addColorStop(1,'rgba(255,255,255,0)');
             ictx.fillStyle = hl; ictx.fillRect(crystalX-R*1.1, top.y-2, R*2.2, bottom.y-top.y+4);
             ictx.restore();
 
-            // Outline
             ictx.beginPath();
             ictx.moveTo(top.x, top.y); ictx.lineTo(right.x, right.y);
             ictx.lineTo(bottom.x, bottom.y); ictx.lineTo(left.x, left.y);
             ictx.closePath();
             ictx.strokeStyle = 'rgba(255,255,255,0.72)'; ictx.lineWidth = 1.6; ictx.stroke();
 
-            // Facet lines
             ictx.lineWidth = 0.75; ictx.strokeStyle = 'rgba(200,228,255,0.38)';
             [[top,crL],[top,crR],[crL,left],[crR,right],[crL,crR],
              [left,bottom],[right,bottom],[crL,bottom],[crR,bottom]
             ].forEach(([a,b]) => { ictx.beginPath(); ictx.moveTo(a.x,a.y); ictx.lineTo(b.x,b.y); ictx.stroke(); });
         }
 
-        // ── Gem shard explosion ─────────────────────────────────────
         if (t > 0.50 && t < 0.93) {
             const sp = (t - 0.50) / 0.43;
             const shardCols = [[255,82,82],[82,255,143],[176,110,255],[82,194,255],[255,209,82],[255,82,196],[82,255,230]];
@@ -1900,21 +1723,18 @@
             }
         }
 
-        // ── Orb (gem violet, travels toward crystal) ────────────────
         if (orbAlpha > 0.01) {
             const oR    = Math.min(W,H) * 0.043;
             const color = { r:160, g:80, b:255 };
             const ob    = 0.62 + Math.sin(T*2.2)*0.18;
             ictx.globalAlpha = orbAlpha;
 
-            // Outer atmosphere
             const ag = ictx.createRadialGradient(orbX, sceneY, oR*0.3, orbX, sceneY, oR*2.8);
             ag.addColorStop(0, `rgba(${color.r},${color.g},${color.b},${0.22+ob*0.16})`);
             ag.addColorStop(0.5,`rgba(${color.r},${color.g},${color.b},0.05)`);
             ag.addColorStop(1,  `rgba(${color.r},${color.g},${color.b},0)`);
             ictx.fillStyle = ag; ictx.beginPath(); ictx.arc(orbX, sceneY, oR*2.8, 0, Math.PI*2); ictx.fill();
 
-            // Wobbly body
             const bg = ictx.createRadialGradient(orbX+Math.sin(T)*oR*0.12, sceneY, oR*0.1, orbX, sceneY, oR);
             bg.addColorStop(0,   `rgba(240,210,255,${0.52+ob*0.35})`);
             bg.addColorStop(0.25,`rgba(200,140,255,${0.36+ob*0.28})`);
@@ -1931,7 +1751,6 @@
             }
             ictx.closePath(); ictx.fill();
 
-            // Core highlight
             const cG = ictx.createRadialGradient(orbX, sceneY, 0, orbX, sceneY, oR*0.45);
             cG.addColorStop(0,  `rgba(255,255,255,${0.58+ob*0.28})`);
             cG.addColorStop(0.4,`rgba(230,200,255,${0.35+ob*0.18})`);
@@ -1941,7 +1760,6 @@
             ictx.globalAlpha = 1;
         }
 
-        // ── Shockwave rings on impact ───────────────────────────────
         if (shockPhase > 0 && shockPhase < 1.4) {
             const ringCols = ['rgba(212,167,255','rgba(127,244,240','rgba(255,167,212'];
             for (let i=0; i<3; i++) {
@@ -1954,7 +1772,6 @@
             }
         }
 
-        // ── Impact flash ────────────────────────────────────────────
         if (t > 0.50 && t < 0.60) {
             const fp = (t-0.50)/0.10, fa = (1-fp)*0.38;
             const fg = ictx.createRadialGradient(crystalX, sceneY, 0, crystalX, sceneY, Math.min(W,H)*0.13);
@@ -1964,7 +1781,6 @@
             ictx.fillStyle = fg; ictx.beginPath(); ictx.arc(crystalX, sceneY, Math.min(W,H)*0.13, 0, Math.PI*2); ictx.fill();
         }
 
-        // ── Aim ring (orb approaching crystal) ─────────────────────
         if (t > 0.30 && t < 0.50) {
             const tipP = (t-0.30)/0.20;
             const tipR = Math.min(W,H)*0.065*(0.5+tipP*0.5);
@@ -1973,7 +1789,6 @@
             ictx.strokeStyle = `rgba(192,140,255,${tipA})`; ictx.lineWidth = 1.5; ictx.stroke();
         }
 
-        // ── Tut hint sync ───────────────────────────────────────────
         const hint = $('tut-hint');
         if (t > 0.22 && t < 0.50) {
             hint.textContent = 'tap the orb';
@@ -1993,17 +1808,16 @@
     // ═══════════════════════════════════════
     //  GAME FLOW
     // ═══════════════════════════════════════
-    // ── Level pre-fetch: cache next 20 levels in background ─────────────────
+
+    // 5-track rotation: Fourside → Dawnbreak → Prism → Bright Flash → Makou Energy
+    const STYLE_ORDER = [0, 12, 13, 5, 15];
+
     function prefetchLevels(fromLevel) {
         if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
         for (let i = 1; i <= 20; i++) {
             const n = fromLevel + i;
-            // Stagger requests 250ms apart so we don't burst all 20 at once
             setTimeout(() => {
-                // Mountain ordering: 10→14→11→3→5→7→8→9→6→4→13→2→12→1→0
-                // Smooth BPM arc: 110→118→124→130→138→136→140→142→132→132→128→126→120→112→108 →(loop +2)→110
-                const STYLE_ORDER = [10,14,11,3,13,4,7,8,9,5,6,2,12,1,0];
-                const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 15];
+                const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 5];
                 const url = `/api/level/${n}/bass/${bassParam}`;
                 navigator.serviceWorker.controller.postMessage({ type: 'CACHE_LEVEL', url });
             }, i * 250);
@@ -2011,7 +1825,6 @@
     }
 
     async function loadLevel(n) {
-        // Hide offline screen if showing
         $('offline-screen').classList.remove('show');
 
         try {
@@ -2020,15 +1833,13 @@
             shockwaves = []; crystalShards = []; energyMotes = []; crystalDust = []; bursts = [];
             screenShake.intensity = 0;
 
-            // Mountain ordering: 10→14→11→3→5→7→8→9→6→4→13→2→12→1→0
-            const STYLE_ORDER = [10,14,11,3,13,4,7,8,9,5,6,2,12,1,0];
-            const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 15];
+            // 5-track rotation: Fourside → Dawnbreak → Prism → Bright Flash → Makou Energy
+            const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 5];
             const url = `/api/level/${n}/bass/${bassParam}`;
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            // If SW returned offline error JSON, treat as failure
             if (data.error === 'offline') throw new Error('offline');
 
             state.level = n;
@@ -2045,26 +1856,22 @@
             state._reveal = null;
             state.bassStyle = bassParam;
             audio.setBassStyle(state.bassStyle);
-            // Each track has its own BPM — get it from the engine's table
             state.bpm = audio.getBpm(state.bassStyle);
             state.measureMs = (60000 / state.bpm) * 4;
 
             state.targets = data.targets.map(t => ({ ...t, alive: true, destroyTime: null }));
             state.totalTargets = state.targets.length;
             state.targetsDestroyed = 0;
-            // Gold = 5s + 1s per crystal; silver adds 1s/crystal; bronze adds another 1s/crystal
-            state.targetTime = 5 + 1 * state.totalTargets;   // gold threshold
-            state.silverTime = 5 + 2 * state.totalTargets;   // silver threshold
-            state.bronzeTime = 5 + 3 * state.totalTargets;   // bronze threshold
+            state.targetTime = 5 + 1 * state.totalTargets;
+            state.silverTime = 5 + 2 * state.totalTargets;
+            state.bronzeTime = 5 + 3 * state.totalTargets;
             state.targetDestroyRadius = data.targetDestroyRadius;
             state.patternName = data.patternName || '';
             state.batchName = data.batchName || '';
             state.levelInSet = data.levelInSet || ((state.level - 1) % 10) + 1;
-            // Store level name for level select
             if (state.patternName) {
                 const _lnp = loadProgress();
                 const levelNames = _lnp.levelNames || {};
-                // Always overwrite — ensures renamed/reshuffled levels update correctly
                 levelNames[n] = state.patternName; saveProgress({ levelNames });
             }
 
@@ -2076,12 +1883,10 @@
             $('prog-fill').style.width = '0%';
             buildCrystalDots();
 
-            // Kick off background pre-fetch of next 20 levels
             prefetchLevels(n);
 
         } catch (err) {
             console.error('Failed to load level:', err);
-            // Show offline screen with retry wired to re-attempt this level
             $('offline-screen').classList.add('show');
             $('offline-retry').onclick = async () => {
                 $('offline-screen').classList.remove('show');
@@ -2089,11 +1894,6 @@
                 if (!$('offline-screen').classList.contains('show')) startCountdown();
             };
         }
-    }
-
-    function spawnInitialOrbs() {
-        const toSpawn = state.allOrbs.filter(o => !o.spawned).slice(0, state.visibleAtOnce);
-        toSpawn.forEach((orb, index) => { setTimeout(() => { spawnOrb(orb); }, index * 250); });
     }
 
     function spawnInitialOrbs() {
@@ -2120,8 +1920,6 @@
     }
 
     function trySpawnNext() {
-        // Don't spawn if stagger is still filling up to visibleAtOnce — those slots
-        // will arrive via setTimeout and we don't want to skip ahead of them
         const inFlight = state._spawnStaggerPending || 0;
         const liveOrbs = state.orbs.filter(o => !o.hit).length;
         if (liveOrbs + inFlight >= state.visibleAtOnce) return;
@@ -2131,27 +1929,22 @@
 
     async function startGame() {
         if (state.started) return;
-        state.started = true;          // guard immediately — before any await
+        state.started = true;
         introState.running = false;
         await audio.init(); resize();
         $('start-screen').classList.add('hidden');
         document.getElementById('intro-menu-btn').style.display = 'none';
-        // Track session + day played
         const p = loadProgress();
         const today = new Date().toISOString().slice(0,10);
         const days = p.daysPlayed || [];
         if (!days.includes(today)) days.push(today);
         saveProgress({ sessions: (p.sessions||0) + 1, daysPlayed: days, sessionClears: 0, sessionGolds: 0 });
-        // Resume from last selected/played level
         const resumeLevel = Math.max(1, p.resumeLevel || p.highestLevel || 1);
         await loadLevel(resumeLevel); startCountdown();
     }
 
     function startCountdown() {
         audio.stopBeat();
-        // Increment generation so any stale setTimeout from a previous countdown
-        // will see a mismatched generation and abort before calling spawnInitialOrbs
-        // or audio.startBeat. This fires whenever level-select jumps happen mid-countdown.
         state._cdGen = (state._cdGen || 0) + 1;
         const myGen = state._cdGen;
 
@@ -2159,7 +1952,6 @@
         const countMs = 550;
         const totalMs = 3 * countMs;
 
-        // Build the whole sequence wrapper once
         const wrap = document.createElement('div');
         wrap.className = 'cd-wrap';
 
@@ -2186,8 +1978,6 @@
         wrap.appendChild(numEl);
         document.querySelector('.game-wrap').appendChild(wrap);
 
-        // Tick through 3 → 2 → 1
-        // Each tick replaces the number element to re-trigger CSS animation
         const colors = ['c1', 'c2', 'c3'];
         const labels = ['3', '2', '1'];
         [0, 1, 2].forEach(i => {
@@ -2202,10 +1992,9 @@
             }, i * countMs);
         });
 
-        // Fade out wrapper then start play
         setTimeout(() => wrap.classList.add('fade-out'), totalMs - 380);
         setTimeout(() => {
-            if (state._cdGen !== myGen) return; // stale — a newer countdown took over
+            if (state._cdGen !== myGen) return;
             wrap.remove();
             state.countdown = 0; spawnInitialOrbs();
             const beatMs = (60000 / state.bpm);
@@ -2221,18 +2010,14 @@
         const { time, target } = data;
         const { tier, text } = getTier(time, target);
 
-        // Save progress + check for new best
         const isNewBest = setBestTime(state.level, time);
         const prevBest  = isNewBest ? null : getBestTime(state.level);
-        // Lifetime: clears + play time + session clears + advance resume point
         const _lp = loadProgress();
-        // On level 50 completion, resume wraps to 1; highestLevel caps at 50
         const _nextLvl = state.level >= TOTAL_LEVELS ? 1 : state.level + 1;
         const _resumePatch = { resumeLevel: _nextLvl };
         const _newHighest = Math.min(TOTAL_LEVELS, Math.max(_lp.highestLevel || 1, state.level + 1));
         if (_newHighest > (_lp.highestLevel || 1)) _resumePatch.highestLevel = _newHighest;
 
-        // ── Achievement stat tracking ─────────────────────────────────────
         const _prevStreak    = _lp.goldStreak || 0;
         const _newStreak     = tier === 'gold' ? _prevStreak + 1 : 0;
         const _newTotalGolds = (tier === 'gold' ? (_lp.totalGolds||0) + 1 : (_lp.totalGolds||0));
@@ -2256,8 +2041,6 @@
             achFlags: _achFlags,
             ..._resumePatch,
         });
-        // Check for newly unlocked achievements and show toast
-        // _lp = snapshot BEFORE this save; loadProgress() = snapshot AFTER
         if (typeof checkAndToastAchievements === 'function') {
             checkAndToastAchievements(_lp, loadProgress());
         }
@@ -2268,13 +2051,11 @@
         $('ef-tier').textContent = text;
         $('ef-tier').className = `ef-tier-badge c-${tier}`;
 
-        // Personal best row
         const pbVal   = $('ef-pb-val');
         const pbBadge = $('ef-pb-badge');
         pbBadge.classList.remove('show');
         if (isNewBest && tier !== 'none') {
             pbVal.textContent = 'Personal best';
-            // Delay badge slightly so it feels like a reveal
             setTimeout(() => pbBadge.classList.add('show'), 820);
         } else if (prevBest != null) {
             pbVal.textContent = `Best: ${prevBest.toFixed(1)}s`;
@@ -2298,19 +2079,16 @@
         state.complete = true; state.playing = false;
         state.levelCleared = cleared;
 
-        // Fail state: use the same ef-card drawer as the win state.
-        // #end-screen is no longer used for the fail path.
         const broken  = state.targetsDestroyed;
         const total   = state.totalTargets;
         const ratio   = total > 0 ? broken / total : 0;
 
-        // Contextual message — warm and forward-looking, never harsh
         let msg;
         if (broken === 0)          msg = 'Send those orbs flying and try again.';
         else if (ratio < 0.4)      msg = `${broken} crystal${broken > 1 ? 's' : ''} down. Keep going.`;
         else if (ratio < 0.75)     msg = 'Good progress — one more run should do it.';
         else if (ratio < 1.0)      msg = 'So close. The shape is almost there.';
-        else                       msg = ''; // shouldn't reach here (that's a win)
+        else                       msg = '';
 
         const efCard = $('ef-card');
         efCard.className = 'ef-card tier-fail';
@@ -2322,23 +2100,18 @@
     }
 
     function resetGameUI() {
-        // Dismiss every overlay that could be open mid-game
         $('end-screen').classList.add('hidden');
         $('end-float').classList.remove('show');
         $('offline-screen').classList.remove('show');
-        // Remove any in-progress countdown panel
         document.querySelectorAll('.cd-wrap').forEach(el => el.remove());
         state.freePlay = false;
         state.complete = false;
-        // Fully kill level select — remove all classes so display:none takes effect
-        // This is the only reliable way to guarantee zero pixels render
         const lsPanel   = document.getElementById('ls-panel');
         const lsFooter  = document.getElementById('ls-footer');
         const lsOverlay = document.getElementById('ls-overlay');
         if (lsPanel)   { lsPanel.classList.remove('show', 'animating'); lsPanel.style.transform = ''; }
         if (lsFooter)  { lsFooter.classList.remove('show'); lsFooter.style.transform = ''; }
         if (lsOverlay) { lsOverlay.classList.remove('show'); }
-        // Clear scroll so no stale content on next open
         const scroll = document.getElementById('ls-scroll');
         if (scroll) scroll.innerHTML = '';
     }
@@ -2351,10 +2124,7 @@
     async function next() {
         resetGameUI();
         audio.stopBeat();
-        // Wrap back to level 1 after the final level
         const nextLevel = state.level >= TOTAL_LEVELS ? 1 : state.level + 1;
-        // Record unlock + update resume point
-        // highestLevel caps at TOTAL_LEVELS (50 = game complete)
         const p = loadProgress();
         const _np = { resumeLevel: nextLevel };
         const newHighest = Math.min(TOTAL_LEVELS, Math.max(p.highestLevel || 1, state.level + 1));
@@ -2372,7 +2142,6 @@
         $('mute-btn').classList.toggle('muted', !audio.beatOn);
         saveProgress({ muted: !audio.beatOn });
     });
-    // Restore mute preference
     if (loadProgress().muted) {
         audio.beatOn = false;
         $('mute-btn').classList.add('muted');
@@ -2384,48 +2153,18 @@
         $('bass-fav').className = `ec-inner bass-fav${state.favBassStyle !== null ? ' locked' : ''} show`;
     });
 
-    // Menu, Level Select, Achievements → menu.js
-
-
     document.getElementById('intro-menu-btn').style.display = 'block';
     resize(); draw();
 
     // ═══════════════════════════════════════════════════════════════
     //  RENDER LOOP RESURRECTION
-    //
-    //  Problem: iOS Safari kills requestAnimationFrame after ~5 min
-    //  of phone sleep. draw() stops running → blank canvas.
-    //
-    //  Three things go wrong simultaneously:
-    //    1. rAF loop is dead                → canvas blank
-    //    2. state.startTime is stale        → elapsed jumps, may false-complete
-    //    3. state.beatTime is stale         → orb pulse phase is wrong
-    //
-    //  Root cause of the 5-min bug:
-    //    The old code detected loop death via performance.now() gap.
-    //    After a LONG sleep (5+ min), iOS freezes performance.now() during
-    //    suspension. When the tab resumes, perf.now() has only advanced by
-    //    ~16ms (one frame), so gap < 1500 and resurrection is skipped even
-    //    though the rAF loop is actually dead.
-    //
-    //  Fix: use Date.now() (wall clock) for death detection — it always
-    //  advances through iOS sleep. Keep performance.now() gap only for
-    //  correcting animation timestamps (where monotonic time is needed).
-    //  Also call resize() on resurrection: a long sleep can cause iOS to
-    //  discard the canvas backing store sizing.
     // ═══════════════════════════════════════════════════════════════
     function _resurrectLoop() {
         if (document.hidden) return;
-
-        // Use wall-clock gap to detect death — survives iOS perf.now() freeze
         const wallNow = Date.now();
         const wallGap = wallNow - (state._lastDrawWall || wallNow);
-        if (wallGap < 1500) return;   // loop is alive, nothing to do
+        if (wallGap < 1500) return;
 
-        // Performance.now() gap for correcting animation timestamps.
-        // If iOS froze perf.now() during sleep, perfGap will be near 0
-        // and these corrections are no-ops — correct, since the timestamps
-        // are still valid relative to the resumed perf.now() clock.
         const perfNow = performance.now();
         const perfGap = perfNow - (state._lastDrawTime || perfNow);
         if (state.playing && !state.complete && !state.freePlay) {
@@ -2433,10 +2172,7 @@
         }
         if (state.beatTime) state.beatTime += perfGap;
 
-        // Resize before redrawing — long sleep can invalidate canvas sizing
         resize();
-
-        // Cancel any ghost rAF ID and start a fresh loop
         cancelAnimationFrame(state.rafId);
         state.rafId = null;
         state._lastDrawTime = perfNow;
@@ -2448,17 +2184,12 @@
         if (!document.hidden) _resurrectLoop();
     });
     window.addEventListener('pageshow', _resurrectLoop);
-    // touchstart as final safety net: catches hard lock/unlock on iOS
-    // where visibilitychange and pageshow both misfire after long sleep
     document.addEventListener('touchstart', _resurrectLoop, { passive: true });
 
+    </script>
 
-        </script>
-
-    <!-- Menu, Level Select, Progress, Achievements -->
     <script src="/static/menu.js"></script>
     <script>
-    // Register service worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
             .catch(err => console.warn('SW registration failed:', err));
