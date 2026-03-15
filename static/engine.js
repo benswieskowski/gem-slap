@@ -24,7 +24,6 @@ const _isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
     (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent)); // iPad
 
 // Background offscreen canvas — pre-rendered once, redrawn only when canvas resizes
-// Saves 2 gradient allocations + 2 fillRect calls per frame
 let _bgCanvas = null, _bgCtx = null, _bgW = 0, _bgH = 0;
 function _buildBgCanvas(w, h) {
     _bgCanvas = document.createElement('canvas');
@@ -39,10 +38,8 @@ function _buildBgCanvas(w, h) {
     _bgW = w; _bgH = h;
 }
 
-// Orb path cache — wavy paths rebuilt every _PATH_SKIP frames instead of every frame.
-// On mobile (N=3) cuts ~11k trig ops/frame to ~3.7k with no visible difference.
 const _orbPathCache = new Map();
-const _PATH_SKIP = 1; // paths rebuilt every frame for smooth animation
+const _PATH_SKIP = 1;
 let _drawFrameCount = 0;
 
 function _buildOrbPaths(p, R, T, b) {
@@ -97,7 +94,7 @@ function getBrightness(orb, time) {
 //  PENTATONIC HARMONY SYSTEM
 // ═══════════════════════════════════════
 const PENTATONIC = [0, 3, 5, 7, 10]; // C minor pentatonic: C Eb F G Bb
-// All 15 music styles use C minor pentatonic so orb/crystal tones
+// All music styles use C minor pentatonic so orb/crystal tones
 // always harmonise with the background music regardless of style.
 
 function snapToPentatonic(note) {
@@ -122,8 +119,6 @@ for (let oct = -1; oct <= 4; oct++) {
 //  CONSTANTS
 // ═══════════════════════════════════════
 
-// White diamond palette — crystals look like cut diamonds, not blue gems.
-// main = slightly warm white face; light = pure white; dark = cool-silver shadow.
 const CRYSTAL_PALETTE = [
     { main: '#E8F2FF', light: '#FFFFFF', mid: '#F4F8FF', dark: '#B0C8E8', glow: '#FFFFFF' },
     { main: '#EAF0FF', light: '#FFFFFF', mid: '#F6F9FF', dark: '#B4CCEC', glow: '#FFFFFF' },
@@ -134,21 +129,21 @@ const CRYSTAL_PALETTE = [
     { main: '#E2ECFF', light: '#FFFFFF', mid: '#F0F6FF', dark: '#A8C0E0', glow: '#FFFFFF' },
 ];
 
-// Jewel-tone spectral colors for shard explosions.
-// Crystals are white diamonds while alive; they BURST into rainbow on death.
 const SHARD_COLORS = [
-    { main: '#FF2840', light: '#FF90A0' },   // ruby red
-    { main: '#FF6018', light: '#FFB070' },   // fire opal
-    { main: '#F5C800', light: '#FFE870' },   // canary yellow
-    { main: '#28C858', light: '#80EEA8' },   // emerald
-    { main: '#18C8E0', light: '#80EEF8' },   // aquamarine
-    { main: '#A020E0', light: '#D080F8' },   // amethyst
-    { main: '#E018A0', light: '#F880CC' },   // pink tourmaline
-    { main: '#F07820', light: '#FFB870' },   // amber
+    { main: '#FF2840', light: '#FF90A0' },
+    { main: '#FF6018', light: '#FFB070' },
+    { main: '#F5C800', light: '#FFE870' },
+    { main: '#28C858', light: '#80EEA8' },
+    { main: '#18C8E0', light: '#80EEF8' },
+    { main: '#A020E0', light: '#D080F8' },
+    { main: '#E018A0', light: '#F880CC' },
+    { main: '#F07820', light: '#FFB870' },
 ];
 
 const WARM_RELEASE = ['#C41E3A','#D4380D','#E86420','#F07B18','#FAAB0C','#FFC107','#FFD43B','#FFF5C0'];
-const BASS_NAMES = ["Fourside Funk","Hyrule March","Snake Slither","Guardia Festival","Gemini Mirror","Bright Flash","Pharaoh Rush","Sky World","Wily's Resolve","Hard Corps"];
+
+// Active bass style names (5-track rotation)
+const BASS_NAMES = ["Fourside Funk","Dawnbreak","Prism","Bright Flash","Makou Energy"];
 
 // ═══════════════════════════════════════
 //  AUDIO ENGINE
@@ -166,12 +161,11 @@ class Audio {
         this._beatCb = null;
         this._intentPlaying = false;
         this._needsResume = false;
-        // Look-ahead scheduler state
-        this._schedAt    = null;   // scheduled audio time for current step (set in _fireStep)
-        this._stepDur    = 0;      // duration of one 16th note in seconds
-        this._nextStep   = 0;      // next step to schedule (0–31)
-        this._nextStepTime = 0;    // ctx.currentTime of the next step
-        this._loopCount  = 0;      // how many full 32-step loops have completed
+        this._schedAt    = null;
+        this._stepDur    = 0;
+        this._nextStep   = 0;
+        this._nextStepTime = 0;
+        this._loopCount  = 0;
     }
 
     async init() {
@@ -179,24 +173,17 @@ class Audio {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         if (this.ctx.state === 'suspended') await this.ctx.resume();
 
-        // ── SFX bus: master → limiter → destination ──────────────────────────
-        // All game sound effects (crystal shatter, fanfare, shockwave, tone)
-        // route through this.master. The limiter catches SFX peak spikes without
-        // affecting the music, which lives on a completely separate bus below.
         this.master = this.ctx.createGain();
         this.master.gain.value = 0.78;
         this.limiter = this.ctx.createDynamicsCompressor();
-        this.limiter.threshold.value = -3;   // dB
+        this.limiter.threshold.value = -3;
         this.limiter.knee.value       = 2;
-        this.limiter.ratio.value      = 20;  // hard limit above threshold
+        this.limiter.ratio.value      = 20;
         this.limiter.attack.value     = 0.002;
         this.limiter.release.value    = 0.18;
         this.master.connect(this.limiter);
         this.limiter.connect(this.ctx.destination);
 
-        // ── Music bus: musicOut → destination (bypasses limiter) ─────────────
-        // All background music channels route here. Completely separate from the
-        // SFX bus so SFX peaks can never compress or duck the music.
         this.musicOut = this.ctx.createGain();
         this.musicOut.gain.value = 0.82;
         this.musicOut.connect(this.ctx.destination);
@@ -232,35 +219,28 @@ class Audio {
     }
 
     _createReverb() {
-        // Synthetic convolution reverb — exponentially decaying stereo noise IR.
-        // Early reflections emphasized in first 30ms; gentle air-absorption rolloff
-        // baked into the decay curve. Only hihat, chord, and texture send here —
-        // bass and kick stay fully dry to avoid muddiness.
         const sr  = this.ctx.sampleRate;
         const len = Math.floor(sr * 1.4);
         const ir  = this.ctx.createBuffer(2, len, sr);
-        const earlyMs = Math.floor(sr * 0.03); // 30ms early reflection window
+        const earlyMs = Math.floor(sr * 0.03);
         for (let ch = 0; ch < 2; ch++) {
             const d = ir.getChannelData(ch);
             for (let i = 0; i < len; i++) {
                 const norm  = i / len;
-                const decay = Math.pow(1 - norm, 2.2);             // smooth power-law
-                const airAbs = 1 - norm * 0.35;                    // HF rolloff over time
-                const early = i < earlyMs ? 1 + (1 - i / earlyMs) * 0.6 : 1; // boost early refs
+                const decay = Math.pow(1 - norm, 2.2);
+                const airAbs = 1 - norm * 0.35;
+                const early = i < earlyMs ? 1 + (1 - i / earlyMs) * 0.6 : 1;
                 d[i] = (Math.random() * 2 - 1) * decay * airAbs * early;
             }
         }
         this.reverb = this.ctx.createConvolver();
         this.reverb.buffer = ir;
 
-        // Wet bus: reverb → reverbGain → musicOut (reverb is a music-world effect)
         this.reverbGain = this.ctx.createGain();
-        this.reverbGain.gain.value = 0.14;  // overall wet level — subtle spatial depth
+        this.reverbGain.gain.value = 0.14;
         this.reverb.connect(this.reverbGain);
         this.reverbGain.connect(this.musicOut);
 
-        // Send gains — each source channel sends a fraction of signal to reverb
-        // Hihat: most reverb (air), chord: medium, texture: medium, bass/kick: none
         this.hihatRevSend = this.ctx.createGain(); this.hihatRevSend.gain.value = 0.28;
         this.hihatGain.connect(this.hihatRevSend); this.hihatRevSend.connect(this.reverb);
 
@@ -272,63 +252,30 @@ class Audio {
     }
 
     _setupVisibilityHandler() {
-        // ── What we DON'T do ──────────────────────────────────────────────────
-        // We do NOT call ctx.resume() from visibilitychange, pageshow, or focus.
-        // iOS Safari silently ignores resume() outside a real user gesture.
-        //
-        // ── The core problem with _wasPlaying ────────────────────────────────
-        // The old approach stored _wasPlaying = !!beatInt inside visibilitychange.
-        // If that event misfires (common on hard phone lock in iOS Safari), the
-        // flag stays false and sound never comes back after unlock.
-        //
-        // ── The fix: _intentPlaying ──────────────────────────────────────────
-        // _intentPlaying is set by startBeat() and cleared only by stopBeat().
-        // It is never touched by background/foreground events, so it is immune
-        // to unreliable system events. If music was playing when the phone locked,
-        // _intentPlaying is still true when the user next taps the screen.
-
-        // On hide: stop the beat interval to prevent ghost ticks while suspended,
-        // but leave _intentPlaying alone — we want to resume on return.
         document.addEventListener('visibilitychange', () => {
             if (!this.ctx || !document.hidden) return;
             if (this.beatInt) { clearTimeout(this.beatInt); this.beatInt = null; }
         });
 
-        // Mark that we should attempt a resume on the next user gesture.
-        // Multiple events cover the different ways iOS returns to foreground:
-        //   visibilitychange visible — most reliable path
-        //   pageshow            — bfcache restore / some lock-screen returns
-        //   window focus        — tab regains focus
         const markNeedsResume = () => { this._needsResume = true; };
         document.addEventListener('visibilitychange', () => { if (!document.hidden) markNeedsResume(); });
         window.addEventListener('pageshow', markNeedsResume);
         window.addEventListener('focus', markNeedsResume);
 
-        // ── The one reliable resume point: user gesture ───────────────────────
-        // ctx.resume() only works here. We check every possible failure state:
-        //   suspended   — normal iOS background/lock suspend
-        //   interrupted — iOS audio session interrupt (phone call etc.)
-        //   running + beat dead — zombie state: context alive but interval died
         const gestureResume = () => {
             if (!this.ctx) return;
-
             const afterResume = () => {
-                // Restart if the user intended music to be playing and it's not
                 if (this._intentPlaying && this._beatBpm > 0 && !this.beatInt) {
                     this._restartBeat();
                 }
                 this._needsResume = false;
             };
-
             if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
                 this.ctx.resume().then(afterResume).catch(() => {});
             } else if (this.ctx.state === 'running') {
-                // Context is alive — check if beat needs restart (zombie state
-                // or visibilitychange+return without a suspend cycle)
                 if (this._intentPlaying && this._beatBpm > 0 && !this.beatInt) {
                     afterResume();
                 } else if (this._needsResume) {
-                    // Not playing, but flag was set — just clear it
                     this._needsResume = false;
                 }
             }
@@ -338,15 +285,10 @@ class Audio {
         document.addEventListener('click', gestureResume);
     }
 
-    // ── Look-ahead scheduler ──────────────────────────────────────────────────
-    // Uses Web Audio ctx.currentTime for sample-accurate step scheduling instead
-    // of setInterval. The ticker runs every INTERVAL_MS; each run schedules any
-    // steps whose time falls within the LOOKAHEAD window. Sounds are triggered at
-    // exact audio times, eliminating the ±10–20ms jitter of raw setInterval.
     _startScheduler() {
-        const LOOKAHEAD   = 0.08;  // seconds ahead to schedule
-        const INTERVAL_MS = 20;    // scheduler tick interval in ms
-        this._stepDur     = 60 / (this._beatBpm * 4);  // one 16th note in seconds
+        const LOOKAHEAD   = 0.08;
+        const INTERVAL_MS = 20;
+        this._stepDur     = 60 / (this._beatBpm * 4);
         this._nextStep    = 0;
         this._loopCount   = 0;
         this._nextStepTime = this.ctx.currentTime + 0.01;
@@ -389,7 +331,6 @@ class Audio {
         this.stopBeat();
         this._beatBpm = bpm; this._beatCb = cb;
         this._intentPlaying = true;
-        // Call cb immediately so game startTime / beatTime are set from now
         const start = performance.now();
         if (cb) cb(start);
         this._startScheduler();
@@ -400,34 +341,29 @@ class Audio {
         this._intentPlaying = false;
     }
 
-    setBassStyle(style) { this.bassStyle = style % 15; }
+    // ── Style 15 is Makou Energy; total 16 styles (0–15) ─────────────────────
+    setBassStyle(style) { this.bassStyle = style % 16; }
 
     getBpm(style) {
+        // Indices 0–15: styles 0–14 (original) + style 15 (Makou Energy, 136 bpm)
         const BPMS = [108,112,126,130,132,138,132,136,140,142,
-                      110,124,120,128,118]; // styles 6-9 reduced; 10-14: Golden Hour, Candy Flip, Dawnbreak, Prism, Neon Pulse
-        return BPMS[(style % 15)] || 130;
+                      110,124,120,128,118,136];
+        return BPMS[(style % 16)] || 130;
     }
 
-    // _fireStep: the heart of the scheduler — plays one 16th-note step.
-    // `when` is the precise ctx.currentTime at which sounds should start.
-    // Sets this._schedAt so all music sound functions land exactly on `when`
-    // rather than at ctx.currentTime (which is slightly later due to tick latency).
     _fireStep(step, when) {
         if (!this._canPlay() || !this.beatOn) return;
         const s = this.bassStyle || 0;
 
-        // ── Swing (styles 0 + 2 only) ──────────────────────────────────────
-        // Off-beat 16th notes (odd steps) land 12% / 10% of a step later,
-        // giving funk styles a lopsided, human groove.
+        // Swing: styles 0, 2, 10, 12 only
         const SWING = [0.12, 0, 0.10, 0, 0, 0, 0, 0, 0, 0,
-                       0.16, 0, 0.14, 0, 0]; // styles 10-14: Golden Hour 16%, Candy Flip 0%, Dawnbreak 14%, Prism 0%, Neon Pulse 0%
+                       0.16, 0, 0.14, 0, 0, 0]; // style 15 = no swing
         const swingFrac = SWING[s] || 0;
         const scheduledAt = (swingFrac > 0 && step % 2 === 1)
             ? when + this._stepDur * swingFrac
             : when;
         this._schedAt = scheduledAt;
 
-        // ── Standard step sounds ────────────────────────────────────────────
         const dr = this.getSubPattern(s)[step];
         if (dr) this.subDrone(dr[0], dr[1], dr[2]);
         const cp = this.getPadPattern(s)[step];
@@ -442,95 +378,95 @@ class Audio {
         if (pp.t && pp.t[step]) this.texGrain(pp.t[step]);
 
         this._schedAt = null;
-        this.beat = step; // keep .beat in sync for anything that reads it
+        this.beat = step;
     }
 
-    // Legacy alias — kept so any external code calling playStep still works
     playStep(step) { this._fireStep(step, this.ctx ? this.ctx.currentTime : 0); }
 
     getSubPattern(style) {
         const S = {
-            // 00 · Fourside Funk — Earthbound C Dorian ghost-note funk (108 bpm)
+            // 00 · Fourside Funk (108 bpm)
             0: [[0,.58,.20],null,[0,.20,.08],null,[12,.52,.16],null,[7,.44,.14],null,
                 [0,.54,.20],null,[10,.20,.08],null,[10,.48,.16],[9,.22,.10],[7,.36,.14],[0,.16,.06],
                 [0,.56,.20],null,[0,.22,.08],null,[12,.50,.16],[12,.18,.06],[7,.42,.14],null,
                 [0,.52,.20],null,[9,.22,.08],null,[7,.46,.16],null,[12,.38,.14],[0,.18,.06]],
-            // 01 · Hyrule March — Zelda / OoT overworld dignified march (112 bpm)
+            // 01 · Hyrule March (112 bpm)
             1: [[0,.56,.38],null,null,null,[0,.22,.12],null,[7,.50,.26],null,
                 [5,.52,.30],null,null,null,[7,.48,.26],null,[7,.20,.10],null,
                 [0,.54,.38],null,null,null,[0,.20,.10],null,[7,.48,.26],null,
                 [3,.50,.30],null,null,null,[7,.46,.26],null,[10,.18,.10],null],
-            // 02 · Snake Slither — MM3 chromatic approach bass (126 bpm)
+            // 02 · Snake Slither (126 bpm)
             2: [[0,.58,.20],null,[0,.22,.08],null,[10,.50,.18],null,[11,.20,.08],null,
                 [0,.54,.20],null,null,[7,.20,.08],[5,.48,.18],null,[4,.22,.10],[5,.16,.06],
                 [0,.56,.20],null,[0,.20,.08],null,[7,.52,.18],null,[8,.22,.08],null,
                 [0,.50,.20],null,null,[3,.18,.08],[7,.46,.18],[8,.18,.08],[7,.36,.16],null],
-            // 03 · Guardia Festival — CT Millennial Fair climbing arpeggio (130 bpm)
+            // 03 · Guardia Festival (130 bpm)
             3: [[0,.52,.20],null,[3,.34,.14],null,[7,.48,.18],null,[10,.30,.12],null,
                 [12,.50,.18],null,[10,.22,.10],null,[7,.46,.18],null,[5,.24,.12],[3,.16,.08],
                 [0,.50,.20],null,[3,.32,.14],null,[7,.46,.18],null,[10,.28,.12],null,
                 [12,.48,.18],null,[9,.20,.10],null,[7,.44,.18],[5,.20,.10],[3,.34,.14],null],
-            // 04 · Gemini Mirror — MM3 call-and-response ascending/descending (132 bpm)
+            // 04 · Gemini Mirror (132 bpm)
             4: [[0,.54,.22],null,null,null,[3,.46,.20],null,[5,.38,.18],null,
                 [7,.50,.22],null,[10,.28,.12],null,[12,.48,.20],null,[10,.22,.10],[7,.18,.08],
                 [0,.52,.22],null,null,null,[12,.44,.20],null,[10,.36,.18],null,
                 [7,.48,.22],null,[5,.26,.12],null,[3,.44,.20],[5,.20,.10],[7,.40,.18],null],
-            // 05 · Bright Flash — MM4 pentatonic arpeggio climber (138 bpm)
+            // 05 · Bright Flash (138 bpm)
             5: [[0,.52,.20],null,[3,.32,.14],null,[7,.48,.18],null,[10,.28,.12],null,
                 [12,.50,.18],null,[10,.22,.10],null,[7,.46,.18],null,[3,.26,.12],[0,.16,.06],
                 [0,.50,.20],null,[3,.30,.14],null,[7,.46,.18],null,[12,.48,.20],null,
                 [15,.46,.18],null,[12,.22,.10],[10,.18,.08],[7,.42,.18],null,[5,.24,.12],[7,.16,.06]],
-            // 06 · Pharaoh Rush — MM4 Hijaz / Phrygian dominant (144 bpm)
+            // 06 · Pharaoh Rush (144 bpm)
             6: [[0,.60,.18],null,null,null,[1,.44,.14],null,[4,.50,.16],null,
                 [5,.56,.18],null,null,null,[7,.52,.16],null,[8,.28,.10],[7,.18,.06],
                 [0,.58,.18],null,null,[1,.18,.08],[4,.52,.16],null,[5,.56,.18],null,
                 [7,.54,.16],null,[8,.24,.10],null,[5,.50,.16],[4,.22,.10],[1,.44,.14],[0,.16,.06]],
-            // 07 · Sky World — SMB3 Athletic double-hit bounce bass (148 bpm)
+            // 07 · Sky World (148 bpm)
             7: [[0,.58,.14],[0,.26,.08],null,null,[0,.54,.14],null,[7,.48,.14],null,
                 [5,.52,.14],[5,.22,.08],null,null,[7,.50,.14],null,[10,.26,.10],null,
                 [0,.56,.14],[0,.24,.08],null,null,[0,.52,.14],null,[3,.30,.10],null,
                 [7,.50,.14],null,[10,.22,.10],null,[12,.46,.14],[10,.20,.08],[7,.36,.14],null],
-            // 08 · Wily's Resolve — Mega Man 2 octave-bounce bass (150 bpm)
+            // 08 · Wily's Resolve (150 bpm)
             8: [[0,.64,.18],null,null,[0,.24,.08],[12,.56,.16],null,[7,.44,.14],null,
                 [0,.60,.18],null,null,[0,.22,.08],[7,.52,.16],null,[10,.30,.12],[0,.18,.08],
                 [0,.62,.18],null,null,[0,.24,.08],[12,.54,.16],null,[7,.42,.14],null,
                 [0,.58,.18],null,null,[3,.20,.08],[7,.50,.16],[10,.24,.10],[12,.46,.16],null],
-            // 09 · Hard Corps — MM3 military double-hit march (150 bpm)
+            // 09 · Hard Corps (150 bpm)
             9: [[0,.62,.18],[0,.30,.10],null,null,[0,.58,.18],null,[7,.50,.16],null,
                 [0,.60,.18],[0,.28,.10],null,null,[5,.56,.16],null,[7,.44,.14],[0,.20,.08],
                 [0,.60,.18],[0,.28,.10],null,null,[0,.56,.18],null,[10,.48,.16],null,
                 [7,.58,.18],[7,.26,.10],null,null,[5,.54,.16],[4,.20,.10],[7,.42,.14],null],
-            // 10 · Golden Hour — C minor, Cm7→Abmaj7→Ebmaj7→G7, 16% swing (110 bpm)
-            //      Ab(8) is the bVI "golden" lift; Eb(3) bar 3 adds warmth before G7 tension
+            // 10 · Golden Hour (110 bpm)
             10:[[0,.66,.20],null,[0,.24,.08],null,[7,.54,.16],null,[3,.44,.14],null,
                 [8,.64,.20],null,[8,.22,.08],null,[0,.52,.16],null,[3,.44,.14],[7,.20,.08],
                 [3,.64,.20],null,[3,.22,.08],null,[10,.52,.16],null,[7,.40,.14],null,
                 [7,.62,.20],null,[7,.22,.08],null,[2,.50,.16],null,[5,.38,.14],[10,.18,.08]],
-            // 11 · Candy Flip — Cm→Bb→Ab→G descending, straight (124 bpm)
-            //      Falling major triads over a minor root = pop hook energy, completely different arc to others
+            // 11 · Candy Flip (124 bpm)
             11:[[0,.68,.18],null,[0,.26,.08],null,[3,.56,.16],null,[7,.46,.14],null,
                 [10,.66,.18],null,[10,.26,.08],null,[2,.54,.16],null,[5,.44,.14],[7,.20,.08],
                 [8,.66,.18],null,[8,.24,.08],null,[3,.54,.16],null,[0,.44,.14],null,
                 [7,.64,.18],null,[7,.22,.08],null,[11,.52,.16],null,[2,.40,.14],[5,.20,.08]],
-            // 12 · Dawnbreak — Cm7→Abmaj7→Fm7→G7sus, 14% swing (120 bpm)
+            // 12 · Dawnbreak (120 bpm)
             12:[[0,.64,.20],null,[0,.24,.08],null,[7,.52,.18],null,[3,.36,.14],null,
                 [8,.62,.20],null,[8,.22,.08],null,[3,.50,.16],null,[0,.40,.14],[7,.20,.08],
                 [5,.64,.20],null,[5,.22,.08],null,[0,.52,.18],null,[3,.38,.14],null,
                 [7,.62,.20],null,[7,.22,.08],null,[2,.50,.16],null,[0,.36,.14],[11,.18,.08]],
-            // 13 · Prism — Gm7→Ab→Bb7→Cm ascending stabs, straight (128 bpm)
-            //      Mirror of Candy Flip: same stab-only energy but RISES G→Ab→Bb→C vs Candy's fall.
-            //      Gm7 opener (v minor) creates pull toward Cm. Bb7 bar 3 is the dominant funk punch.
+            // 13 · Prism (128 bpm)
             13:[[7,.68,.16],null,[7,.26,.08],null,[10,.56,.14],null,[5,.36,.12],null,
                 [8,.64,.16],null,[8,.24,.08],null,[3,.52,.14],null,[0,.40,.12],[3,.20,.08],
                 [10,.62,.16],null,[10,.24,.08],null,[5,.50,.14],null,[2,.36,.12],null,
                 [0,.60,.16],null,[0,.24,.08],null,[7,.48,.14],null,[3,.38,.12],[7,.18,.08]],
-            // 14 · Neon Pulse — Gm7→C7→Fm7→Bb7 descending 4ths, straight (118 bpm)
-            //      Full cycle of 4ths: G→C→F→Bb. C7 bar 2 has E natural (blue note against C minor).
-            //      Loop restart back to Gm7 resolves Bb7 tension — every cycle satisfies.
+            // 14 · Neon Pulse (118 bpm)
             14:[[7,.62,.18],null,[7,.22,.08],null,[10,.50,.18],null,[2,.28,.10],null,
                 [0,.56,.20],null,[0,.20,.08],null,[7,.48,.18],null,[4,.32,.12],null,
                 [5,.60,.18],null,[5,.18,.08],null,[0,.44,.16],[8,.22,.08],null,null,
                 [10,.54,.18],null,[3,.38,.14],null,[5,.46,.18],null,[2,.28,.10],[7,.16,.06]],
+            // 15 · Makou Energy (136 bpm) ← NEW
+            // Cm→Eb→bVI Ab→Fm→Gm. Bass climbs C→Eb→G then leaps to Bb, falls F→Eb→C.
+            // All stab pads. Uematsu bVI (Ab, semitone 8) is the signature sound.
+            15:[[0,.72,.12],null,null,[0,.16,.06],[3,.28,.10],null,[7,.62,.14],null,
+                [7,.54,.12],null,[5,.22,.08],null,[3,.28,.10],null,[10,.50,.12],null,
+                [0,.70,.12],null,[3,.20,.08],null,[5,.32,.10],[7,.24,.08],[7,.56,.12],null,
+                [10,.52,.12],null,[7,.20,.08],null,[5,.26,.10],[3,.18,.08],[0,.54,.12],null],
         };
         return S[style] || S[0];
     }
@@ -587,47 +523,50 @@ class Audio {
                 [[0,7,12],.46,'s'],null,null,null,null,null,[[5,12],.34,'s'],null,
                 [[0,7,12],.48,'s'],null,null,null,null,null,[[10,17],.36,'s'],null,
                 [[7,14],.44,'s'],null,null,null,null,null,[[0,5,7,12],.38,'s'],null],
-            // 10 · Golden Hour — Cm7→Abmaj7→Ebmaj7→G7, warble + stab (110 bpm)
+            // 10 · Golden Hour (110 bpm)
             10:[[[0,3,7,10],.46],null,null,null,null,null,null,null,
                 [[-4,0,3,7],.36,'s'],null,null,null,null,null,null,null,
                 [[3,7,10,14],.44],null,null,null,null,null,null,null,
                 [[7,11,14,17],.32,'s'],null,null,null,
                 [[0,3,7],.38,'s'],null,null,null],
-            // 11 · Candy Flip — Cm→Bb→Ab→G raw triads, all stabs (124 bpm)
-            //      No 7ths — pure triads for pop punch; Bb↓Ab↓G = falling momentum
+            // 11 · Candy Flip (124 bpm)
             11:[[[0,3,7],.48,'s'],null,null,null,null,null,null,null,
                 [[-2,2,5],.40,'s'],null,null,null,null,null,null,null,
                 [[-4,0,3],.44,'s'],null,null,null,null,null,null,null,
                 [[7,11,14],.36,'s'],null,null,null,
                 [[0,3,7],.40,'s'],null,null,null],
-            // 12 · Dawnbreak — Cm7→Abmaj7→Fm7→G7sus warm pads (120 bpm)
+            // 12 · Dawnbreak (120 bpm)
             12:[[[0,3,7,10],.46],null,null,null,null,null,null,null,
                 [[-4,0,3,7],.36,'s'],null,null,null,null,null,null,null,
                 [[5,8,12,15],.44],null,null,null,null,null,null,null,
                 [[7,12,14,17],.34,'s'],null,null,null,
                 [[0,3,7],.36,'s'],null,null,null],
-            // 13 · Prism — Gm7→Ab→Bb7→Cm, all stabs ascending (128 bpm)
-            //      All stabs like Candy Flip, no warble. Gm7 with 7th, Ab triad, Bb7 dominant punch, Cm home.
+            // 13 · Prism (128 bpm)
             13:[[[7,10,14],.44,'s'],null,null,null,null,null,null,null,
                 [[-4,0,3],.40,'s'],null,null,null,null,null,null,null,
                 [[-2,2,5,8],.42,'s'],null,null,null,null,null,null,null,
                 [[0,3,7],.36,'s'],null,null,null,
                 [[7,10,14],.38,'s'],null,null,null],
-            // 14 · Neon Pulse — Gm7→C7→Fm7→Bb7, all punchy stabs (118 bpm)
-            //      All stabs — no warble, no sustain, pure rhythmic funk hits matching the syncopated bass
+            // 14 · Neon Pulse (118 bpm)
             14:[[[7,10,14,17],.40,'s'],null,null,null,[[7,10,14],.36,'s'],null,null,null,
                 null,null,null,null,[[0,4,7,10],.34,'s'],null,null,null,
                 [[5,8,12,15],.38,'s'],null,null,null,[[5,8,12],.32,'s'],null,null,null,
                 null,null,null,null,[[-2,2,5,8],.30,'s'],null,null,null],
+            // 15 · Makou Energy (136 bpm) ← NEW
+            // Chord cycle: Cm7 → Eb (bIII) → Abmaj (bVI) → Fm → Gm
+            // All stabs — tight rhythmic punches, no warble sustain.
+            // bVI Ab (semitone 8,12,15) on steps 8+12 and 16+20 is the Uematsu signature.
+            15:[[[0,3,7,10],.52,'s'],null,null,null,null,null,null,null,
+                [[3,7,10],.44,'s'],null,null,null,[[8,12,15],.30,'s'],null,null,null,
+                [[5,8,12,15],.48,'s'],null,null,null,[[8,12,15],.26,'s'],null,null,null,
+                [[7,10,14],.40,'s'],null,null,null,[[0,3,7],.34,'s'],null,null,null],
         };
         return P[style] || P[0];
     }
 
     getPercPattern(style) {
         const R = {
-            // 00 · Fourside Funk — ghost-note funk groove (108 bpm)
-            // Kick: beat 1 accent .72, beat 3 strong .62, upbeats .32, ghosts .16–.20
-            // Snare: main beats .54/.52, ghosts .12–.16 — wider dynamic range = pocket feel
+            // 00 · Fourside Funk (108 bpm)
             0: { k:[.72,0,0,0,0,0,.32,0,.62,0,.20,0,0,0,.26,0,
                     .72,0,.16,0,0,0,.32,0,.62,0,.20,0,0,0,.26,.14],
                  s:[0,0,0,0,.54,0,0,.14,0,0,0,0,.52,0,0,.12,
@@ -636,9 +575,7 @@ class Audio {
                     .30,.14,.22,.14,.30,.14,-.34,.14,.30,.14,.22,.14,.30,.14,-.34,.14],
                  t:[0,0,.04,0,0,.04,0,0,0,0,.04,0,0,0,.04,0,
                     0,0,.04,0,0,.04,0,0,0,0,.04,0,0,.04,0,0] },
-            // 01 · Hyrule March — dignified march (112 bpm)
-            // Kick: authoritative downbeats .72/.70, beat 3 .58/.56, pickup ghost .20
-            // Snare: backbeats punched to .50/.48, pickup ghost .14 adds gravitas
+            // 01 · Hyrule March (112 bpm)
             1: { k:[.72,0,0,0,0,0,0,0,.58,0,0,0,0,0,0,0,
                     .70,0,0,0,0,0,0,0,.56,0,.20,0,0,0,0,0],
                  s:[0,0,0,0,.50,0,0,0,0,0,0,0,.48,0,0,0,
@@ -647,9 +584,7 @@ class Audio {
                     .26,0,.16,0,.26,0,.16,0,.26,0,.16,0,.26,0,-.28,0],
                  t:[0,0,.04,0,0,0,.04,0,0,0,.04,0,0,0,.04,0,
                     0,0,.04,0,0,0,.04,0,0,0,.04,0,0,0,.04,0] },
-            // 02 · Snake Slither — MM3 slithering ghost groove (126 bpm)
-            // Kick: .70 downbeats, .30 mid-beat slither note, .20 ghosts — sinuous contrast
-            // Snare: .52/.50 backbeats, ghost cluster .12–.14 preserved for slither texture
+            // 02 · Snake Slither (126 bpm)
             2: { k:[.70,0,0,0,0,0,.30,0,.58,0,.20,0,0,0,.28,0,
                     .70,0,.16,0,0,0,.30,0,.58,0,.20,0,0,0,.28,.14],
                  s:[0,0,0,0,.52,0,0,.14,0,0,0,0,.50,0,0,.12,
@@ -658,9 +593,7 @@ class Audio {
                     .28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12],
                  t:[0,0,0,.04,0,0,.04,0,0,0,0,.04,0,0,.04,0,
                     0,0,0,.04,0,0,.04,0,0,0,0,.04,0,0,.04,.04] },
-            // 03 · Guardia Festival — CT Millennial Fair (130 bpm)
-            // Kick: lighter than other styles (.64) for festival bounce, beat 3 .52, ghosts .18
-            // Snare: .50/.48, feather ghosts .10–.14 — celebratory without heaviness
+            // 03 · Guardia Festival (130 bpm)
             3: { k:[.64,0,0,0,0,0,.28,0,.52,0,.18,0,0,0,.22,0,
                     .64,0,0,0,0,0,.28,0,.52,0,.18,0,0,0,.22,.12],
                  s:[0,0,0,0,.50,0,0,.12,0,0,0,0,.48,0,0,.10,
@@ -669,9 +602,7 @@ class Audio {
                     .28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12],
                  t:[0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,
                     0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04] },
-            // 04 · Gemini Mirror — MM3 call-and-response (132 bpm)
-            // Kick: .68 CALL on beat 1, .56 ANSWER on beat 3, .30 upbeat, ghosts .16–.18
-            // Snare: .54/.52 backbeats — symmetrical to match the mirror character
+            // 04 · Gemini Mirror (132 bpm)
             4: { k:[.68,0,0,0,0,0,.30,0,.56,0,0,0,.22,0,0,0,
                     .68,0,.18,0,0,0,.30,0,.56,0,0,0,.22,0,.16,0],
                  s:[0,0,0,0,.54,0,0,.14,0,0,0,0,.52,0,0,.12,
@@ -680,9 +611,7 @@ class Audio {
                     .28,.12,.20,.12,.28,.12,-.32,.12,.28,.12,.20,.12,.28,.12,-.32,.12],
                  t:[0,0,.04,0,0,0,0,0,0,0,.04,0,0,0,0,0,
                     0,0,.04,0,0,0,0,0,0,0,.04,0,0,0,.04,0] },
-            // 05 · Bright Flash — MM4 arpeggio climber (138 bpm)
-            // Kick: .70 downbeats, .32 driving upbeats, .20 ghost, .16 feather — high energy
-            // Snare: .52/.50 — punchy to match the climbing momentum
+            // 05 · Bright Flash (138 bpm)
             5: { k:[.70,0,0,0,0,0,.32,0,.58,0,.20,0,0,0,.26,0,
                     .70,0,.16,0,0,0,.32,0,.58,0,.20,0,0,0,.26,.14],
                  s:[0,0,0,0,.52,0,0,.14,0,0,0,0,.50,0,0,.12,
@@ -691,9 +620,7 @@ class Audio {
                     .28,0,.20,0,.28,0,-.32,0,.28,0,.20,0,.28,0,-.30,0],
                  t:[0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,
                     0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04] },
-            // 06 · Pharaoh Rush — MM4 driving desert march (144 bpm)
-            // Kick: .76 heavy downbeat, .36 driving "and-of-2" (the Phrygian push), .64 beat 3
-            // Snare: .58/.56 — authoritative to match the Pharaoh's march weight
+            // 06 · Pharaoh Rush (144 bpm)
             6: { k:[.76,0,0,0,.36,0,0,0,.64,0,.20,0,.24,0,0,0,
                     .74,0,0,0,.36,0,.18,0,.62,0,.20,0,.24,0,.16,0],
                  s:[0,0,0,0,.58,0,0,.16,0,0,0,0,.56,0,.14,0,
@@ -702,9 +629,7 @@ class Audio {
                     .34,.18,.26,.18,.34,.18,-.38,.18,.34,.18,.26,.18,.34,.18,-.38,.18],
                  t:[0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0,
                     0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0] },
-            // 07 · Sky World — SMB3 bouncy athletic (148 bpm)
-            // Kick: .74 BIG bounce on 1, .32 spring-step upbeat, .62 beat 3 — contrast = bounce feel
-            // Snare: .56/.54 — crisp and athletic to match the springy character
+            // 07 · Sky World (148 bpm)
             7: { k:[.74,0,0,0,.32,0,0,0,.62,0,.20,0,.24,0,0,0,
                     .74,0,0,0,.32,0,.18,0,.62,0,.20,0,.24,0,0,0],
                  s:[0,0,0,0,.56,0,0,.14,0,0,0,0,.54,0,.12,0,
@@ -713,9 +638,7 @@ class Audio {
                     .32,.16,.24,.16,.32,.16,-.36,.16,.32,.16,.24,.16,.32,.16,-.36,.16],
                  t:[0,0,.04,0,0,0,.04,0,0,0,.04,0,0,0,.04,0,
                     0,0,.04,0,0,0,.04,0,0,0,.04,0,0,0,.04,0] },
-            // 08 · Wily's Resolve — relentless 16th hats (150 bpm)
-            // Kick: .78 MAX POWER beat 1, .38 driving and-kick, .66 beat 3 — brutal contrast
-            // Snare: .62/.60 — heaviest snare of all styles, matches the relentless Wily energy
+            // 08 · Wily's Resolve (150 bpm)
             8: { k:[.78,0,0,0,.38,0,0,0,.66,0,.22,0,.28,0,0,0,
                     .76,0,0,0,.36,0,.18,0,.64,0,.22,0,.28,0,0,0],
                  s:[0,0,0,0,.62,0,0,.16,0,0,0,0,.60,0,0,.18,
@@ -724,9 +647,7 @@ class Audio {
                     .36,.20,.28,.20,.36,.20,-.40,.20,.36,.20,.28,.20,.36,.20,-.40,.20],
                  t:[.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,
                     .03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03,.03] },
-            // 09 · Hard Corps — MM3 military march (150 bpm)
-            // Kick: .78 authoritative downbeat, .36 march-push, .64 beat 3 — full military weight
-            // Snare: keeps the military ghost-roll pattern; main beats .58/.56 punched up
+            // 09 · Hard Corps (150 bpm)
             9: { k:[.78,0,0,0,.36,0,0,0,.64,0,.24,0,.28,0,0,0,
                     .76,0,.20,0,.36,0,0,0,.64,0,.24,0,.28,0,0,0],
                  s:[0,0,.26,0,.58,0,.24,0,0,0,.26,0,.56,0,.22,0,
@@ -735,7 +656,7 @@ class Audio {
                     .34,.18,.26,.18,.34,.18,.26,.18,.34,.18,.26,.18,.34,.18,-.36,.18],
                  t:[.04,0,0,0,0,0,0,0,0,0,0,.04,0,0,0,0,
                     .04,0,0,0,0,0,0,0,0,0,0,.04,0,0,0,.04] },
-            // 10 · Golden Hour — neo-soul pocket groove, light 8th hats (110 bpm)
+            // 10 · Golden Hour (110 bpm)
             10:{ k:[.72,0,0,0,.28,0,.26,0,.62,0,0,0,.24,0,.22,0,
                     .70,0,0,0,.26,0,.24,0,.60,0,0,0,.22,0,.20,0],
                  s:[0,0,0,0,.50,0,0,.14,0,0,0,0,.46,0,.12,0,
@@ -744,7 +665,7 @@ class Audio {
                     .28,0,-.32,0,.28,0,-.32,0,.28,0,-.32,0,.28,0,-.32,0],
                  t:[0,0,.05,0,.05,0,0,0,0,0,.05,0,.05,0,0,0,
                     0,0,.05,0,.05,0,0,0,0,0,.05,0,.05,0,0,0] },
-            // 11 · Candy Flip — pop bounce, steady 8th hats, upbeat kicks (124 bpm)
+            // 11 · Candy Flip (124 bpm)
             11:{ k:[.74,0,0,0,.28,0,.26,0,.64,0,0,0,.24,0,.22,0,
                     .72,0,0,0,.28,0,.24,0,.62,0,.18,0,.22,0,0,0],
                  s:[0,0,0,0,.56,0,.16,0,0,0,0,0,.52,0,.14,0,
@@ -753,7 +674,7 @@ class Audio {
                     .28,.22,.28,.22,.28,.22,-.34,.22,.28,.22,.28,.22,.28,.22,-.34,.22],
                  t:[0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,
                     0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04] },
-            // 12 · Dawnbreak — floating upbeat kick, open-hat shimmer (120 bpm)
+            // 12 · Dawnbreak (120 bpm)
             12:{ k:[.70,0,0,0,0,0,.28,0,.60,0,0,0,0,0,.26,0,
                     .70,0,0,0,0,0,.26,0,.58,0,0,0,0,0,.24,0],
                  s:[0,0,0,0,.46,0,0,.12,0,0,0,0,.44,0,.10,0,
@@ -762,7 +683,7 @@ class Audio {
                     .22,0,-.28,0,.22,0,-.28,0,.22,0,-.28,0,.22,0,-.28,0],
                  t:[0,0,.05,0,0,0,.05,0,0,0,.05,0,0,0,.05,0,
                     0,0,.05,0,0,0,.05,0,0,0,.05,0,0,0,.05,0] },
-            // 13 · Prism — crystalline 16th hats, syncopated upbeat kicks (128 bpm)
+            // 13 · Prism (128 bpm)
             13:{ k:[.72,0,0,0,.26,0,.24,0,.64,0,0,0,.22,0,.20,0,
                     .70,0,0,0,.26,0,.22,0,.62,0,.18,0,.22,0,0,0],
                  s:[0,0,.14,0,.54,0,.16,0,0,0,.14,0,.50,0,.14,0,
@@ -771,7 +692,7 @@ class Audio {
                     .30,.18,.26,.18,.30,.18,-.34,.18,.30,.18,.26,.18,.30,.18,-.34,.18],
                  t:[0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,
                     0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,0,.03,0,.03] },
-            // 14 · Neon Pulse — forward-drive 8th hats, upbeat kicks (118 bpm)
+            // 14 · Neon Pulse (118 bpm)
             14:{ k:[.68,0,0,0,.24,0,0,0,.58,0,.18,0,.20,0,0,0,
                     .66,0,0,0,.24,0,.16,0,.56,0,.18,0,.20,0,0,0],
                  s:[0,0,0,0,.52,0,0,.14,0,0,0,0,.48,0,.12,0,
@@ -780,6 +701,17 @@ class Audio {
                     .28,.14,.22,.14,.28,.14,-.32,.14,.28,.14,.22,.14,.28,.14,-.32,.14],
                  t:[0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0,
                     0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0] },
+            // 15 · Makou Energy (136 bpm) ← NEW
+            // All 32 closed hats — dry 16th pulse, no open hats at all.
+            // Ghost snare on "e" of beats 1 and 3; upbeat kick on "and of 1".
+            // Tight, mechanical, cinematic — the FF7 battle groove.
+            15:{ k:[.76,0,0,0,.30,0,.26,0,.64,0,.20,0,.22,0,0,0,
+                    .74,0,0,0,.28,0,.26,0,.62,0,.20,0,.24,0,0,0],
+                 s:[0,0,.12,0,.60,0,.14,0,0,0,.12,0,.58,0,0,.16,
+                    0,0,.14,0,.60,0,.14,0,0,0,.12,0,.56,0,.14,0],
+                 h:[.28,.14,.22,.14,.28,.14,.26,.14,.28,.14,.22,.14,.28,.14,.26,.14,
+                    .28,.14,.22,.14,.28,.14,.26,.14,.28,.14,.22,.14,.28,.14,.26,.14],
+                 t:new Array(32).fill(0) },
         };
         return R[style] || R[0];
     }
@@ -1077,23 +1009,16 @@ class Audio {
     }
 
     crystalShatter(index, total) {
-        // CC V4 — Denser Fragments
-        // Bypasses _canPlay() node-limit check — crystal SFX must always play,
-        // including during rapid multi-crystal sequences where cumulative nodes
-        // would exceed _MAX_ACTIVE. Uses direct cleanup (like crystalsClear) so
-        // its nodes are never counted in _activeNodes.
-        // Also does NOT check beatOn — muting music should never silence SFX.
         if (!this.ready || !this.ctx || this.ctx.state !== 'running') return;
         const t = this.ctx.currentTime;
         const progress = index / Math.max(1, total - 1);
-        const scale = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24]; // C minor pentatonic
+        const scale = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
         const noteIdx = Math.min(scale.length - 1, Math.floor(progress * scale.length));
         const baseNote = scale[noteIdx];
         const freq = 261.63 * Math.pow(2, baseNote / 12);
         const vol = 0.30 + progress * 0.10;
         const allNodes = [];
 
-        // ── Crack transient (original) ────────────────────────────────
         const crackLen = Math.floor(this.ctx.sampleRate * 0.006);
         const crackBuf = this.ctx.createBuffer(1, crackLen, this.ctx.sampleRate);
         const cd = crackBuf.getChannelData(0);
@@ -1106,7 +1031,6 @@ class Audio {
         crackSrc.start(t); crackSrc.stop(t + 0.01);
         allNodes.push(crackSrc, cFilt, cGain);
 
-        // ── Partials (original) ───────────────────────────────────────
         const partials = [
             { ratio: 1,    gain: 0.38, dur: 0.08, type: 'triangle' },
             { ratio: 2.76, gain: 0.16, dur: 0.05, type: 'sine' },
@@ -1122,7 +1046,6 @@ class Audio {
             allNodes.push(osc, env);
         });
 
-        // ── Thud (original) ───────────────────────────────────────────
         const thud = this.ctx.createOscillator(); thud.type = 'sine';
         thud.frequency.setValueAtTime(freq * 0.5, t);
         thud.frequency.exponentialRampToValueAtTime(40, t + 0.035);
@@ -1133,10 +1056,6 @@ class Audio {
         thud.start(t); thud.stop(t + 0.05);
         allNodes.push(thud, thudEnv);
 
-        // ── Fragment scatter (denser) ─────────────────────────────────
-        // 10–13 fragments over 380ms. Multipliers jittered ±7% per hit
-        // so no two crystals sound identical. Shallower volume curve keeps
-        // later fragments audible — richer tail, lush in rapid-fire.
         const fragCount = 10 + Math.floor(progress * 3);
         const fragMultipliers = [6.2, 5.1, 4.3, 3.7, 3.1, 2.6, 2.2, 1.9];
         for (let i = 0; i < fragCount; i++) {
@@ -1154,8 +1073,6 @@ class Audio {
             allNodes.push(fOsc, fEnv);
         }
 
-        // ── Dust (more, longer) ───────────────────────────────────────
-        // 4–5 tones at 90ms each (was 2–3 at 60ms).
         const dustCount = 4 + (progress > 0.5 ? 1 : 0);
         for (let i = 0; i < dustCount; i++) {
             const delay = 0.025 + i * 0.055;
@@ -1170,26 +1087,17 @@ class Audio {
             allNodes.push(dOsc, dEnv);
         }
 
-        // Direct cleanup — intentionally does NOT touch _activeNodes.
-        // Counting ~47 nodes per shatter would push rapid-fire sequences over
-        // _MAX_ACTIVE and silently block subsequent shatters.
         setTimeout(() => {
             allNodes.forEach(n => { try { n.disconnect(); } catch(e) {} });
         }, 700);
     }
 
     crystalsClear() {
-        // Level completion fanfare — ascending C minor pentatonic arpeggio
-        // with per-note shimmer bursts, dense shimmer cloud (Long Dust Trail
-        // extended), and a final sustained high note that rings out.
-        // Only ever called once: when all crystals are destroyed.
-        // Intentionally bypasses _MAX_ACTIVE — this must always play.
         if (!this.ready || !this.ctx || this.ctx.state !== 'running') return;
         const t = this.ctx.currentTime;
         const allNodes = [];
-        const ROOT = 261.63; // C4
+        const ROOT = 261.63;
 
-        // ── Soft crack accent ─────────────────────────────────────────
         const crackLen = Math.floor(this.ctx.sampleRate * 0.006);
         const crackBuf = this.ctx.createBuffer(1, crackLen, this.ctx.sampleRate);
         const cd = crackBuf.getChannelData(0);
@@ -1197,16 +1105,11 @@ class Audio {
         const crackSrc = this.ctx.createBufferSource(); crackSrc.buffer = crackBuf;
         const cFilt = this.ctx.createBiquadFilter(); cFilt.type = 'highpass';
         cFilt.frequency.value = 5500; cFilt.Q.value = 0.5;
-        const cGain = this.ctx.createGain(); cGain.gain.value = 0.14; // was 0.28
+        const cGain = this.ctx.createGain(); cGain.gain.value = 0.14;
         crackSrc.connect(cFilt).connect(cGain).connect(this.master);
         crackSrc.start(t); crackSrc.stop(t + 0.008);
         allNodes.push(crackSrc, cFilt, cGain);
 
-        // ── Ascending arpeggio — C Eb F G Bb C ───────────────────────
-        // Gain budget: arp notes scaled to 0.10-0.15 (was 0.20-0.27).
-        // Per-note shimmers at 0.018-0.024 (was 0.022-0.038).
-        // All 6 notes + 18 shimmers now sum to ~0.55 through master,
-        // keeping the combined hardware output well below OS AGC threshold.
         [0, 3, 5, 7, 10, 12].forEach((semis, i) => {
             const delay = i * 0.068;
             const freq  = ROOT * Math.pow(2, semis / 12);
@@ -1215,12 +1118,11 @@ class Audio {
             osc.frequency.value = freq;
             const env = this.ctx.createGain();
             env.gain.setValueAtTime(0, t + delay);
-            env.gain.linearRampToValueAtTime(0.10 + i * 0.008, t + delay + 0.004); // was 0.20 + i*0.012
+            env.gain.linearRampToValueAtTime(0.10 + i * 0.008, t + delay + 0.004);
             env.gain.exponentialRampToValueAtTime(0.001, t + delay + decay);
             osc.connect(env).connect(this.master);
             osc.start(t + delay); osc.stop(t + delay + decay + 0.01);
             allNodes.push(osc, env);
-            // Per-note shimmer burst
             [3.1, 5.4, 7.8].forEach((mult, j) => {
                 const sDelay = delay + 0.002 + j * 0.006;
                 const sFreq  = freq * mult * (0.97 + Math.random() * 0.06);
@@ -1228,7 +1130,7 @@ class Audio {
                 const sOsc = this.ctx.createOscillator(); sOsc.type = 'sine'; sOsc.frequency.value = sFreq;
                 const sEnv = this.ctx.createGain();
                 sEnv.gain.setValueAtTime(0, t + sDelay);
-                sEnv.gain.linearRampToValueAtTime(0.020 - j * 0.004, t + sDelay + 0.001); // was 0.038 - j*0.008
+                sEnv.gain.linearRampToValueAtTime(0.020 - j * 0.004, t + sDelay + 0.001);
                 sEnv.gain.exponentialRampToValueAtTime(0.001, t + sDelay + sDur);
                 sOsc.connect(sEnv).connect(this.master);
                 sOsc.start(t + sDelay); sOsc.stop(t + sDelay + sDur + 0.005);
@@ -1236,9 +1138,6 @@ class Audio {
             });
         });
 
-        // ── Dense shimmer cloud ───────────────────────────────────────
-        // 28 micro-tones — gVol ceiling reduced to 0.024 (was 0.042).
-        // Tones spread over 900ms so they never stack more than ~8 at once.
         const SSCALE = [0, 3, 5, 7, 10, 12, 15, 17, 19, 22, 24];
         for (let i = 0; i < 28; i++) {
             const delay  = 0.05 + Math.pow(i / 27, 1.4) * 0.85;
@@ -1246,7 +1145,7 @@ class Audio {
             const octave = Math.floor(i / SSCALE.length);
             const freq   = ROOT * Math.pow(2, (semis + octave * 12) / 12);
             const dur    = 0.08 + Math.random() * 0.10;
-            const gVol   = 0.024 * Math.max(0.3, 1 - i * 0.022); // was 0.042
+            const gVol   = 0.024 * Math.max(0.3, 1 - i * 0.022);
             const dOsc = this.ctx.createOscillator(); dOsc.type = 'sine'; dOsc.frequency.value = freq;
             const dEnv = this.ctx.createGain();
             dEnv.gain.setValueAtTime(0, t + delay);
@@ -1257,30 +1156,18 @@ class Audio {
             allNodes.push(dOsc, dEnv);
         }
 
-        // Disconnect directly — intentionally does NOT touch _activeNodes.
-        // crystalsClear already bypasses _canPlay(); if we counted its 100+ nodes
-        // in _activeNodes the counter would exceed _MAX_ACTIVE for ~700ms and
-        // silently drop music scheduler steps, causing audible beat dropout.
         setTimeout(() => {
             allNodes.forEach(n => { try { n.disconnect(); } catch(e) {} });
         }, Math.ceil(1.05 * 1000 + 150));
     }
 
-    success() { [0, 3, 7, 10].forEach((n, i) => setTimeout(() => this.tone(n, 0.5, 0.14), i * 80)); } // Cm7 arp
+    success() { [0, 3, 7, 10].forEach((n, i) => setTimeout(() => this.tone(n, 0.5, 0.14), i * 80)); }
 
     fail() {
-        // Two-note descending figure: D4 → Bb3, 130ms apart.
-        // Soft and brief — acknowledges the state without drama.
-        // A low sine thud underneath adds a felt sense of landing.
         if (!this.ready || !this.ctx || this.ctx.state !== 'running') return;
         const t = this.ctx.currentTime;
-
-        // Note 1: D4 (semitone +2), gentle
         this.tone(2, 0.20, 0.13);
-        // Note 2: Bb3 (semitone -2), slightly softer, lands like a sigh
         setTimeout(() => this.tone(-2, 0.26, 0.11), 130);
-
-        // Soft low thud — 90Hz drops to 38Hz, felt more than heard on phone
         const osc = this.ctx.createOscillator(); osc.type = 'sine';
         osc.frequency.setValueAtTime(90, t);
         osc.frequency.exponentialRampToValueAtTime(38, t + 0.22);
@@ -1302,7 +1189,6 @@ class Audio {
         osc.connect(filter); filter.connect(env); env.connect(this.master); osc.start(t); osc.stop(t + 0.1);
         this._scheduleCleanup([osc, env, filter], 0.1);
     }
-
 }
 
 // ═══════════════════════════════════════
@@ -1324,7 +1210,6 @@ class Burst {
 class CrystalShard {
     constructor(x, y, palette, baseSize) {
         this.x = x; this.y = y;
-        // Shards burst into random jewel tones — white diamonds scatter rainbow light on death
         const shardPal = SHARD_COLORS[Math.floor(Math.random() * SHARD_COLORS.length)];
         this.color = shardPal.main; this.lightColor = shardPal.light;
         const numVerts = 3 + Math.floor(Math.random() * 2);
@@ -1393,11 +1278,8 @@ class EnergyMote {
         const rgb = hexToRgb(this.warmColor); const a = this.life * 0.8;
         const r = this.size * (0.5 + this.life * 0.5);
         const wobble = Math.sin(this.phase) * r * 0.15;
-        // Solid circle — visually identical to radial gradient at 2–7px scale,
-        // saves 1 createRadialGradient per mote per frame (~200 at burst peak)
         ctx.beginPath(); ctx.arc(this.x + wobble, this.y, r, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${a * 0.7})`; ctx.fill();
-        // White core pinpoint
         ctx.beginPath(); ctx.arc(this.x + wobble, this.y, r * 0.4, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`; ctx.fill();
     }
@@ -1406,7 +1288,6 @@ class EnergyMote {
 class CrystalDustP {
     constructor(x, y, palette) {
         this.x = x + (Math.random() - 0.5) * 20; this.y = y + (Math.random() - 0.5) * 20;
-        // Dust sparkles in random jewel tones — prismatic scatter from the shattered diamond
         const dustPal = SHARD_COLORS[Math.floor(Math.random() * SHARD_COLORS.length)];
         this.color = Math.random() > 0.5 ? dustPal.light : dustPal.main;
         const angle = Math.random() * Math.PI * 2;
@@ -1436,14 +1317,12 @@ class CrystalDustP {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DRAW CRYSTAL — White diamond with prismatic spectral sparkles
+//  DRAW CRYSTAL
 // ═══════════════════════════════════════════════════════════════
 function drawCrystal(target, now) {
     const palette = CRYSTAL_PALETTE[target.id % CRYSTAL_PALETTE.length];
-    const lrgb = hexToRgb(palette.light);  // pure white
-    const drgb = hexToRgb(palette.dark);   // cool-silver shadow
-
-    // Six spectral colors for vertex sparkles — one per vertex, cycling the rainbow
+    const lrgb = hexToRgb(palette.light);
+    const drgb = hexToRgb(palette.dark);
     const SPECTRAL = ['#FF2840', '#FF7820', '#F5D200', '#28C858', '#18C8E0', '#A020E0'];
 
     if (!target.alive) {
@@ -1451,12 +1330,10 @@ function drawCrystal(target, now) {
             const age = now - target.destroyTime; const p = age / 600;
             const px = (target.x / 100) * canvasW; const py = (target.y / 100) * canvasH;
             const baseR = 18 * orbScale;
-            // Expanding white ring
             const ringR = baseR * (1 + p * 4); const ringA = Math.pow(1 - p, 2.5) * 0.55;
             ctx.beginPath(); ctx.arc(px, py, ringR, 0, Math.PI * 2);
             ctx.strokeStyle = `rgba(255,255,255,${ringA})`;
             ctx.lineWidth = 2.5 * (1 - p); ctx.stroke();
-            // Prismatic flash on destroy
             if (p < 0.4) {
                 const fa = (1 - p / 0.4) * 0.4;
                 const fg = ctx.createRadialGradient(px, py, 0, px, py, baseR * (2 + p * 3));
@@ -1485,7 +1362,6 @@ function drawCrystal(target, now) {
         return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r };
     };
 
-    // ── Soft white ambient glow ──
     const glowR = R * 4.5;
     const glow = ctx.createRadialGradient(cx, cy, R * 0.3, cx, cy, glowR);
     glow.addColorStop(0, `rgba(220,235,255,${0.14 + urgency * 0.08})`);
@@ -1493,7 +1369,6 @@ function drawCrystal(target, now) {
     glow.addColorStop(1, `rgba(180,210,255,0)`);
     ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, glowR, 0, Math.PI * 2); ctx.fill();
 
-    // ── Prismatic rainbow rim — light refracting through diamond edges ──
     for (let i = 0; i < numSides; i++) {
         const v1 = getVertex(i, R * 1.12);
         const v2 = getVertex(i + 1, R * 1.12);
@@ -1503,7 +1378,6 @@ function drawCrystal(target, now) {
         ctx.lineWidth = 1.4; ctx.stroke();
     }
 
-    // ── Diamond facets — white/silver with light simulation ──
     for (let i = 0; i < numSides; i++) {
         const v1 = getVertex(i, R * 1.1); const v2 = getVertex(i + 1, R * 1.1);
         const facetAngle = rot + ((i + 0.5) / numSides) * Math.PI * 2 - Math.PI / 2;
@@ -1517,14 +1391,12 @@ function drawCrystal(target, now) {
         ctx.fillStyle = facetGrad; ctx.fill();
     }
 
-    // ── Outer edge — bright white outline ──
     ctx.beginPath();
     for (let i = 0; i <= numSides; i++) { const v = getVertex(i, R * 1.1); i === 0 ? ctx.moveTo(v.x, v.y) : ctx.lineTo(v.x, v.y); }
     ctx.closePath();
     ctx.strokeStyle = `rgba(255,255,255,${0.75 + urgency * 0.22})`;
     ctx.lineWidth = 1.5; ctx.stroke();
 
-    // ── Internal facet lines — cool silver ──
     for (let i = 0; i < numSides; i++) {
         const v = getVertex(i, R * 1.1);
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(v.x, v.y);
@@ -1532,7 +1404,6 @@ function drawCrystal(target, now) {
         ctx.lineWidth = 0.8; ctx.stroke();
     }
 
-    // ── Inner tension energy — warm glow visible through the white shell ──
     const tensionPulse = 1 + Math.sin(T * (2.5 + urgency * 4) + target.id * 2) * (0.15 + urgency * 0.2);
     const tensionR = R * 0.5 * tensionPulse; const tensionA = 0.18 + urgency * 0.28;
     const tGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, tensionR * 2);
@@ -1542,7 +1413,6 @@ function drawCrystal(target, now) {
     tGrad.addColorStop(1, `rgba(255,80,40,0)`);
     ctx.fillStyle = tGrad; ctx.beginPath(); ctx.arc(cx, cy, tensionR * 2, 0, Math.PI * 2); ctx.fill();
 
-    // ── Core — brilliant white hot point ──
     const coreR = R * 0.2; const corePulse = 1 + Math.sin(T * 3.5 + target.id * 2.5) * 0.12;
     const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * corePulse * 2.5);
     coreGrad.addColorStop(0, `rgba(255,255,255,${0.95 + urgency * 0.05})`);
@@ -1551,8 +1421,6 @@ function drawCrystal(target, now) {
     coreGrad.addColorStop(1, `rgba(180,210,255,0)`);
     ctx.fillStyle = coreGrad; ctx.beginPath(); ctx.arc(cx, cy, coreR * corePulse * 2.5, 0, Math.PI * 2); ctx.fill();
 
-    // ── Vertex sparkles — each vertex glints a different spectral color ──
-    // Simulates prismatic light scatter from diamond facet corners
     for (let i = 0; i < numSides; i++) {
         const v = getVertex(i, R * 1.15);
         const sparkle = Math.sin(T * 4 + i * 1.8 + target.id) * 0.5 + 0.5;
@@ -1560,15 +1428,12 @@ function drawCrystal(target, now) {
             const sa = (sparkle - 0.55) * 2.2 * 0.65;
             const sr = 2.8 * orbScale;
             const specRgb = hexToRgb(SPECTRAL[i % SPECTRAL.length]);
-            // Colored cross sparkle at vertex
             ctx.beginPath(); ctx.moveTo(v.x - sr * 2.5, v.y); ctx.lineTo(v.x + sr * 2.5, v.y);
             ctx.strokeStyle = `rgba(${specRgb.r},${specRgb.g},${specRgb.b},${sa * 0.85})`;
             ctx.lineWidth = 0.9; ctx.stroke();
             ctx.beginPath(); ctx.moveTo(v.x, v.y - sr * 2.5); ctx.lineTo(v.x, v.y + sr * 2.5); ctx.stroke();
-            // White center point
             ctx.beginPath(); ctx.arc(v.x, v.y, sr * 0.65, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(255,255,255,${sa})`; ctx.fill();
-            // Colored bloom around vertex
             const bloom = ctx.createRadialGradient(v.x, v.y, 0, v.x, v.y, sr * 3.5);
             bloom.addColorStop(0, `rgba(255,255,255,${sa * 0.8})`);
             bloom.addColorStop(0.35, `rgba(${specRgb.r},${specRgb.g},${specRgb.b},${sa * 0.35})`);
@@ -1577,13 +1442,11 @@ function drawCrystal(target, now) {
         }
     }
 
-    // ── Orbiting motes — tiny colored diamonds cycling the spectrum ──
     for (let i = 0; i < 3; i++) {
         const angle = T * (0.4 + i * 0.15) + i * (Math.PI * 2 / 3) + target.id * 0.8;
         const orbit = R * 1.8;
         const mx = cx + Math.cos(angle) * orbit; const my = cy + Math.sin(angle) * orbit;
         const ma = 0.28 + Math.sin(T * 2.5 + i * 2) * 0.15; const ms = 1.4 * orbScale;
-        // Each mote cycles through a spectral hue
         const moteHue = ((i * 120 + T * 30 + target.id * 40) % 360);
         ctx.save(); ctx.translate(mx, my); ctx.rotate(T * 2 + i);
         ctx.beginPath();
@@ -1647,7 +1510,6 @@ function drawOrb(orb, now) {
 
     ctx.globalAlpha = spawnEase;
 
-    // ── Shock trail ──────────────────────────────────────────────
     const shockE = orb.shockEnergy || 0;
     if (shockE > 0.15 && spawnEase > 0.3) {
         const trailStrength = Math.min(1, shockE/2.5);
@@ -1678,7 +1540,6 @@ function drawOrb(orb, now) {
         }
     }
 
-    // ── Atmosphere + corona ──────────────────────────────────────
     const atmoR = baseR*(2.0+b*0.8);
     const ag = ctx.createRadialGradient(p.x,p.y,R*0.5,p.x,p.y,atmoR);
     ag.addColorStop(0,    rgba(iR,iG,iB,       0.12+b*0.25));
@@ -1695,8 +1556,6 @@ function drawOrb(orb, now) {
     cg.addColorStop(1,   rgba(rgb.r,rgb.g,rgb.b, 0));
     ctx.fillStyle=cg; ctx.beginPath(); ctx.arc(p.x,p.y,coronaR,0,Math.PI*2); ctx.fill();
 
-    // ── Cached wavy paths ────────────────────────────────────────
-    // Rebuild every _PATH_SKIP frames — on mobile saves ~11k trig ops/frame
     _drawFrameCount++;
     let cached = _orbPathCache.get(orb.id);
     if (!cached || (_drawFrameCount - cached.stamp) >= _PATH_SKIP) {
@@ -1705,7 +1564,6 @@ function drawOrb(orb, now) {
     }
     const { body, shells, core, edge, coreR, corePulse } = cached;
 
-    // Body
     const bdg = ctx.createRadialGradient(
         p.x+Math.sin(T*0.4)*R*0.12, p.y+Math.cos(T*0.35)*R*0.12, R*0.1, p.x,p.y,R);
     bdg.addColorStop(0,    rgba(hR,hG,hB,       0.35+b*0.45));
@@ -1715,7 +1573,6 @@ function drawOrb(orb, now) {
     bdg.addColorStop(1,    rgba(rgb.r,rgb.g,rgb.b, 0.02+b*0.05));
     ctx.fillStyle=bdg; _tracePath(ctx,body); ctx.fill();
 
-    // Shells
     for (let s = 0; s < 3; s++) {
         const sR = R*(0.75-s*0.15), sp = T*(0.6+s*0.2)+s*1.2, sa = (0.12+b*0.22)*(1-s*0.2);
         const sg = ctx.createRadialGradient(p.x+Math.cos(sp)*sR*0.2, p.y+Math.sin(sp)*sR*0.2, 0, p.x,p.y,sR);
@@ -1726,7 +1583,6 @@ function drawOrb(orb, now) {
         ctx.fillStyle=sg; _tracePath(ctx,shells[s]); ctx.fill();
     }
 
-    // Core halo + core body
     const coreAlpha = 0.4+b*0.55;
     const chg = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,coreR*2.5*corePulse);
     chg.addColorStop(0,    rgba(255,255,255,     coreAlpha*0.8));
@@ -1743,7 +1599,6 @@ function drawOrb(orb, now) {
     crg.addColorStop(1,   rgba(rgb.r,rgb.g,rgb.b, 0));
     ctx.fillStyle=crg; _tracePath(ctx,core); ctx.fill();
 
-    // ── Orbiting motes — capped on mobile ───────────────────────
     const numMotes = 10 + Math.floor(b * 16);
     for (let i = 0; i < numMotes; i++) {
         const golden = i*2.39996323, moteOrbit = R*(0.2+(i/numMotes)*0.7);
@@ -1760,13 +1615,11 @@ function drawOrb(orb, now) {
         ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(mx,my,moteSize*2.5,0,Math.PI*2); ctx.fill();
     }
 
-    // ── Edge shimmer ─────────────────────────────────────────────
     if (b > 0.08) {
         _tracePath(ctx, edge);
         ctx.strokeStyle=rgba(iR,iG,iB, (b-0.08)*0.4); ctx.lineWidth=1+b*0.8; ctx.stroke();
     }
 
-    // ── Peak bloom — mobile gets lightweight version ─────────────
     if (b > 0.55) {
         const peak = (b-0.55)/0.45, peakPulse = 0.65+Math.sin(T*9)*0.35;
         const bloomR = R*(1.4+peak*0.4);
