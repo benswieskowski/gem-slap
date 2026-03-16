@@ -80,11 +80,12 @@ ORDERED_PATTERNS = [
     {'name': 'Pyramid',     'cells': [{'x':50,'y':24},{'x':42,'y':38},{'x':58,'y':38},{'x':34,'y':52},{'x':50,'y':52},{'x':66,'y':52},{'x':28,'y':66},{'x':38,'y':66},{'x':50,'y':66},{'x':62,'y':66},{'x':72,'y':66}]},
 
     # SYMBOLS — 8 levels (removed: Crux, Eighth Note, Sharp, Beamed Notes)
-    # 13 · Hockey Stick · 5 crystals
-    # Shaft: 3 vertical dots at x=44 (Δy=10, 31pt gaps — reads as a clean rod).
-    # Blade: turns right at the heel with Δ(9,4) then Δ(9,3) — both connected,
-    # blade runs nearly horizontal (only 3 y-units of drop over 18 x-units).
-    {'name': 'Hockey Stick','cells': [{'x':44,'y':26},{'x':44,'y':36},{'x':44,'y':46},{'x':53,'y':50},{'x':62,'y':53}]},
+    # Hockey Stick — 9 crystals.
+    # Shaft: 6 crystals at x=38, Δy=8 (17.8pt gaps — tight, reads as a solid rod).
+    # Heel turns right at (38,64). Blade: Δ(12,2) steps → 16° visual angle from
+    # horizontal — realistically shallow, unmistakably a blade not a diagonal line.
+    # Old design had 3-crystal shaft (31pt gaps = dots) and Δ(9,4) blade = 43° (diagonal).
+    {'name': 'Hockey Stick','cells': [{'x':38,'y':24},{'x':38,'y':32},{'x':38,'y':40},{'x':38,'y':48},{'x':38,'y':56},{'x':38,'y':64},{'x':50,'y':66},{'x':62,'y':68},{'x':74,'y':70}]},
     {'name': 'Flat',        'cells': [{'x':38,'y':26},{'x':38,'y':40},{'x':38,'y':54},{'x':38,'y':68},{'x':52,'y':52},{'x':58,'y':64},{'x':44,'y':74}]},
     {'name': 'Fermata',     'cells': [{'x':24,'y':54},{'x':32,'y':36},{'x':42,'y':27},{'x':58,'y':27},{'x':68,'y':36},{'x':76,'y':54},{'x':50,'y':63}]},
     {'name': 'θ Theta',     'cells': [{'x':50,'y':27},{'x':69,'y':38},{'x':69,'y':62},{'x':50,'y':73},{'x':31,'y':62},{'x':31,'y':38},{'x':36,'y':50},{'x':50,'y':50},{'x':64,'y':50}]},
@@ -94,7 +95,14 @@ ORDERED_PATTERNS = [
     {'name': 'π Pi',        'cells': [{'x':25,'y':30},{'x':42,'y':30},{'x':58,'y':30},{'x':75,'y':30},{'x':35,'y':44},{'x':32,'y':58},{'x':29,'y':72},{'x':65,'y':44},{'x':68,'y':58},{'x':71,'y':72}]},
 
     # SPACE — 5 levels (removed: Cassiopeia, Lyra, Corona Borealis, Scorpius, Swan)
-    {'name': 'Dog',         'cells': [{'x':44,'y':28},{'x':50,'y':36},{'x':62,'y':39},{'x':32,'y':40},{'x':46,'y':50},{'x':44,'y':62}]},
+    # Dog — 12 crystals, side profile facing right.
+    # Ear (44,24) above head (50,32); snout (66,34) extends right (27.8pt from head).
+    # Tail: tip (22,32) touches base (28,36) which connects to body_TL (30.5pt) —
+    #   raised tail curving up-left, isolated from neck and head (46-73pt clear).
+    # Neck (48,40) touches body_TR and connects to body_TL.
+    # Body: 2x2 block (38,44)-(54,44)-(38,54)-(54,54), all pairs connected.
+    # Legs: back (36,62) from bBL, front (56,62) from bBR — isolated from each other (42pt).
+    {'name': 'Dog',         'cells': [{'x':44,'y':24},{'x':50,'y':32},{'x':66,'y':34},{'x':22,'y':32},{'x':28,'y':36},{'x':48,'y':40},{'x':38,'y':44},{'x':54,'y':44},{'x':38,'y':54},{'x':54,'y':54},{'x':36,'y':62},{'x':56,'y':62}]},
     {'name': 'Big Dipper',  'cells': [{'x':22,'y':54},{'x':28,'y':65},{'x':45,'y':60},{'x':45,'y':50},{'x':55,'y':43},{'x':62,'y':36},{'x':78,'y':35}]},
     {'name': 'Snowflake',   'cells': [{'x':63,'y':50},{'x':57,'y':57},{'x':43,'y':57},{'x':37,'y':50},{'x':43,'y':43},{'x':57,'y':43},{'x':76,'y':50},{'x':64,'y':64},{'x':36,'y':64},{'x':24,'y':50},{'x':36,'y':36},{'x':64,'y':36}]},
     {'name': 'Orion',       'cells': [{'x':50,'y':24},{'x':37,'y':31},{'x':56,'y':34},{'x':52,'y':51},{'x':49,'y':54},{'x':46,'y':55},{'x':50,'y':65},{'x':42,'y':76},{'x':63,'y':72}]},
@@ -166,13 +174,13 @@ ORDERED_PATTERNS = [
     #   cap_center bridges to stem top at gap 22.7pt.
     {'name': 'Mushroom',      'cells': [{'x':50,'y':28},{'x':50,'y':36},{'x':36,'y':32},{'x':64,'y':32},{'x':26,'y':38},{'x':74,'y':38},{'x':44,'y':44},{'x':56,'y':44},{'x':44,'y':54},{'x':56,'y':54},{'x':44,'y':64},{'x':56,'y':64}]},
     {'name': 'Pawn',          'cells': [{'x':50,'y':24},{'x':40,'y':30},{'x':60,'y':30},{'x':36,'y':40},{'x':64,'y':40},{'x':42,'y':50},{'x':58,'y':50},{'x':36,'y':60},{'x':64,'y':60},{'x':34,'y':70},{'x':50,'y':70},{'x':66,'y':70}]},
-    # Saturn — 12 crystals, 3/4-view. Planet body + tilted elliptical ring.
-    # Planet: 2x2 solid block (46,46)-(54,46)-(46,54)-(54,54). All 6 pairs connected.
-    # Ring: 8-crystal fully-connected ellipse tilted ~10° (right side higher).
-    #   Spans x=26-74. Arc clockwise: left-tip→top-arc(3)→right-tip→bottom-arc(3)→back.
-    #   Connects to planet at top-center (gap 6-9pt) and bottom-center (gap -5pt).
-    #   Ring tips (26,48)/(74,48) clear of planet (43pt+). No non-consecutive ring pairs touch.
-    {'name': 'Saturn',        'cells': [{'x':46,'y':46},{'x':54,'y':46},{'x':46,'y':54},{'x':54,'y':54},{'x':26,'y':48},{'x':36,'y':42},{'x':51,'y':40},{'x':66,'y':42},{'x':74,'y':48},{'x':64,'y':56},{'x':50,'y':58},{'x':34,'y':56}]},
+    # Saturn — 12 crystals. Two deliberate components (ring + sphere).
+    # RING (8 crystals): tilted arc sweeping from lower-left (18,60) up to upper-right (78,52).
+    #   ~20° tilt — left dips, right rises. All consecutive gaps 5-30pt. x=18-78 (234pt wide).
+    # SPHERE (4 crystals): 2x2 block (44,56)-(56,56)-(44,64)-(56,64), all 4 sides connected.
+    #   Sits centered below the ring arch. Isolated from ring (min gap 41.8pt).
+    # The ring arching OVER the sphere is Saturn's iconic silhouette.
+    {'name': 'Saturn',        'cells': [{'x':18,'y':60},{'x':24,'y':54},{'x':34,'y':46},{'x':44,'y':42},{'x':54,'y':40},{'x':64,'y':42},{'x':72,'y':46},{'x':78,'y':52},{'x':44,'y':56},{'x':56,'y':56},{'x':44,'y':64},{'x':56,'y':64}]},
     # UFO — 12 crystals.
     # Dome (3): tight cap (50,28)+(44,32)+(56,32), all touching (-0.3pt row, 10.8pt pair).
     #   Bridges to saucer top-center (10.7pt) and top-left/right (22.7pt).
@@ -183,28 +191,29 @@ ORDERED_PATTERNS = [
     {'name': 'Eiffel Tower',  'cells': [{'x':50,'y':24},{'x':45,'y':34},{'x':55,'y':34},{'x':41,'y':46},{'x':59,'y':46},{'x':36,'y':58},{'x':50,'y':64},{'x':64,'y':58},{'x':31,'y':70},{'x':69,'y':70},{'x':26,'y':76},{'x':74,'y':76}]},
 
     # MISC — 6 levels (removed: Peace Sign, Thumbs Up)
-    # Flame — 12 crystals.
-    # Outline: 10-crystal teardrop ring, pointed tip at (50,26), widens to base at y=60-66.
-    # All 10 consecutive outline gaps verified (10-33pt). Left-right symmetric.
-    # Inner core: iU (50,36) merges with outline at y=32 (-0.3pt, touching),
-    #   bridges down to iM (50,46) which reaches both wide sides at gap 32pt.
-    # Dense connected top, sparser connected base — reads as a real flame shape.
-    {'name': 'Flame',      'cells': [{'x':50,'y':26},{'x':56,'y':32},{'x':62,'y':40},{'x':66,'y':50},{'x':62,'y':60},{'x':50,'y':66},{'x':38,'y':60},{'x':34,'y':50},{'x':38,'y':40},{'x':44,'y':32},{'x':50,'y':36},{'x':50,'y':46}]},
+    # Flame — 12 crystals. ASYMMETRIC — flames lean, not symmetric ovals.
+    # Outline (11): tip at (56,26) leans right of center. Left side taller/gentler;
+    #   right side shorter/steeper. Base two crystals (50,65)+(62,65) touching.
+    #   Shoulder pair (46,33)+(56,33) near-touching (3pt) — creates tight collar below tip.
+    #   All 11 consecutive outline gaps 11-33pt. All skip-one pairs >36pt except the
+    #   intentional shoulder collar.
+    # Inner (1): (52,44) off-center tongue fill — connects to both left (22pt) and
+    #   right (32pt) walls, creating a dense filled body that reads as flame depth.
+    {'name': 'Flame',      'cells': [{'x':56,'y':26},{'x':46,'y':33},{'x':38,'y':41},{'x':32,'y':50},{'x':38,'y':59},{'x':50,'y':65},{'x':62,'y':65},{'x':68,'y':57},{'x':70,'y':48},{'x':66,'y':38},{'x':56,'y':33},{'x':52,'y':44}]},
     {'name': 'Eye',        'cells': [{'x':24,'y':50},{'x':76,'y':50},{'x':30,'y':45},{'x':38,'y':42},{'x':50,'y':41},{'x':62,'y':42},{'x':70,'y':45},{'x':70,'y':55},{'x':62,'y':58},{'x':50,'y':59},{'x':38,'y':58},{'x':30,'y':55}]},
-    # Bullseye — 12 crystals. Two interleaved hexagonal rings, no center dot.
-    # Inner ring (6): proven Snowflake hex geometry, all gaps 14-18pt.
-    # Outer ring (6): rotated 30° from inner, visual radius 90pt.
-    #   Outer points fall BETWEEN inner points angularly — reads as concentric rings,
-    #   not spokes (which is what 0° alignment produces in Snowflake).
-    # Each inner connects to its 2 adjacent outer (12-18pt). Outer isolated from each other (51-58pt).
-    # Perfectly symmetric, centered at (50,50).
-    {'name': 'Bullseye',   'cells': [{'x':63,'y':50},{'x':57,'y':57},{'x':43,'y':57},{'x':37,'y':50},{'x':43,'y':43},{'x':57,'y':43},{'x':70,'y':57},{'x':50,'y':63},{'x':30,'y':57},{'x':30,'y':43},{'x':50,'y':37},{'x':70,'y':43}]},
+    # Spiral — 12 crystals. True Archimedean spiral, clockwise, 1.4 turns.
+    # Mathematically generated: r0=18pt, r_end=88pt, theta=-90°..414°.
+    # Visual radii increase monotonically: 20→28→31→38→47→55→63→69→74→85→91→100pt.
+    # All 11 consecutive gaps verified 0-32pt. Starts near-centre (50,47), ends at (63,61).
+    # The inner pts (0-5) overlap/touch (negative gaps) — dense spiral core.
+    # The outer pts (6-11) progressively sparser — open tail reads as outward winding.
+    {'name': 'Spiral',     'cells': [{'x':50,'y':47},{'x':54,'y':47},{'x':58,'y':50},{'x':56,'y':54},{'x':49,'y':56},{'x':40,'y':55},{'x':36,'y':49},{'x':40,'y':43},{'x':52,'y':40},{'x':65,'y':43},{'x':71,'y':52},{'x':63,'y':61}]},
     # Mountain — 12 crystals, front silhouette. Left-right symmetric, centered at (50,50).
     # Peak (50,26) + snow cap band (42,34)↔(58,34) — all 3 at gap 26pt, forms distinct cap.
     # Left ridgeline: snL→(34,42)→(27,51)→(24,61). Steps Δ(8,8)/Δ(7,9)/Δ(3,10) all verified.
     # Right ridgeline mirrors exactly.
     # Base: rL3(24,61)→(38,66)→(50,66)→(62,66)→rR3(76,61). Base crystals touching (10.8pt).
-    {'name': 'Mountain',   'cells': [{'x':50,'y':26},{'x':42,'y':34},{'x':58,'y':34},{'x':34,'y':42},{'x':66,'y':42},{'x':27,'y':51},{'x':73,'y':51},{'x':24,'y':61},{'x':76,'y':61},{'x':38,'y':66},{'x':50,'y':66},{'x':62,'y':66}]},
+    {'name': 'Mountain',   'cells': [{'x':28,'y':66},{'x':32,'y':56},{'x':36,'y':46},{'x':40,'y':36},{'x':48,'y':42},{'x':54,'y':46},{'x':64,'y':42},{'x':70,'y':50},{'x':72,'y':58},{'x':74,'y':64},{'x':60,'y':68},{'x':44,'y':68}]},
     {'name': 'Heart',      'cells': [{'x':36,'y':28},{'x':50,'y':36},{'x':64,'y':28},{'x':30,'y':36},{'x':70,'y':36},{'x':28,'y':44},{'x':72,'y':44},{'x':28,'y':58},{'x':72,'y':58},{'x':38,'y':68},{'x':62,'y':68},{'x':50,'y':76}]},
     {'name': 'Happy Face', 'cells': [{'x':40,'y':37},{'x':60,'y':37},{'x':26,'y':50},{'x':30,'y':54},{'x':34,'y':58},{'x':39,'y':62},{'x':46,'y':65},{'x':54,'y':65},{'x':61,'y':62},{'x':66,'y':58},{'x':70,'y':54},{'x':74,'y':50}]},
 ]
