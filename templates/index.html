@@ -54,12 +54,19 @@
         .mute-btn:hover { background: rgba(255,255,255,0.1); }
         .mute-btn.muted { opacity: 0.3; }
 
-        /* ── PATCH 1: Legal link styles ─────────────────────────────────────── */
+        /* ── Footer visibility: timer/mute hidden on intro, shown in-game.
+           Legal links shown on intro only, hidden once game starts (.started). */
+        .footer-timer { display: none; }
+        .mute-btn     { display: none; }
+        .game-wrap.started .footer-timer { display: block; }
+        .game-wrap.started .mute-btn     { display: flex; }
+        .game-wrap.started .legal-links  { display: none; }
+
+        /* Legal links — intro screen only, readable contrast */
         .legal-links { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 9px); display: flex; gap: 0.8rem; align-items: center; z-index: 101; pointer-events: auto; }
-        .legal-link { font-size: 0.42rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.18); text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: color 0.2s; padding: 4px 6px; }
-        .legal-link:hover { color: rgba(255,255,255,0.45); }
-        .legal-sep { font-size: 0.42rem; color: rgba(255,255,255,0.1); pointer-events: none; }
-        /* ─────────────────────────────────────────────────────────────────────── */
+        .legal-link { font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.5); text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: color 0.2s; padding: 4px 6px; }
+        .legal-link:hover { color: rgba(255,255,255,0.85); }
+        .legal-sep { font-size: 0.55rem; color: rgba(255,255,255,0.3); pointer-events: none; }
 
         .pop { position: absolute; pointer-events: none; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; animation: pop-up 0.45s ease-out forwards; z-index: 200; }
         @keyframes pop-up { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -65%); } }
@@ -177,21 +184,21 @@
         @keyframes gem-grad { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 
         .tagline {
-            font-size: 0.63rem; letter-spacing: 0.24em; margin-left: 0.24em;
-            color: rgba(255,255,255,0.3); text-transform: uppercase; font-weight: 300;
+            font-size: 0.78rem; letter-spacing: 0.24em; margin-left: 0.24em;
+            color: rgba(255,255,255,0.7); text-transform: uppercase; font-weight: 400;
         }
 
         .tut-hint {
             position: absolute;
             top: 52%;
             left: 0; right: 0;
-            font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 500;
+            font-size: 0.82rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600;
             opacity: 0; transition: opacity 0.35s ease, transform 0.35s ease;
             transform: translateY(5px); text-align: center;
         }
         .tut-hint.show { opacity: 1; transform: translateY(0); }
-        .tut-hint.tap-state   { color: rgba(160,80,255,0.9);  text-shadow: 0 0 14px rgba(160,80,255,0.35); }
-        .tut-hint.shatter-state { color: rgba(127,244,240,0.9); text-shadow: 0 0 14px rgba(127,244,240,0.35); }
+        .tut-hint.tap-state   { color: rgba(192,140,255,1);  text-shadow: 0 0 18px rgba(160,80,255,0.5); }
+        .tut-hint.shatter-state { color: rgba(160,244,240,1); text-shadow: 0 0 18px rgba(127,244,240,0.5); }
 
         .play-btn-wrap {
             width: 100%; pointer-events: auto;
@@ -220,8 +227,8 @@
         }
         .play-btn:active { opacity: 0.88; }
         .intro-tap-hint {
-            font-size: 0.44rem; letter-spacing: 0.15em; text-transform: uppercase;
-            color: rgba(255,255,255,0.18); pointer-events: none;
+            font-size: 0.62rem; letter-spacing: 0.15em; text-transform: uppercase;
+            color: rgba(255,255,255,0.55); pointer-events: none; font-weight: 400;
         }
 
         .end-float {
@@ -1954,6 +1961,8 @@
         await audio.init(); resize();
         $('start-screen').classList.add('hidden');
         document.getElementById('intro-menu-btn').style.display = 'none';
+        // Mark game as started: reveals timer/mute, hides legal links (intro-only)
+        document.querySelector('.game-wrap').classList.add('started');
         const p = loadProgress();
         const today = new Date().toISOString().slice(0,10);
         const days = p.daysPlayed || [];
