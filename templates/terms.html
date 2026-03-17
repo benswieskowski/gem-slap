@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms &amp; Conditions — Gem Slap</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #050508;
+            --surface: rgba(255,255,255,0.03);
+            --border: rgba(255,255,255,0.07);
+            --text: rgba(255,255,255,0.82);
+            --muted: rgba(255,255,255,0.42);
+            --faint: rgba(255,255,255,0.15);
+            --accent-a: #A8F7F4;
+            --accent-b: #B3C6FF;
+            --accent-c: #D4A7FF;
+            --accent-d: #FFA7D4;
+        }
+
+        html, body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Georgia', serif;
+            line-height: 1.75;
+            min-height: 100vh;
+        }
+
+        body {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem 6rem;
+        }
+
+        .site-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: 0.22em;
+            background: linear-gradient(120deg, var(--accent-a) 0%, var(--accent-b) 35%, var(--accent-c) 65%, var(--accent-d) 100%);
+            background-size: 250% 250%;
+            animation: grad 5s ease infinite;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        @keyframes grad {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .back-link {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            text-decoration: none;
+            border: 1px solid var(--border);
+            border-radius: 2rem;
+            padding: 0.4rem 0.9rem;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .back-link:hover { color: var(--text); border-color: var(--faint); }
+
+        .doc-title {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: clamp(1.8rem, 6vw, 2.6rem);
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            line-height: 1.1;
+            margin-bottom: 0.6rem;
+            background: linear-gradient(120deg, var(--accent-a) 0%, var(--accent-b) 40%, var(--accent-c) 75%, var(--accent-d) 100%);
+            background-size: 250% 250%;
+            animation: grad 5s ease infinite;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .doc-meta {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 3rem;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border), transparent);
+            margin: 2.5rem 0;
+        }
+
+        section { margin-bottom: 2.8rem; }
+
+        h2 {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--accent-c);
+            margin-bottom: 1rem;
+        }
+
+        p { font-size: 0.96rem; color: var(--text); margin-bottom: 1rem; }
+
+        ul { padding-left: 1.4rem; margin-bottom: 1rem; }
+        li { font-size: 0.96rem; color: var(--text); margin-bottom: 0.45rem; }
+
+        a { color: var(--accent-b); text-decoration: none; border-bottom: 1px solid rgba(179,198,255,0.25); transition: border-color 0.2s; }
+        a:hover { border-color: var(--accent-b); }
+
+        .highlight-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 2px solid var(--accent-c);
+            border-radius: 0.5rem;
+            padding: 1rem 1.2rem;
+            margin: 1.2rem 0;
+        }
+        .highlight-box p { margin: 0; font-size: 0.88rem; color: var(--muted); }
+
+        .warning-box {
+            background: rgba(212,167,255,0.04);
+            border: 1px solid rgba(212,167,255,0.15);
+            border-radius: 0.5rem;
+            padding: 1rem 1.2rem;
+            margin: 1.2rem 0;
+        }
+        .warning-box p { margin: 0; font-size: 0.88rem; color: rgba(255,255,255,0.55); }
+
+        footer {
+            margin-top: 4rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            color: var(--faint);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="site-header">
+        <a class="logo" href="/">GEM SLAP</a>
+        <a class="back-link" href="/">← Play</a>
+    </header>
+
+    <h1 class="doc-title">Terms &amp; Conditions</h1>
+    <p class="doc-meta">Last updated: March 2026 &nbsp;·&nbsp; Gem Slap</p>
+
+    <div class="divider"></div>
+
+    <section>
+        <h2>Agreement to Terms</h2>
+        <p>These Terms and Conditions ("Terms") govern your access to and use of Gem Slap (the "Game"), a browser-based rhythm game created and operated by Ben Swieskowski ("I," "me," or "my"), located in Brooklyn, New York.</p>
+        <p>By accessing or playing Gem Slap, you agree to be bound by these Terms. If you do not agree, do not use the Game.</p>
+    </section>
+
+    <section>
+        <h2>Intellectual Property</h2>
+        <p>Gem Slap and all of its content — including but not limited to the game design, gameplay mechanics, level structures, crystal patterns, music system, audio, visual design, source code, algorithms, user interface, graphics, animations, trade dress, and the "Gem Slap" name and logo — are the exclusive intellectual property of Ben Swieskowski and are protected by United States and international copyright, trademark, trade secret, and other applicable intellectual property laws.</p>
+
+        <div class="warning-box">
+            <p>All rights are reserved. No part of Gem Slap may be reproduced, copied, distributed, published, displayed, modified, or used to create derivative works — in whole or in part, in any form or by any means — without prior written permission from Ben Swieskowski.</p>
+        </div>
+
+        <p>This includes, without limitation:</p>
+        <ul>
+            <li>Copying or reproducing the source code, game logic, or level data</li>
+            <li>Reverse engineering, decompiling, or disassembling any part of the Game</li>
+            <li>Scraping, extracting, or downloading game assets including patterns, audio, or graphics</li>
+            <li>Creating games, apps, or products substantially similar to Gem Slap</li>
+            <li>Using the Gem Slap name, logo, or branding without written consent</li>
+            <li>Republishing or mirroring the Game on another domain or platform without permission</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>License to Play</h2>
+        <p>Subject to these Terms, I grant you a limited, non-exclusive, non-transferable, revocable license to access and play Gem Slap solely for your personal, non-commercial entertainment. This license does not include any right to sublicense, sell, resell, transfer, assign, or otherwise commercially exploit the Game or any content within it.</p>
+        <p>This license may be revoked at any time, for any reason, without notice.</p>
+    </section>
+
+    <section>
+        <h2>Prohibited Conduct</h2>
+        <p>You agree not to:</p>
+        <ul>
+            <li>Use any automated tool, bot, script, or software to interact with the Game</li>
+            <li>Attempt to gain unauthorized access to any server, system, or database associated with the Game</li>
+            <li>Interfere with or disrupt the integrity or performance of the Game</li>
+            <li>Transmit any harmful, malicious, or disruptive code in connection with the Game</li>
+            <li>Use the Game for any unlawful purpose or in violation of these Terms</li>
+            <li>Remove, obscure, or alter any copyright, trademark, or proprietary rights notices on the Game</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>User-Generated Content</h2>
+        <p>Gem Slap does not currently include features that allow users to submit or share content. If such features are added in the future, these Terms will be updated to address ownership and licensing of any content you provide.</p>
+    </section>
+
+    <section>
+        <h2>Future Features: Advertising &amp; Purchases</h2>
+        <p>Gem Slap may in the future offer advertising, optional in-app purchases, premium content, or subscriptions. Any such features will be introduced with appropriate disclosures, pricing terms, and updated policies. Nothing in these Terms obligates me to offer — or you to purchase — any paid feature.</p>
+    </section>
+
+    <section>
+        <h2>Disclaimers &amp; No Warranties</h2>
+        <p>THE GAME IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED. TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, I DISCLAIM ALL WARRANTIES, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.</p>
+        <p>I do not warrant that the Game will be uninterrupted, error-free, secure, or free of viruses or other harmful components. I do not warrant the accuracy or completeness of any content in the Game.</p>
+    </section>
+
+    <section>
+        <h2>Limitation of Liability</h2>
+        <p>TO THE FULLEST EXTENT PERMITTED BY LAW, BEN SWIESKOWSKI SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES — INCLUDING BUT NOT LIMITED TO LOSS OF DATA, LOSS OF PROFITS, LOSS OF GOODWILL, OR LOSS OF OTHER INTANGIBLE LOSSES — ARISING OUT OF OR RELATING TO YOUR USE OF OR INABILITY TO USE THE GAME, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.</p>
+        <p>IN NO EVENT SHALL MY TOTAL LIABILITY TO YOU FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THESE TERMS OR THE GAME EXCEED ONE HUNDRED US DOLLARS ($100).</p>
+    </section>
+
+    <section>
+        <h2>Indemnification</h2>
+        <p>You agree to defend, indemnify, and hold harmless Ben Swieskowski from and against any claims, damages, obligations, losses, liabilities, costs, or expenses (including attorneys' fees) arising from: (a) your use of the Game in violation of these Terms; (b) your violation of any third-party rights; or (c) your violation of any applicable law or regulation.</p>
+    </section>
+
+    <section>
+        <h2>Children Under 13</h2>
+        <p>Gem Slap is not directed at children under the age of 13. By using the Game, you represent that you are at least 13 years old. If you are under 13, please do not use the Game.</p>
+    </section>
+
+    <section>
+        <h2>Modifications to the Game and Terms</h2>
+        <p>I reserve the right to modify, suspend, or discontinue the Game — or any part of it — at any time without notice or liability. I also reserve the right to update these Terms at any time. Updates will be indicated by a revised "last updated" date at the top of this page. Your continued use of the Game after any update constitutes your acceptance of the revised Terms.</p>
+    </section>
+
+    <section>
+        <h2>Governing Law &amp; Dispute Resolution</h2>
+        <p>These Terms are governed by and construed in accordance with the laws of the State of New York, without regard to its conflict of law provisions. Any dispute arising from or relating to these Terms or the Game shall be subject to the exclusive jurisdiction of the state and federal courts located in Kings County (Brooklyn), New York, and you consent to personal jurisdiction in those courts.</p>
+        <p>Before initiating any formal proceeding, you agree to attempt to resolve any dispute informally by contacting me at the address below. I will attempt to resolve the dispute within 30 days of receipt.</p>
+    </section>
+
+    <section>
+        <h2>Severability</h2>
+        <p>If any provision of these Terms is found to be unenforceable or invalid, that provision will be limited or eliminated to the minimum extent necessary, and the remaining provisions will remain in full force and effect.</p>
+    </section>
+
+    <section>
+        <h2>Entire Agreement</h2>
+        <p>These Terms, together with the <a href="/privacy">Privacy Policy</a>, constitute the entire agreement between you and Ben Swieskowski regarding the Game and supersede all prior understandings or agreements.</p>
+    </section>
+
+    <section>
+        <h2>Contact</h2>
+        <p>For questions about these Terms or to request permission to use Gem Slap content:</p>
+        <p><strong style="color:rgba(255,255,255,0.7)">Ben Swieskowski</strong><br>
+        <a href="mailto:hey@gemslap.com">hey@gemslap.com</a></p>
+    </section>
+
+    <div class="divider"></div>
+
+    <footer>
+        <span>© 2026 Ben Swieskowski. All rights reserved.</span>
+        <span><a href="/privacy" style="color:var(--faint);border-color:transparent;">Privacy Policy</a></span>
+    </footer>
+
+</body>
+</html>
