@@ -102,7 +102,7 @@ ORDERED_PATTERNS = [
     # Neck (48,40) touches body_TR and connects to body_TL.
     # Body: 2x2 block (38,44)-(54,44)-(38,54)-(54,54), all pairs connected.
     # Legs: back (36,62) from bBL, front (56,62) from bBR — isolated from each other (42pt).
-    {'name': 'Dog',         'cells': [{'x':44,'y':24},{'x':50,'y':32},{'x':66,'y':34},{'x':22,'y':32},{'x':28,'y':36},{'x':48,'y':40},{'x':38,'y':44},{'x':54,'y':44},{'x':38,'y':54},{'x':54,'y':54},{'x':36,'y':62},{'x':56,'y':62}]},
+    {'name': 'Cloud',        'cells': [{'x':22,'y':60},{'x':30,'y':52},{'x':38,'y':46},{'x':44,'y':42},{'x':56,'y':42},{'x':62,'y':46},{'x':70,'y':52},{'x':78,'y':60},{'x':26,'y':68},{'x':42,'y':68},{'x':58,'y':68},{'x':74,'y':68}]},
     {'name': 'Big Dipper',  'cells': [{'x':22,'y':54},{'x':28,'y':65},{'x':45,'y':60},{'x':45,'y':50},{'x':55,'y':43},{'x':62,'y':36},{'x':78,'y':35}]},
     {'name': 'Snowflake',   'cells': [{'x':63,'y':50},{'x':57,'y':57},{'x':43,'y':57},{'x':37,'y':50},{'x':43,'y':43},{'x':57,'y':43},{'x':76,'y':50},{'x':64,'y':64},{'x':36,'y':64},{'x':24,'y':50},{'x':36,'y':36},{'x':64,'y':36}]},
     {'name': 'Orion',       'cells': [{'x':50,'y':24},{'x':37,'y':31},{'x':56,'y':34},{'x':52,'y':51},{'x':49,'y':54},{'x':46,'y':55},{'x':50,'y':65},{'x':42,'y':76},{'x':63,'y':72}]},
@@ -113,7 +113,6 @@ ORDERED_PATTERNS = [
     # Forked tail (24,46)+(24,62) → junction (32,54) → oval body upper arc
     # (38,48)→(50,44)→(62,48) and lower arc (38,60)→(50,64)→(62,60) → nose (70,54).
     # Dorsal fin spikes up (50,36)→(48,28) from the body's widest point.
-    {'name': 'Fish',        'cells': [{'x':24,'y':46},{'x':24,'y':62},{'x':32,'y':54},{'x':38,'y':48},{'x':38,'y':60},{'x':50,'y':44},{'x':50,'y':64},{'x':62,'y':48},{'x':62,'y':60},{'x':70,'y':54},{'x':50,'y':36},{'x':48,'y':28}]},
     {'name': 'Bird',        'cells': [{'x':24,'y':44},{'x':35,'y':30},{'x':43,'y':40},{'x':50,'y':46},{'x':57,'y':40},{'x':65,'y':30},{'x':76,'y':44},{'x':44,'y':66},{'x':56,'y':66}]},
     {'name': 'Rabbit',      'cells': [{'x':40,'y':24},{'x':42,'y':36},{'x':58,'y':36},{'x':60,'y':24},{'x':50,'y':48},{'x':50,'y':64},{'x':36,'y':74},{'x':64,'y':74},{'x':68,'y':60}]},
     # Butterfly — 12 crystals, facing forward, wings spread.
@@ -121,7 +120,7 @@ ORDERED_PATTERNS = [
     # Upper wings attach at head+thorax: inner points (40,30)/(60,30), tips (26,26)/(74,26).
     # Lower wings (smaller) attach at base: inner (38,62)/(62,62), tips (28,70)/(72,70).
     # Upper wings noticeably wider/higher than lower — correct butterfly silhouette.
-    {'name': 'Butterfly',   'cells': [{'x':50,'y':30},{'x':50,'y':38},{'x':50,'y':48},{'x':50,'y':56},{'x':40,'y':30},{'x':24,'y':26},{'x':60,'y':30},{'x':76,'y':26},{'x':38,'y':62},{'x':30,'y':68},{'x':62,'y':62},{'x':70,'y':68}]},
+    {'name': 'Butterfly',   'cells': [{'x':50,'y':32},{'x':50,'y':40},{'x':50,'y':48},{'x':50,'y':56},{'x':38,'y':30},{'x':24,'y':24},{'x':62,'y':30},{'x':76,'y':24},{'x':40,'y':62},{'x':30,'y':68},{'x':60,'y':62},{'x':70,'y':68}]},
     # Crab — 12 crystals, top-down view.
     # Wide 3x2 body: row1 (40,44)-(50,44)-(60,44), row2 (40,54)-(50,54)-(60,54).
     # Body cols connect vertically at gap 31pt; rows touch at gap 3pt.
@@ -141,12 +140,12 @@ ORDERED_PATTERNS = [
     # Bottom arc: (42,56)→(54,56)→mouth_lower (70,58). Flat belly.
     # Dorsal fin tip (54,30) above top_mid — 31pt gap, reads as spike.
     # Pectoral fin (54,66) below belly — small triangular limb.
-    {'name': 'Whale',       'cells': [{'x':22,'y':44},{'x':22,'y':58},{'x':32,'y':52},{'x':42,'y':44},{'x':54,'y':40},{'x':66,'y':44},{'x':42,'y':56},{'x':54,'y':56},{'x':54,'y':30},{'x':74,'y':48},{'x':70,'y':58},{'x':54,'y':66}]},
+    {'name': 'Fish',        'cells': [{'x':22,'y':44},{'x':22,'y':58},{'x':32,'y':52},{'x':42,'y':44},{'x':54,'y':40},{'x':66,'y':44},{'x':42,'y':56},{'x':54,'y':56},{'x':54,'y':30},{'x':74,'y':48},{'x':70,'y':58},{'x':54,'y':66}]},
     # Circle — 12 crystals. Hex close-packed filled disc.
     # 4 rows (3+4+3+2), staggered like hex grid. Dx=12 within rows (gap 10.8pt, touching).
     # Diagonal Δ(6,8) between rows = 22.7pt gap — all connected.
     # Every crystal connects to 2-6 neighbours. Skip-row isolation all >71pt.
-    {'name': 'Circle',      'cells': [{'x':38,'y':34},{'x':50,'y':34},{'x':62,'y':34},{'x':32,'y':42},{'x':44,'y':42},{'x':56,'y':42},{'x':68,'y':42},{'x':38,'y':50},{'x':50,'y':50},{'x':62,'y':50},{'x':44,'y':58},{'x':56,'y':58}]},
+    {'name': 'Hive',        'cells': [{'x':38,'y':34},{'x':50,'y':34},{'x':62,'y':34},{'x':32,'y':42},{'x':44,'y':42},{'x':56,'y':42},{'x':68,'y':42},{'x':38,'y':50},{'x':50,'y':50},{'x':62,'y':50},{'x':44,'y':58},{'x':56,'y':58}]},
     {'name': 'Turtle',      'cells': [{'x':50,'y':28},{'x':38,'y':36},{'x':62,'y':36},{'x':30,'y':54},{'x':70,'y':54},{'x':38,'y':68},{'x':62,'y':68},{'x':24,'y':40},{'x':76,'y':40},{'x':26,'y':66},{'x':74,'y':66}]},
 
     # OBJECTS — 12 levels (removed: Compass, Arch, Rocket, Trident, Anchor)
@@ -177,14 +176,14 @@ ORDERED_PATTERNS = [
     # SPHERE (4 crystals): 2x2 block (44,56)-(56,56)-(44,64)-(56,64), all 4 sides connected.
     #   Sits centered below the ring arch. Isolated from ring (min gap 41.8pt).
     # The ring arching OVER the sphere is Saturn's iconic silhouette.
-    {'name': 'Saturn',        'cells': [{'x':18,'y':60},{'x':24,'y':54},{'x':34,'y':46},{'x':44,'y':42},{'x':54,'y':40},{'x':64,'y':42},{'x':72,'y':46},{'x':78,'y':52},{'x':44,'y':56},{'x':56,'y':56},{'x':44,'y':64},{'x':56,'y':64}]},
+    {'name': 'Saturn',        'cells': [{'x':22,'y':58},{'x':30,'y':56},{'x':38,'y':54},{'x':46,'y':52},{'x':54,'y':50},{'x':62,'y':48},{'x':70,'y':46},{'x':78,'y':44},{'x':48,'y':46},{'x':52,'y':46},{'x':48,'y':56},{'x':52,'y':56}]},
     # UFO — 12 crystals.
     # Dome (3): tight cap (50,28)+(44,32)+(56,32), all touching (-0.3pt row, 10.8pt pair).
     #   Bridges to saucer top-center (10.7pt) and top-left/right (22.7pt).
     # Saucer (8): fully-connected ellipse x=26-74. Top trio at y=38-40 (12.7pt apart),
     #   wide tips at (26,46)/(74,46), bottom arc at y=52-54. All 8 consecutive gaps <28pt.
     # Beam (1): (50,64) hangs 31.3pt below saucer bottom — single tractor beam.
-    {'name': 'Square Wave',  'cells': [{'x':29,'y':38},{'x':34,'y':38},{'x':39,'y':38},{'x':43,'y':46},{'x':47,'y':54},{'x':52,'y':54},{'x':57,'y':54},{'x':61,'y':46},{'x':65,'y':38},{'x':70,'y':38},{'x':75,'y':38},{'x':79,'y':46}]},
+    {'name': 'Snake',        'cells': [{'x':29,'y':38},{'x':34,'y':38},{'x':39,'y':38},{'x':43,'y':46},{'x':47,'y':54},{'x':52,'y':54},{'x':57,'y':54},{'x':61,'y':46},{'x':65,'y':38},{'x':70,'y':38},{'x':75,'y':38},{'x':79,'y':46}]},
     {'name': 'Eiffel Tower',  'cells': [{'x':50,'y':24},{'x':45,'y':34},{'x':55,'y':34},{'x':41,'y':46},{'x':59,'y':46},{'x':36,'y':58},{'x':50,'y':64},{'x':64,'y':58},{'x':31,'y':70},{'x':69,'y':70},{'x':26,'y':76},{'x':74,'y':76}]},
 
     # MISC — 6 levels (removed: Peace Sign, Thumbs Up)
@@ -200,7 +199,7 @@ ORDERED_PATTERNS = [
     # y = 50 + 10*sin(1.5 * 2pi * (x-18)/64). Evenly spaced x=18..82.
     # All 11 consecutive gaps verified 0-23pt. Left-right symmetric.
     # Dense clusters at crests/troughs (crystals overlap), sparser on slopes.
-    {'name': 'Sine Wave',   'cells': [{'x':18,'y':50},{'x':24,'y':58},{'x':30,'y':60},{'x':35,'y':56},{'x':41,'y':48},{'x':47,'y':41},{'x':53,'y':41},{'x':59,'y':48},{'x':65,'y':56},{'x':70,'y':60},{'x':76,'y':58},{'x':82,'y':50}]},
+    {'name': 'Wave',        'cells': [{'x':18,'y':50},{'x':24,'y':58},{'x':30,'y':60},{'x':35,'y':56},{'x':41,'y':48},{'x':47,'y':41},{'x':53,'y':41},{'x':59,'y':48},{'x':65,'y':56},{'x':70,'y':60},{'x':76,'y':58},{'x':82,'y':50}]},
     {'name': 'Eye',        'cells': [{'x':24,'y':50},{'x':76,'y':50},{'x':30,'y':45},{'x':38,'y':42},{'x':50,'y':41},{'x':62,'y':42},{'x':70,'y':45},{'x':70,'y':55},{'x':62,'y':58},{'x':50,'y':59},{'x':38,'y':58},{'x':30,'y':55}]},
     # Spiral — 12 crystals. True Archimedean spiral, clockwise, 1.4 turns.
     # Mathematically generated: r0=18pt, r_end=88pt, theta=-90°..414°.
