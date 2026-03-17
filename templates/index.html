@@ -46,17 +46,20 @@
 
         #canvas { position: absolute; }
 
-        .footer { position: absolute; bottom: 0; left: 0; right: 0; height: calc(36px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 100; }
+        .footer { position: absolute; bottom: 0; left: 0; right: 0; height: calc(36px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 510; }
         .footer-timer { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); font-size: 0.9rem; font-weight: 400; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.5); line-height: 1; pointer-events: none; }
         .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; }
         .beat-dot.active { background: rgba(255,255,255,0.7); transform: scale(1.4); }
         .mute-btn { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 1px); width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
         .mute-btn:hover { background: rgba(255,255,255,0.1); }
         .mute-btn.muted { opacity: 0.3; }
+
+        /* ── PATCH 1: Legal link styles ─────────────────────────────────────── */
         .legal-links { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 9px); display: flex; gap: 0.8rem; align-items: center; z-index: 101; pointer-events: auto; }
         .legal-link { font-size: 0.42rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.18); text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: color 0.2s; padding: 4px 6px; }
         .legal-link:hover { color: rgba(255,255,255,0.45); }
         .legal-sep { font-size: 0.42rem; color: rgba(255,255,255,0.1); pointer-events: none; }
+        /* ─────────────────────────────────────────────────────────────────────── */
 
         .pop { position: absolute; pointer-events: none; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; animation: pop-up 0.45s ease-out forwards; z-index: 200; }
         @keyframes pop-up { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -65%); } }
@@ -880,6 +883,8 @@
         </div>
         <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
         <canvas id="canvas"></canvas>
+
+        <!-- PATCH 2: Footer with legal links -->
         <div class="footer">
             <div class="footer-timer" id="h-time">0.0s</div>
             <div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div>
@@ -1599,6 +1604,12 @@
     canvas.addEventListener('mousedown', handleInput);
     $('start-screen').addEventListener('click', () => { audio.unlock(); if (!state.started) startGame(); });
     $('play-btn').addEventListener('click', (e) => { e.stopPropagation(); audio.unlock(); if (!state.started) startGame(); });
+
+    // PATCH 3: Stop legal link clicks from bubbling up to start-screen
+    document.querySelectorAll('.legal-link').forEach(link => {
+        link.addEventListener('click', e => e.stopPropagation());
+        link.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+    });
 
     // ═══════════════════════════════════════
     //  INTRO SCENE ANIMATION
