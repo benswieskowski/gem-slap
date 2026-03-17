@@ -34,6 +34,16 @@ def service_worker():
     return response
 
 
+# ── Legal pages ────────────────────────────────────────────────────────────────
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
+
 def transpose_in_scale(melody, steps):
     result = []
     for note in melody:
@@ -49,7 +59,7 @@ def transpose_in_scale(melody, steps):
 def generate_level(level_num, bass_style=None):
     random.seed(level_num * 77)
 
-    # ── Flat pattern indexing over all 71 levels ───────────────────────────────
+    # ── Flat pattern indexing over all levels ──────────────────────────────────
     all_patterns = LEVEL_BATCHES[0]['patterns']
     total_patterns = len(all_patterns)
     pattern_idx = (level_num - 1) % total_patterns
