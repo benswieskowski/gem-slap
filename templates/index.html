@@ -53,6 +53,10 @@
         .mute-btn { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 1px); width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
         .mute-btn:hover { background: rgba(255,255,255,0.1); }
         .mute-btn.muted { opacity: 0.3; }
+        .legal-links { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 9px); display: flex; gap: 0.8rem; align-items: center; z-index: 101; pointer-events: auto; }
+        .legal-link { font-size: 0.42rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.18); text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: color 0.2s; padding: 4px 6px; }
+        .legal-link:hover { color: rgba(255,255,255,0.45); }
+        .legal-sep { font-size: 0.42rem; color: rgba(255,255,255,0.1); pointer-events: none; }
 
         .pop { position: absolute; pointer-events: none; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; animation: pop-up 0.45s ease-out forwards; z-index: 200; }
         @keyframes pop-up { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } 15% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -65%); } }
@@ -879,6 +883,11 @@
         <div class="footer">
             <div class="footer-timer" id="h-time">0.0s</div>
             <div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div>
+            <div class="legal-links">
+                <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy</a>
+                <span class="legal-sep">·</span>
+                <a class="legal-link" href="/terms" target="_blank" rel="noopener">Terms</a>
+            </div>
             <button class="mute-btn" id="mute-btn">♫</button>
         </div>
 
@@ -1030,7 +1039,7 @@
     // ═══════════════════════════════════════
     //  PROGRESS — localStorage save/restore
     // ═══════════════════════════════════════
-    const TOTAL_LEVELS = 52;
+    const TOTAL_LEVELS = 71;
     const SAVE_KEY = 'gs_progress';
 
     function loadProgress() {
@@ -1809,15 +1818,15 @@
     //  GAME FLOW
     // ═══════════════════════════════════════
 
-    // 10-track rotation — BPM arc: 110→118→124→130→128→138→132→126→120→108
-    const STYLE_ORDER = [10, 14, 11, 3, 13, 5, 6, 2, 12, 0];
+    // 5-track rotation: Fourside → Dawnbreak → Prism → Bright Flash → Makou Energy
+    const STYLE_ORDER = [0, 12, 13, 5, 15];
 
     function prefetchLevels(fromLevel) {
         if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
         for (let i = 1; i <= 20; i++) {
             const n = fromLevel + i;
             setTimeout(() => {
-                const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 10];
+                const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 5];
                 const url = `/api/level/${n}/bass/${bassParam}`;
                 navigator.serviceWorker.controller.postMessage({ type: 'CACHE_LEVEL', url });
             }, i * 250);
@@ -1834,7 +1843,7 @@
             screenShake.intensity = 0;
 
             // 5-track rotation: Fourside → Dawnbreak → Prism → Bright Flash → Makou Energy
-            const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 10];
+            const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 5];
             const url = `/api/level/${n}/bass/${bassParam}`;
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
