@@ -1837,14 +1837,14 @@
     // ═══════════════════════════════════════
 
     // 5-track rotation: Fourside → Dawnbreak → Prism → Bright Flash → Makou Energy
-    const STYLE_ORDER = [5,9,6,2,8,3,4,1,7,0,11,10,12,13,14];
+    const STYLE_ORDER = [5,9,6,2,8,3,4,1,7,0];
 
     function prefetchLevels(fromLevel) {
         if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
         for (let i = 1; i <= 20; i++) {
             const n = fromLevel + i;
             setTimeout(() => {
-                const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 15];
+                const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 10];
                 const url = `/api/level/${n}/bass/${bassParam}`;
                 navigator.serviceWorker.controller.postMessage({ type: 'CACHE_LEVEL', url });
             }, i * 250);
@@ -1861,7 +1861,7 @@
             screenShake.intensity = 0;
 
             // 5-track rotation: Fourside → Dawnbreak → Prism → Bright Flash → Makou Energy
-            const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 15];
+            const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 10];
             const url = `/api/level/${n}/bass/${bassParam}`;
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
