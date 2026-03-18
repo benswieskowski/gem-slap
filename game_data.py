@@ -233,22 +233,22 @@ LEVEL_BATCHES = [
 ]
 
 BASS_STYLES = {
-     0: {'name': 'Fourside Funk',    'bpm': 108},
-     2: {'name': 'Snake Slither',    'bpm': 126},
-     3: {'name': 'Guardia Festival', 'bpm': 130},
-     5: {'name': 'Bright Flash',     'bpm': 138},
-     6: {'name': 'Pharaoh Rush',     'bpm': 132},
-    10: {'name': 'Golden Hour',      'bpm': 110},
-    11: {'name': 'Candy Flip',       'bpm': 124},
-    12: {'name': 'Dawnbreak',        'bpm': 120},
-    13: {'name': 'Prism',            'bpm': 128},
-    14: {'name': 'Neon Pulse',       'bpm': 118},
-    15: {'name': 'Chrome Machine',   'bpm': 122},  # Daft Punk: filtered 4-on-floor, French house
-    36: {'name': 'Psycho Groove',    'bpm': 125},  # Talking Heads: nervous repeating figures, angular
-    38: {'name': 'Ghost Train',      'bpm': 132},  # Ska: upbeat hihat pattern, walking chromatic bass
-    40: {'name': 'Hook, Line & Sinker','bpm': 116}, # Motown / Jamerson: 16th-note melodic bass, thunder snare
-    46: {'name': 'Purple Haze',       'bpm': 132},  # Prince / Minneapolis: all-open LinnDrum shimmer
+    0: {'name': 'Fourside Funk', 'bpm': 108},
+    1: {'name': 'Snake Slither', 'bpm': 126},
+    2: {'name': 'Guardia Festival', 'bpm': 130},
+    3: {'name': 'Bright Flash', 'bpm': 138},
+    4: {'name': 'Pharaoh Rush', 'bpm': 132},
+    5: {'name': 'Golden Hour', 'bpm': 110},
+    6: {'name': 'Candy Flip', 'bpm': 124},
+    7: {'name': 'Dawnbreak', 'bpm': 120},
+    8: {'name': 'Prism', 'bpm': 128},
+    9: {'name': 'Neon Pulse', 'bpm': 118},
+    10: {'name': 'Chrome Machine', 'bpm': 122},
+    11: {'name': 'Psycho Groove', 'bpm': 125},
+    12: {'name': 'Ghost Train', 'bpm': 132},
+    13: {'name': 'Hook Line & Sinker', 'bpm': 116},
+    14: {'name': 'Purple Haze', 'bpm': 132},
 }
 
 # BPM arc: 110→118→124→130→128→138→132→126→120→108
-STYLE_ORDER = [10, 14, 11, 3, 13, 5, 6, 2, 12, 0]
+STYLE_ORDER = [5, 9, 6, 2, 8, 3, 4, 1, 7, 0]
