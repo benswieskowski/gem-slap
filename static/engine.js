@@ -344,11 +344,9 @@ class Audio {
     setBassStyle(style) { this.bassStyle = style % 47; }
 
     getBpm(style) {
-        const BPMS = [108, 0, 126, 130, 0, 138, 132, 0, 0, 0,
-                      110, 124, 120, 128, 118, 122, 0, 0, 0, 0,
-                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                      0, 0, 0, 0, 0, 0, 125, 0, 132, 0,
-                      116, 0, 0, 0, 0, 0, 132];
+        const BPMS = [108, 0, 126, 130, 0, 138, 132, 0, 0, 0, 110, 124, 120, 128, 118, 122,
+                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                      0, 0, 0, 0, 125, 0, 132, 0, 116, 0, 0, 0, 0, 0, 132];
         return BPMS[(style % 47)] || 130;
     }
 
@@ -356,11 +354,9 @@ class Audio {
         if (!this._canPlay() || !this.beatOn) return;
         const s = this.bassStyle || 0;
 
-        const SWING = [0.12, 0, 0.1, 0, 0, 0, 0, 0, 0, 0,
-                       0.16, 0, 0.14, 0, 0, 0, 0, 0, 0, 0,
-                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                       0.08, 0, 0, 0, 0, 0, 0];
+        const SWING = [0.12, 0, 0.1, 0, 0, 0, 0, 0, 0, 0, 0.16, 0, 0.14, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0, 0.08, 0, 0, 0, 0, 0, 0];
         const swingFrac = SWING[s] || 0;
         const scheduledAt = (swingFrac > 0 && step % 2 === 1)
             ? when + this._stepDur * swingFrac
@@ -388,6 +384,7 @@ class Audio {
 
     getSubPattern(style) {
         const S = {
+
             // 00 · Fourside Funk (108 bpm)
             0: [[0,.58,.20],null,[0,.20,.08],null,[12,.52,.16],null,[7,.44,.14],null,
                 [0,.54,.20],null,[10,.20,.08],null,[10,.48,.16],[9,.22,.10],[7,.36,.14],[0,.16,.06],
@@ -438,58 +435,23 @@ class Audio {
                 [0,.56,.20],null,[0,.20,.08],null,[7,.48,.18],null,[4,.32,.12],null,
                 [5,.60,.18],null,[5,.18,.08],null,[0,.44,.16],[8,.22,.08],null,null,
                 [10,.54,.18],null,[3,.38,.14],null,[5,.46,.18],null,[2,.28,.10],[7,.16,.06]],
-            // 15 · Chrome Machine (122 bpm) — Daft Punk: filtered French house,
-            //   robotic bass loop with octave punch on bar 2. "Around the World" DNA.
-            //   Notes: root→5th→4th groove, then octave leap as the hook.
-            15:[[0,.64,.22],null,[0,.28,.10],null,[7,.56,.18],null,[5,.40,.14],null,
-                [0,.60,.20],null,[10,.24,.10],[7,.18,.08],[5,.52,.18],null,[3,.26,.12],[0,.16,.08],
-                [0,.62,.22],null,[0,.26,.10],null,[7,.54,.18],null,[10,.40,.14],null,
-                [12,.58,.20],null,[10,.22,.10],[7,.16,.08],[5,.50,.18],[3,.20,.10],[7,.42,.16],null],
-            // 36 · Psycho Groove (125 bpm) — Talking Heads "Burning Down the House"/
-            //   "Once in a Lifetime"/"Psycho Killer":
-            //   Tina Weymouth's nervous REPEATING FIGURE — same root hits, then sudden leaps.
-            //   Very staccato (.10 dur) — opposite of the long-held notes in Radio Silence.
-            //   KEY MOVE: clusters of 0-0-0 repeated quickly, then a sudden angular leap to 5 or 7.
-            //   The repetition IS the point — paranoid, insistent, you can't escape the riff.
-            36:[[0,.64,.10],null,[0,.26,.08],[0,.18,.06],[5,.56,.10],null,[0,.22,.08],null,
-                [0,.60,.12],null,null,[7,.24,.08],[0,.52,.10],[0,.18,.06],[3,.48,.10],null,
-                [0,.62,.10],null,[0,.24,.08],[0,.16,.06],[5,.54,.10],null,[0,.20,.08],null,
-                [0,.58,.12],[3,.20,.08],null,[7,.22,.08],[0,.50,.10],[0,.18,.06],[5,.44,.10],null],
-            // 38 · Ghost Train (132 bpm) — The Specials / Madness / Toots and the Maytals:
-            //   KEY MOVE: WALKING CHROMATIC SKA BASS. Roots on the beats, chromatic passing
-            //   notes on the 16th note between them. Very active, very staccato (.08-.10).
-            //   Ska bass is the skeleton that holds the offbeat guitar skank together.
-            //   Uses -2 and 3 as chromatic connectors — chromatic passing tones are
-            //   the ska bassist's signature (they learned from jazz walking bass lines).
-            38:[[0,.66,.10],null,[-2,.26,.08],null,[0,.58,.10],null,[3,.22,.08],[5,.16,.06],
-                [7,.62,.10],null,[5,.22,.08],[3,.16,.06],[0,.54,.10],[-2,.18,.06],[0,.48,.08],null,
-                [0,.64,.10],null,[-2,.24,.08],null,[0,.56,.10],[3,.20,.08],[5,.36,.10],null,
-                [7,.60,.10],[5,.20,.08],[3,.22,.08],null,[0,.52,.10],[-2,.18,.06],[0,.42,.10],null],
-            // 40 · Hook, Line & Sinker (116 bpm) — Motown / James Jamerson:
-            //   Jamerson never stopped moving — his bass lines were almost purely 16th notes.
-            //   KEY MOVE: bass fills EVERY SINGLE PHRASE with constant melodic motion.
-            //   Uses 0/3/5/7 (minor pentatonic) with chromatic passing tone -2 woven in.
-            //   Medium note lengths (.10-.12) — Jamerson played with "The Hook" (one finger)
-            //   getting a fat legato tone. Very different from cumbia's long-short seesaw.
-            40:[[0,.64,.10],[3,.30,.08],[5,.50,.10],[3,.22,.08],[0,.56,.12],[3,.20,.08],[5,.44,.10],null,
-                [7,.58,.12],[5,.22,.08],[3,.48,.10],[0,.18,.06],[5,.52,.10],[-2,.20,.08],[0,.42,.10],null,
-                [0,.62,.10],[3,.28,.08],[5,.48,.10],[7,.20,.08],[5,.54,.12],[3,.22,.08],[0,.44,.10],null,
-                [7,.56,.12],[10,.22,.08],[7,.46,.10],[5,.18,.06],[3,.50,.10],[0,.20,.08],[5,.38,.10],null],
-            // 46 · Purple Haze (132 bpm) — Prince / Minneapolis Sound LinnDrum:
-            //   KEY MOVE: bass uses note 10 (b7) as a constant tension partner to root (0).
-            //   Extremely staccato (.08) — the LinnDrum era bass was punchy and short.
-            //   Lots of space (nulls) — the DRUMS carry the density, bass punctuates.
-            //   Uses 0/5/7/10 only — Prince's purple minor-pentatonic signature.
-            46:[[0,.70,.08],null,null,null,[10,.28,.06],null,[0,.60,.08],null,
-                [5,.64,.08],null,[3,.22,.06],null,[0,.56,.08],[10,.18,.06],[7,.48,.08],null,
-                [0,.68,.08],null,null,[10,.24,.06],[0,.58,.08],null,null,null,
-                [7,.62,.08],null,[5,.20,.06],null,[0,.54,.08],[10,.18,.06],[7,.40,.08],null],
+            // 15 · Chrome Machine (122 bpm)
+            15:[[0,.64,.22],null,[0,.28,.10],null,[7,.56,.18],null,[5,.40,.14],null, [0,.60,.20],null,[10,.24,.10],[7,.18,.08],[5,.52,.18],null,[3,.26,.12],[0,.16,.08], [0,.62,.22],null,[0,.26,.10],null,[7,.54,.18],null,[10,.40,.14],null, [12,.58,.20],null,[10,.22,.10],[7,.16,.08],[5,.50,.18],[3,.20,.10],[7,.42,.16],null],
+            // 36 · Psycho Groove (125 bpm)
+            36:[[0,.64,.10],null,[0,.26,.08],[0,.18,.06],[5,.56,.10],null,[0,.22,.08],null, [0,.60,.12],null,null,[7,.24,.08],[0,.52,.10],[0,.18,.06],[3,.48,.10],null, [0,.62,.10],null,[0,.24,.08],[0,.16,.06],[5,.54,.10],null,[0,.20,.08],null, [0,.58,.12],[3,.20,.08],null,[7,.22,.08],[0,.50,.10],[0,.18,.06],[5,.44,.10],null],
+            // 38 · Ghost Train (132 bpm)
+            38:[[0,.66,.10],null,[-2,.26,.08],null,[0,.58,.10],null,[3,.22,.08],[5,.16,.06], [7,.62,.10],null,[5,.22,.08],[3,.16,.06],[0,.54,.10],[-2,.18,.06],[0,.48,.08],null, [0,.64,.10],null,[-2,.24,.08],null,[0,.56,.10],[3,.20,.08],[5,.36,.10],null, [7,.60,.10],[5,.20,.08],[3,.22,.08],null,[0,.52,.10],[-2,.18,.06],[0,.42,.10],null],
+            // 40 · Hook Line & Sinker (116 bpm)
+            40:[[0,.64,.10],[3,.30,.08],[5,.50,.10],[3,.22,.08],[0,.56,.12],[3,.20,.08],[5,.44,.10],null, [7,.58,.12],[5,.22,.08],[3,.48,.10],[0,.18,.06],[5,.52,.10],[-2,.20,.08],[0,.42,.10],null, [0,.62,.10],[3,.28,.08],[5,.48,.10],[7,.20,.08],[5,.54,.12],[3,.22,.08],[0,.44,.10],null, [7,.56,.12],[10,.22,.08],[7,.46,.10],[5,.18,.06],[3,.50,.10],[0,.20,.08],[5,.38,.10],null],
+            // 46 · Purple Haze (132 bpm)
+            46:[[0,.70,.08],null,null,null,[10,.28,.06],null,[0,.60,.08],null, [5,.64,.08],null,[3,.22,.06],null,[0,.56,.08],[10,.18,.06],[7,.48,.08],null, [0,.68,.08],null,null,[10,.24,.06],[0,.58,.08],null,null,null, [7,.62,.08],null,[5,.20,.06],null,[0,.54,.08],[10,.18,.06],[7,.40,.08],null],
         };
         return S[style] || S[0];
     }
 
     getPadPattern(style) {
         const P = {
+
             // 00 · Fourside Funk (108 bpm)
             0: [[[0,3,7,10],.36],null,null,null,null,null,null,null,
                 null,null,null,null,[[10,14,17],.24,'s'],null,null,null,
@@ -544,49 +506,23 @@ class Audio {
                 null,null,null,null,[[0,4,7,10],.34,'s'],null,null,null,
                 [[5,8,12,15],.38,'s'],null,null,null,[[5,8,12],.32,'s'],null,null,null,
                 null,null,null,null,[[-2,2,5,8],.30,'s'],null,null,null],
-            // 15 · Chrome Machine — French house chord stabs: punchy Cm7 on beat 1,
-            //   staccato hits echo on off-beats. Bright, filtered, euphoric.
-            15:[[[0,3,7,10],.46,'s'],null,null,null,null,null,[[7,10,14],.34,'s'],null,
-                [[5,8,12],.40,'s'],null,null,null,[[3,7,10],.30,'s'],null,null,null,
-                [[0,3,7,10],.44,'s'],null,null,null,null,null,[[10,14,17],.34,'s'],null,
-                [[7,10,14],.38,'s'],null,null,null,null,null,[[0,3,7],.36,'s'],null],
-            // 36 · Psycho Groove — angular post-punk chord stabs on unexpected beats.
-            //   [0,7] = power chord, raw and unambiguous. Stabs land on beat 2 (not 1!) —
-            //   the opposite of where you expect them, creating nervous rhythmic displacement.
-            //   [5,10] = power chord up a 4th = Talking Heads' TV-on-the-Radio tension.
-            36:[null,null,null,null,[[0,7],.40,'s'],null,null,null,
-                null,null,null,null,null,null,null,null,
-                [[0,7],.38,'s'],null,null,null,null,null,[[5,10],.30,'s'],null,
-                null,null,null,null,[[0,7],.34,'s'],null,null,null],
-            // 38 · Ghost Train — SKA UPSTROKE STABS. The guitar skank lands on the 8th-note
-            //   upbeats: steps 2, 6, 10, 14, 18, 22, 26, 30 — BETWEEN the beats, not on them.
-            //   This is the most rhythmically unique pad placement in the entire collection.
-            //   [0,7,12] bright major = ska was upbeat and major-key (different from reggae's minors).
-            38:[null,null,[[0,7,12],.36,'s'],null,null,null,[[5,10,14],.30,'s'],null,
-                null,null,[[0,7,12],.34,'s'],null,null,null,[[3,7,10],.28,'s'],null,
-                null,null,[[0,7,12],.36,'s'],null,null,null,[[5,10,14],.30,'s'],null,
-                null,null,[[7,12,17],.32,'s'],null,null,null,[[0,7,12],.26,'s'],null],
-            // 40 · Hook, Line & Sinker — Motown horn stabs that punch between bass phrases.
-            //   [0,7,12] on beat 1 = the downbeat stab. [3,7,10] = iii = Motown's warm turnaround.
-            //   [5,10,14] = IV = the big lift that Motown arrangements always built toward.
-            //   Short staccato stabs (classic Motown horn section was punchy, not sustained).
-            40:[[[0,7,12],.42,'s'],null,null,null,null,null,null,null,
-                [[3,7,10],.34,'s'],null,null,null,null,null,null,null,
-                [[0,7,12],.40,'s'],null,null,null,null,null,null,null,
-                [[5,10,14],.36,'s'],null,null,null,[[3,7,10],.28,'s'],null,null,null],
-            // 46 · Purple Haze — two sparse stabs per two bars. Everything else is drums.
-            //   [0,7,12] tight major = Prince's clean bright chord. [5,10,12] = ambiguous IV/V.
-            //   Long silence between stabs = the Minneapolis Sound breathing room.
-            46:[[[0,7,12],.42,'s'],null,null,null,null,null,null,null,
-                null,null,null,null,[[5,10,12],.34,'s'],null,null,null,
-                [[0,7,12],.40,'s'],null,null,null,null,null,null,null,
-                null,null,null,null,[[0,7,12],.30,'s'],null,null,null],
+            // 15 · Chrome Machine pads
+            15:[[[0,3,7,10],.46,'s'],null,null,null,null,null,[[7,10,14],.34,'s'],null, [[5,8,12],.40,'s'],null,null,null,[[3,7,10],.30,'s'],null,null,null, [[0,3,7,10],.44,'s'],null,null,null,null,null,[[10,14,17],.34,'s'],null, [[7,10,14],.38,'s'],null,null,null,null,null,[[0,3,7],.36,'s'],null],
+            // 36 · Psycho Groove pads
+            36:[null,null,null,null,[[0,7],.40,'s'],null,null,null, null,null,null,null,null,null,null,null, [[0,7],.38,'s'],null,null,null,null,null,[[5,10],.30,'s'],null, null,null,null,null,[[0,7],.34,'s'],null,null,null],
+            // 38 · Ghost Train pads
+            38:[null,null,[[0,7,12],.36,'s'],null,null,null,[[5,10,14],.30,'s'],null, null,null,[[0,7,12],.34,'s'],null,null,null,[[3,7,10],.28,'s'],null, null,null,[[0,7,12],.36,'s'],null,null,null,[[5,10,14],.30,'s'],null, null,null,[[7,12,17],.32,'s'],null,null,null,[[0,7,12],.26,'s'],null],
+            // 40 · Hook Line & Sinker pads
+            40:[[[0,7,12],.42,'s'],null,null,null,null,null,null,null, [[3,7,10],.34,'s'],null,null,null,null,null,null,null, [[0,7,12],.40,'s'],null,null,null,null,null,null,null, [[5,10,14],.36,'s'],null,null,null,[[3,7,10],.28,'s'],null,null,null],
+            // 46 · Purple Haze pads
+            46:[[[0,7,12],.42,'s'],null,null,null,null,null,null,null, null,null,null,null,[[5,10,12],.34,'s'],null,null,null, [[0,7,12],.40,'s'],null,null,null,null,null,null,null, null,null,null,null,[[0,7,12],.30,'s'],null,null,null],
         };
         return P[style] || P[0];
     }
 
     getPercPattern(style) {
         const R = {
+
             // 00 · Fourside Funk (108 bpm)
             0: { k:[.72,0,0,0,0,0,.32,0,.62,0,.20,0,0,0,.26,0,
                     .72,0,.16,0,0,0,.32,0,.62,0,.20,0,0,0,.26,.14],
@@ -677,73 +613,16 @@ class Audio {
                     .28,.14,.22,.14,.28,.14,-.32,.14,.28,.14,.22,.14,.28,.14,-.32,.14],
                  t:[0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0,
                     0,0,.04,0,.04,0,.04,0,0,0,.04,0,.04,0,.04,0] },
-            // 15 · Chrome Machine — 4-on-the-floor kick (every beat, no exceptions),
-            //   tight 16th hihat (every step, all the same velocity = robotic),
-            //   snare on 2&4 with ghost, no texture grain (pure machine precision).
-            15:{ k:[.78,0,0,.20,0,0,0,0,.72,0,.18,0,0,0,0,0,
-                    .78,0,0,.20,0,0,0,0,.72,0,.18,0,0,0,.20,0],
-                 s:[0,0,0,0,.56,0,0,.14,0,0,0,0,.54,0,0,.12,
-                    0,0,0,0,.56,0,0,.16,0,0,0,0,.54,0,0,.12],
-                 h:[.30,.30,.30,.30,.30,.30,-.36,.30,.30,.30,.30,.30,.30,.30,-.36,.30,
-                    .30,.30,.30,.30,.30,.30,-.36,.30,.30,.30,.30,.30,.30,.30,-.36,.30],
-                 t:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
-            // 36 · Psycho Groove — Chris Frantz: nervous post-punk precision.
-            //   Kick on 1 and 3, with an EXTRA kick on &3 — the Talking Heads push that
-            //   makes every bar feel like it's tipping forward into the next one.
-            //   Snare on 2 and 4 with a very light ghost — Frantz was clean, not funky.
-            //   16th hihats alternating closed/open — the post-punk shimmer.
-            //   Zero texture grain — angular and dry, the sonic opposite of Lagos Express.
-            36:{ k:[.72,0,0,0,0,0,.24,0,.64,0,.24,0,0,0,0,0,
-                    .70,0,0,0,0,0,.22,0,.62,0,.22,0,0,0,.18,0],
-                 s:[0,0,0,0,.54,0,0,.10,0,0,0,0,.50,0,.08,0,
-                    0,0,0,0,.52,0,0,.12,0,0,0,0,.50,0,.08,.10],
-                 h:[.26,.14,-.30,.14,.26,.14,-.30,.14,.26,.14,-.30,.14,.26,.14,-.30,.14,
-                    .26,.14,-.30,.14,.26,.14,-.30,.14,.26,.14,-.30,.14,.26,.14,-.30,.14],
-                 t:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
-            // 38 · Ghost Train — the most rhythmically distinctive hihat in the collection.
-            //   Hihat plays ONLY on 8th-note upbeats (steps 2,6,10,14,18,22,26,30) — NEVER
-            //   on the beats themselves. This is unique among all 39 styles.
-            //   Kick on 1 and 3, snare HARD on 2 and 4 (ska was a dance music, snare big).
-            //   Light texture grain on the beat only = the warmth of a ska record.
-            38:{ k:[.68,0,0,0,0,0,.20,0,.60,0,0,0,0,0,.18,0,
-                    .66,0,0,0,0,0,.18,0,.58,0,0,0,0,0,.16,0],
-                 s:[0,0,0,0,.60,0,0,0,0,0,0,0,.58,0,0,0,
-                    0,0,0,0,.60,0,0,0,0,0,0,0,.58,0,0,.12],
-                 h:[0,.32,0,0,0,.32,0,0,0,.32,0,0,0,.32,0,0,
-                    0,.32,0,0,0,.32,0,0,0,.32,0,0,0,.32,0,0],
-                 t:[.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,
-                    .04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0] },
-            // 40 · Hook, Line & Sinker — Benny Benjamin / Uriel Jones Motown kit.
-            //   KICK: 1 and 3, clean (Motown was 1-and-3 like the Beatles but heavier).
-            //   SNARE: the LOUDEST in the collection (.68) — Motown snare was a crack of thunder.
-            //   Plus ghost notes on the 8th subdivisions (Benjamin played a constant ghost bed).
-            //   16th hihats, all identical velocity (.24) = strict Motown timekeeping.
-            //   Texture grain on EVERY 16th at .06 = the tambourine that was on every Motown record.
-            40:{ k:[.74,0,0,0,0,0,0,0,.66,0,0,0,0,0,0,0,
-                    .72,0,0,0,0,0,0,0,.64,0,0,0,0,0,0,0],
-                 s:[0,0,.20,0,.68,0,.20,0,0,0,.20,0,.64,0,.20,0,
-                    0,0,.22,0,.68,0,.20,0,0,0,.20,0,.64,0,.20,.14],
-                 h:[.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,
-                    .24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24],
-                 t:[.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,
-                    .06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06] },
-            // 46 · Purple Haze — LinnDrum / Prince: the most relentless open-hihat track here.
-            //   KICK: 1 (.76), &2 (.28), 3 (.66) — Prince's signature triplet-push feel.
-            //   SNARE: 2 and 4 only, VERY HARD (.64) — the LinnDrum snare crack.
-            //   HIHAT: ALL OPEN on every single 16th, identical velocity (.26) — the Prince
-            //   shimmer that defines "I Would Die 4 U"/"Let's Go Crazy". Completely
-            //   uniform = it sounds like an electric shaker, not a drummer.
-            //   ZERO texture grain — the LinnDrum was cold, bright, and completely dry.
-            46:{ k:[.76,0,0,0,0,0,.28,0,.66,0,0,0,0,0,.22,0,
-                    .74,0,0,0,0,0,.26,0,.64,0,0,0,0,0,.20,0],
-                 s:[0,0,0,0,.64,0,0,0,0,0,0,0,.62,0,0,0,
-                    0,0,0,0,.64,0,0,0,0,0,0,0,.62,0,0,0],
-                 h:[-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,
-                    -.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26],
-                 t:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+            // 15 · Chrome Machine perc
+            15:{ k:[.78,0,0,.20,0,0,0,0,.72,0,.18,0,0,0,0,0, .78,0,0,.20,0,0,0,0,.72,0,.18,0,0,0,.20,0], s:[0,0,0,0,.56,0,0,.14,0,0,0,0,.54,0,0,.12, 0,0,0,0,.56,0,0,.16,0,0,0,0,.54,0,0,.12], h:[.30,.30,.30,.30,.30,.30,-.36,.30,.30,.30,.30,.30,.30,.30,-.36,.30, .30,.30,.30,.30,.30,.30,-.36,.30,.30,.30,.30,.30,.30,.30,-.36,.30], t:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+            // 36 · Psycho Groove perc
+            36:{ k:[.72,0,0,0,0,0,.24,0,.64,0,.24,0,0,0,0,0, .70,0,0,0,0,0,.22,0,.62,0,.22,0,0,0,.18,0], s:[0,0,0,0,.54,0,0,.10,0,0,0,0,.50,0,.08,0, 0,0,0,0,.52,0,0,.12,0,0,0,0,.50,0,.08,.10], h:[.26,.14,-.30,.14,.26,.14,-.30,.14,.26,.14,-.30,.14,.26,.14,-.30,.14, .26,.14,-.30,.14,.26,.14,-.30,.14,.26,.14,-.30,.14,.26,.14,-.30,.14], t:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
+            // 38 · Ghost Train perc
+            38:{ k:[.68,0,0,0,0,0,.20,0,.60,0,0,0,0,0,.18,0, .66,0,0,0,0,0,.18,0,.58,0,0,0,0,0,.16,0], s:[0,0,0,0,.60,0,0,0,0,0,0,0,.58,0,0,0, 0,0,0,0,.60,0,0,0,0,0,0,0,.58,0,0,.12], h:[0,.32,0,0,0,.32,0,0,0,.32,0,0,0,.32,0,0, 0,.32,0,0,0,.32,0,0,0,.32,0,0,0,.32,0,0], t:[.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0, .04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0,.04,0] },
+            // 40 · Hook Line & Sinker perc
+            40:{ k:[.74,0,0,0,0,0,0,0,.66,0,0,0,0,0,0,0, .72,0,0,0,0,0,0,0,.64,0,0,0,0,0,0,0], s:[0,0,.20,0,.68,0,.20,0,0,0,.20,0,.64,0,.20,0, 0,0,.22,0,.68,0,.20,0,0,0,.20,0,.64,0,.20,.14], h:[.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24, .24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24,.24], t:[.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06, .06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06,.06] },
+            // 46 · Purple Haze perc
+            46:{ k:[.76,0,0,0,0,0,.28,0,.66,0,0,0,0,0,.22,0, .74,0,0,0,0,0,.26,0,.64,0,0,0,0,0,.20,0], s:[0,0,0,0,.64,0,0,0,0,0,0,0,.62,0,0,0, 0,0,0,0,.64,0,0,0,0,0,0,0,.62,0,0,0], h:[-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26, -.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26,-.26], t:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] },
         };
         return R[style] || R[0];
     }
