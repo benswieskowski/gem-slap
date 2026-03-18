@@ -189,19 +189,19 @@ class Audio {
         this.musicOut.connect(this.ctx.destination);
 
         this.bassFilter = this.ctx.createBiquadFilter();
-        this.bassFilter.type = 'lowpass'; this.bassFilter.frequency.value = 500; this.bassFilter.Q.value = 0.7;
-        this.bassGain = this.ctx.createGain(); this.bassGain.gain.value = 0.44;
+        this.bassFilter.type = 'lowpass'; this.bassFilter.frequency.value = 900; this.bassFilter.Q.value = 0.8;
+        this.bassGain = this.ctx.createGain(); this.bassGain.gain.value = 0.75;
         this.bassFilter.connect(this.bassGain); this.bassGain.connect(this.musicOut);
 
-        this.drumGain = this.ctx.createGain(); this.drumGain.gain.value = 0.38;
+        this.drumGain = this.ctx.createGain(); this.drumGain.gain.value = 0.60;
         this.drumGain.connect(this.musicOut);
 
-        this.hihatGain = this.ctx.createGain(); this.hihatGain.gain.value = 0.26;
+        this.hihatGain = this.ctx.createGain(); this.hihatGain.gain.value = 0.40;
         this.hihatGain.connect(this.musicOut);
 
         this.chordFilter = this.ctx.createBiquadFilter();
-        this.chordFilter.type = 'lowpass'; this.chordFilter.frequency.value = 1500; this.chordFilter.Q.value = 0.7;
-        this.chordGain = this.ctx.createGain(); this.chordGain.gain.value = 0.38;
+        this.chordFilter.type = 'lowpass'; this.chordFilter.frequency.value = 3500; this.chordFilter.Q.value = 0.5;
+        this.chordGain = this.ctx.createGain(); this.chordGain.gain.value = 0.55;
         this.chordFilter.connect(this.chordGain); this.chordGain.connect(this.musicOut);
 
         this.texGain = this.ctx.createGain(); this.texGain.gain.value = 0.10;
@@ -635,20 +635,18 @@ class Audio {
         const g1 = this.ctx.createGain(); g1.gain.value = 0.45;
         osc.connect(g1); nodes.push(osc, g1);
         const oct = this.ctx.createOscillator(); oct.type = 'sine'; oct.frequency.value = freq * 2;
-        const g2 = this.ctx.createGain(); g2.gain.value = 0.3;
+        const g2 = this.ctx.createGain(); g2.gain.value = 0.28;
         oct.connect(g2); nodes.push(oct, g2);
-        const h3 = this.ctx.createOscillator(); h3.type = 'sine'; h3.frequency.value = freq * 3;
-        const g3 = this.ctx.createGain(); g3.gain.value = 0.12;
-        h3.connect(g3); nodes.push(h3, g3);
         const env = this.ctx.createGain();
         env.gain.setValueAtTime(0, t);
-        env.gain.linearRampToValueAtTime(velocity * 0.40, t + 0.04);
-        env.gain.setValueAtTime(velocity * 0.40, t + duration * 0.55);
+        env.gain.linearRampToValueAtTime(velocity * 0.38, t + 0.025);
+        env.gain.setValueAtTime(velocity * 0.38, t + duration * 0.55);
         env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        g1.connect(env); g2.connect(env); g3.connect(env);
+        g1.connect(env); g2.connect(env);
         env.connect(this.bassFilter);
         nodes.push(env);
-        [osc, oct, h3].forEach(o => { o.start(t); o.stop(t + dur); });
+        osc.start(t); osc.stop(t + dur);
+        oct.start(t); oct.stop(t + dur);
         this._scheduleCleanup(nodes, dur);
     }
 
@@ -656,170 +654,100 @@ class Audio {
         if (!this._canPlay()) return;
         const t = this._schedAt ?? this.ctx.currentTime;
         const osc = this.ctx.createOscillator(); osc.type = 'sine';
-        osc.frequency.setValueAtTime(55 + vel * 15, t);
-        osc.frequency.exponentialRampToValueAtTime(28, t + 0.2);
+        osc.frequency.setValueAtTime(120, t);
+        osc.frequency.exponentialRampToValueAtTime(40, t + 0.12);
         const env = this.ctx.createGain();
-        env.gain.setValueAtTime(0, t);
-        env.gain.linearRampToValueAtTime(vel * 0.6, t + 0.006);
-        env.gain.exponentialRampToValueAtTime(vel * 0.2, t + 0.08);
-        env.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+        env.gain.setValueAtTime(vel * 0.85, t);
+        env.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
         osc.connect(env); env.connect(this.drumGain);
-        const click = this.ctx.createOscillator(); click.type = 'triangle';
-        click.frequency.setValueAtTime(300 + vel * 60, t);
-        click.frequency.exponentialRampToValueAtTime(120, t + 0.025);
-        const clickEnv = this.ctx.createGain();
-        clickEnv.gain.setValueAtTime(vel * 0.35, t);
-        clickEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-        click.connect(clickEnv); clickEnv.connect(this.drumGain);
-        osc.start(t); osc.stop(t + 0.5);
-        click.start(t); click.stop(t + 0.06);
-        this._scheduleCleanup([osc, env, click, clickEnv], 0.5);
+        osc.start(t); osc.stop(t + 0.6);
+        this._scheduleCleanup([osc, env], 0.6);
     }
 
     tapeSnap(vel) {
         if (!this._canPlay()) return;
         const t = this._schedAt ?? this.ctx.currentTime;
-        const bufLen = Math.floor(this.ctx.sampleRate * 0.04);
-        const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
-        const ch = buf.getChannelData(0);
-        for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.2));
-        const noise = this.ctx.createBufferSource(); noise.buffer = buf;
-        const filt = this.ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 400; filt.Q.value = 0.8;
+        const dur = 0.20;
+        const buf = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * dur), this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+        const src2 = this.ctx.createBufferSource(); src2.buffer = buf;
+        const bp = this.ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = 0.7;
         const env = this.ctx.createGain();
-        env.gain.setValueAtTime(vel * 0.35, t);
-        env.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-        const body = this.ctx.createOscillator(); body.type = 'sine';
-        body.frequency.setValueAtTime(180, t); body.frequency.exponentialRampToValueAtTime(100, t + 0.02);
-        const bEnv = this.ctx.createGain();
-        bEnv.gain.setValueAtTime(vel * 0.12, t); bEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-        noise.connect(filt); filt.connect(env); env.connect(this.drumGain);
-        body.connect(bEnv); bEnv.connect(this.drumGain);
-        noise.start(t); noise.stop(t + 0.06); body.start(t); body.stop(t + 0.04);
-        this._scheduleCleanup([noise, filt, env, body, bEnv], 0.07);
+        env.gain.setValueAtTime(vel * 0.55, t);
+        env.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        src2.connect(bp); bp.connect(env); env.connect(this.drumGain);
+        src2.start(t); src2.stop(t + dur);
+        this._scheduleCleanup([src2, bp, env], dur);
     }
 
     hihat(vel, open = false) {
         if (!this._canPlay()) return;
         const t = this._schedAt ?? this.ctx.currentTime;
-        const dur = open ? 0.14 : 0.04;
-        const bufLen = Math.floor(this.ctx.sampleRate * dur);
+        const dur = open ? 0.22 : 0.05;
+        const bufLen = Math.floor(this.ctx.sampleRate * (open ? 0.27 : 0.08));
         const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
-        const ch = buf.getChannelData(0);
-        const decayRate = open ? 0.38 : 0.1;
-        for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * decayRate));
-        const noise = this.ctx.createBufferSource(); noise.buffer = buf;
-        const noiseFilt = this.ctx.createBiquadFilter();
-        noiseFilt.type = 'highpass';
-        noiseFilt.frequency.value = open ? 6000 : 8500;
-        noiseFilt.Q.value = 0.5;
-        const noiseEnv = this.ctx.createGain();
-        noiseEnv.gain.setValueAtTime(vel * 0.30, t);
-        noiseEnv.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        noise.connect(noiseFilt); noiseFilt.connect(noiseEnv); noiseEnv.connect(this.hihatGain);
-        const metal = this.ctx.createOscillator(); metal.type = 'square';
-        metal.frequency.value = open ? 3200 : 4800;
-        const metalFilt = this.ctx.createBiquadFilter();
-        metalFilt.type = 'bandpass';
-        metalFilt.frequency.value = open ? 3500 : 5200;
-        metalFilt.Q.value = 3.5;
-        const metalEnv = this.ctx.createGain();
-        metalEnv.gain.setValueAtTime(vel * 0.07, t);
-        metalEnv.gain.exponentialRampToValueAtTime(0.001, t + (open ? 0.06 : 0.015));
-        metal.connect(metalFilt); metalFilt.connect(metalEnv); metalEnv.connect(this.hihatGain);
-        const bright = this.ctx.createOscillator(); bright.type = 'sine';
-        bright.frequency.value = open ? 7800 : 10200;
-        const brightEnv = this.ctx.createGain();
-        brightEnv.gain.setValueAtTime(vel * 0.04, t);
-        brightEnv.gain.exponentialRampToValueAtTime(0.001, t + (open ? 0.04 : 0.01));
-        bright.connect(brightEnv); brightEnv.connect(this.hihatGain);
-        noise.start(t); noise.stop(t + dur + 0.01);
-        metal.start(t); metal.stop(t + (open ? 0.07 : 0.02));
-        bright.start(t); bright.stop(t + (open ? 0.05 : 0.015));
-        this._scheduleCleanup([noise, noiseFilt, noiseEnv, metal, metalFilt, metalEnv, bright, brightEnv], dur + 0.02);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+        const src2 = this.ctx.createBufferSource(); src2.buffer = buf;
+        const hp = this.ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 8000;
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(vel * 0.40, t);
+        env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        src2.connect(hp); hp.connect(env); env.connect(this.hihatGain);
+        src2.start(t); src2.stop(t + dur + 0.01);
+        this._scheduleCleanup([src2, hp, env], dur + 0.02);
     }
 
     texGrain(vel) {
         if (!this._canPlay()) return;
+        if (vel < 0.01) return;
         const t = this._schedAt ?? this.ctx.currentTime;
-        const bufLen = Math.floor(this.ctx.sampleRate * 0.1);
-        const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
-        const ch = buf.getChannelData(0);
-        for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.5));
-        const noise = this.ctx.createBufferSource(); noise.buffer = buf;
-        const filt = this.ctx.createBiquadFilter(); filt.type = 'bandpass'; filt.frequency.value = 500; filt.Q.value = 0.5;
+        const buf = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * 0.04), this.ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
+        const src2 = this.ctx.createBufferSource(); src2.buffer = buf;
         const env = this.ctx.createGain();
-        env.gain.setValueAtTime(0, t); env.gain.linearRampToValueAtTime(vel, t + 0.02);
-        env.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-        noise.connect(filt); filt.connect(env); env.connect(this.texGain);
-        noise.start(t); noise.stop(t + 0.12);
-        this._scheduleCleanup([noise, filt, env], 0.12);
+        env.gain.setValueAtTime(vel * 0.08, t);
+        env.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+        src2.connect(env); env.connect(this.texGain);
+        src2.start(t); src2.stop(t + 0.045);
+        this._scheduleCleanup([src2, env], 0.05);
     }
 
     warblePad(semitones, vel) {
         if (!this._canPlay()) return;
         const t = this._schedAt ?? this.ctx.currentTime;
-        const baseFreq = 130.81;
-        const dur = 2.0;
         const nodes = [];
-        const mixer = this.ctx.createGain(); mixer.gain.value = 1;
-        mixer.connect(this.chordFilter);
-        nodes.push(mixer);
         semitones.forEach(semi => {
-            const freq = baseFreq * Math.pow(2, semi / 12);
-            const o1 = this.ctx.createOscillator(); o1.type = 'triangle'; o1.frequency.value = freq;
-            const o2 = this.ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 1.005;
-            const o3 = this.ctx.createOscillator(); o3.type = 'sine'; o3.frequency.value = freq * 0.995;
-            const o4 = this.ctx.createOscillator(); o4.type = 'sine'; o4.frequency.value = freq * 2;
-            const noteVol = vel * 0.22 / Math.max(3, semitones.length);
-            const g = this.ctx.createGain();
-            g.gain.setValueAtTime(0, t);
-            g.gain.linearRampToValueAtTime(noteVol, t + 0.2);
-            g.gain.setValueAtTime(noteVol, t + dur * 0.5);
-            g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-            const g4 = this.ctx.createGain();
-            g4.gain.setValueAtTime(0, t);
-            g4.gain.linearRampToValueAtTime(noteVol * 0.35, t + 0.15);
-            g4.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.6);
-            o1.connect(g); o2.connect(g); o3.connect(g); g.connect(mixer);
-            o4.connect(g4); g4.connect(mixer);
-            [o1, o2, o3, o4].forEach(o => { o.start(t); o.stop(t + dur + 0.05); });
-            nodes.push(o1, o2, o3, o4, g, g4);
+            const osc = this.ctx.createOscillator(); osc.type = 'sine';
+            osc.frequency.value = 65.41 * Math.pow(2, semi / 12) * 2;
+            const env = this.ctx.createGain();
+            env.gain.setValueAtTime(0, t);
+            env.gain.linearRampToValueAtTime(vel * 0.12, t + 0.10);
+            env.gain.exponentialRampToValueAtTime(0.001, t + 0.80);
+            osc.connect(env); env.connect(this.chordGain);
+            osc.start(t); osc.stop(t + 0.85);
+            nodes.push(osc, env);
         });
-        this._scheduleCleanup(nodes, dur + 0.1);
+        this._scheduleCleanup(nodes, 0.86);
     }
 
     chordStab(semitones, vel) {
         if (!this._canPlay()) return;
         const t = this._schedAt ?? this.ctx.currentTime;
-        const baseFreq = 130.81;
-        const dur = 0.20;
         const nodes = [];
-        const mixer = this.ctx.createGain(); mixer.gain.value = 1;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass'; filter.frequency.value = 2400; filter.Q.value = 1.0;
-        mixer.connect(filter); filter.connect(this.chordGain);
-        nodes.push(mixer, filter);
         semitones.forEach(semi => {
-            const freq = baseFreq * Math.pow(2, semi / 12);
-            const o1 = this.ctx.createOscillator(); o1.type = 'triangle'; o1.frequency.value = freq;
-            const o2 = this.ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = freq * 2;
-            const noteVol = vel * 0.28 / Math.max(3, semitones.length);
-            const g = this.ctx.createGain();
-            g.gain.setValueAtTime(0, t);
-            g.gain.linearRampToValueAtTime(noteVol, t + 0.005);
-            g.gain.exponentialRampToValueAtTime(noteVol * 0.25, t + 0.06);
-            g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-            const g2 = this.ctx.createGain();
-            g2.gain.setValueAtTime(0, t);
-            g2.gain.linearRampToValueAtTime(noteVol * 0.22, t + 0.003);
-            g2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.5);
-            o1.connect(g); g.connect(mixer);
-            o2.connect(g2); g2.connect(mixer);
-            o1.start(t); o1.stop(t + dur + 0.05);
-            o2.start(t); o2.stop(t + dur * 0.5 + 0.05);
-            nodes.push(o1, o2, g, g2);
+            const osc = this.ctx.createOscillator(); osc.type = 'square';
+            osc.frequency.value = 65.41 * Math.pow(2, semi / 12) * 4;
+            const env = this.ctx.createGain();
+            env.gain.setValueAtTime(vel * 0.08, t);
+            env.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+            osc.connect(env); env.connect(this.chordGain);
+            osc.start(t); osc.stop(t + 0.20);
+            nodes.push(osc, env);
         });
-        this._scheduleCleanup(nodes, dur + 0.1);
+        this._scheduleCleanup(nodes, 0.21);
     }
 
     playBass(step) { this.playStep(step); }
