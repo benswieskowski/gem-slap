@@ -243,12 +243,7 @@ BASS_STYLES = {
     7: {'name': 'Dawnbreak', 'bpm': 120},
     8: {'name': 'Prism', 'bpm': 128},
     9: {'name': 'Neon Pulse', 'bpm': 118},
-    10: {'name': 'Chrome Machine', 'bpm': 122},
-    11: {'name': 'Psycho Groove', 'bpm': 125},
-    12: {'name': 'Ghost Train', 'bpm': 132},
-    13: {'name': 'Hook Line & Sinker', 'bpm': 116},
-    14: {'name': 'Purple Haze', 'bpm': 132},
 }
 
 # BPM arc: 110→118→124→130→128→138→132→126→120→108
-STYLE_ORDER = [5,9,6,2,8,3,4,1,7,0,11,10,12,13,14]
+STYLE_ORDER = [5,9,6,2,8,3,4,1,7,0]
