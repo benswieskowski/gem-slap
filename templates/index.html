@@ -1949,9 +1949,12 @@
     function trySpawnNext() {
         const inFlight = state._spawnStaggerPending || 0;
         const liveOrbs = state.orbs.filter(o => !o.hit).length;
-        if (liveOrbs + inFlight >= state.visibleAtOnce) return;
+        const slots = state.visibleAtOnce - liveOrbs - inFlight;
+        if (slots <= 0) return;
         const unspawned = state.allOrbs.filter(o => !o.spawned);
-        if (unspawned.length > 0) spawnOrb(unspawned[0]);
+        for (let i = 0; i < Math.min(slots, unspawned.length); i++) {
+            spawnOrb(unspawned[i]);
+        }
     }
 
     async function startGame() {
