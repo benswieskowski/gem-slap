@@ -243,6 +243,11 @@ BASS_STYLES = {
     12: {'name': 'Dawnbreak',        'bpm': 120},
     13: {'name': 'Prism',            'bpm': 128},
     14: {'name': 'Neon Pulse',       'bpm': 118},
+    15: {'name': 'Chrome Machine',   'bpm': 122},  # Daft Punk: filtered 4-on-floor, French house
+    36: {'name': 'Psycho Groove',    'bpm': 125},  # Talking Heads: nervous repeating figures, angular
+    38: {'name': 'Ghost Train',      'bpm': 132},  # Ska: upbeat hihat pattern, walking chromatic bass
+    40: {'name': 'Hook, Line & Sinker','bpm': 116}, # Motown / Jamerson: 16th-note melodic bass, thunder snare
+    46: {'name': 'Purple Haze',       'bpm': 132},  # Prince / Minneapolis: all-open LinnDrum shimmer
 }
 
 # BPM arc: 110→118→124→130→128→138→132→126→120→108
