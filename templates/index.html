@@ -48,8 +48,9 @@
 
         .footer { position: absolute; bottom: 0; left: 0; right: 0; height: calc(36px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 510; }
         .footer-timer { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); font-size: 0.9rem; font-weight: 400; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.5); line-height: 1; pointer-events: none; }
-        .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; }
+        .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; opacity: 0; }
         .beat-dot.active { background: rgba(255,255,255,0.7); transform: scale(1.4); }
+        .game-started .beat-dot { opacity: 1; transition: opacity 0.3s ease, background 0.06s ease, transform 0.06s ease; }
         .mute-btn { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 1px); width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
         .mute-btn:hover { background: rgba(255,255,255,0.1); }
         .mute-btn.muted { opacity: 0.3; }
@@ -1963,6 +1964,7 @@
         introState.running = false;
         await audio.init(); resize();
         $('start-screen').classList.add('hidden');
+        document.querySelector('.game-wrap').classList.add('game-started');
         document.getElementById('intro-menu-btn').style.display = 'none';
         // Mark game as started: reveals timer/mute, hides legal links (intro-only)
         document.querySelector('.game-wrap').classList.add('started');
