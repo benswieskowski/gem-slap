@@ -49,7 +49,7 @@
           check: p => !!(p.achFlags||{}).lastCrystal },
 
         // ── COMPLETIONIST ────────────────────────────────────────────────────
-        { id: 'cartographer',    icon: '🗺️', name: 'Cartographer',       desc: 'Complete all 50 levels',
+        { id: 'cartographer',    icon: '🗺️', name: 'Cartographer',       desc: 'Unlock all 50 levels',
           check: p => (p.highestLevel||0) >= 50,
           progress: p => ({ val: Math.min(p.highestLevel||0, 50), max: 50 }) },
         { id: 'bronze_age',      icon: '🥉', name: 'Bronze Age',          desc: 'Bronze or better on every level',
