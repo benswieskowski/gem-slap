@@ -61,8 +61,6 @@
 
         .footer { position: absolute; bottom: 0; left: 0; right: 0; height: calc(36px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 510; }
         .footer-timer { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); font-size: 0.9rem; font-weight: 400; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.5); line-height: 1; pointer-events: none; }
-        .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; }
-        .beat-dot.active { background: rgba(255,255,255,0.7); transform: scale(1.4); }
         .mute-btn { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 1px); width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
         .mute-btn:hover { background: rgba(255,255,255,0.1); }
         .mute-btn.muted { opacity: 0.3; }
@@ -903,7 +901,6 @@
 
         <div class="footer">
             <div class="footer-timer" id="h-time">0.0s</div>
-            <div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div>
             <div class="legal-links">
                 <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy</a>
                 <span class="legal-sep">·</span>
@@ -1131,7 +1128,6 @@
     //  PARTICLES & EFFECTS
     // ═══════════════════════════════════════
     let motes = [], bursts = [], crystalShards = [], energyMotes = [], crystalDust = [];
-    const _beatDots = Array.from(document.querySelectorAll('.beat-dot'));
 
     const SHOCK_RADIUS = 38;
     const SHOCK_STRENGTH = 10.0;
@@ -1420,13 +1416,6 @@
                 }
                 ctx.restore();
             });
-        }
-
-        if (state.playing && state.measureMs > 0) {
-            const beatMs = state.measureMs / 4;
-            const since = ((now - state.beatTime) % state.measureMs + state.measureMs) % state.measureMs;
-            const curBeat = Math.floor(since / beatMs), beatProgress = (since % beatMs) / beatMs;
-            _beatDots.forEach((d, i) => d.classList.toggle('active', i === curBeat && beatProgress < 0.15));
         }
 
         ctx.restore();
