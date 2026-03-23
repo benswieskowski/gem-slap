@@ -442,6 +442,7 @@
             if (!wasUnlocked && nowUnlocked) {
                 _toastQueue.push(ach);
                 newlyEarned[ach.id] = true;
+                try { gtag('event', 'achievement', { achievement_id: ach.id, achievement_name: ach.name }); } catch(e) {}
             }
         });
 
