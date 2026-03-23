@@ -1,7 +1,7 @@
 """
 Gem Slap - A Rhythm Game
 """
-from flask import Flask, render_template, jsonify, send_from_directory, make_response
+from flask import Flask, render_template, jsonify, send_from_directory, make_response, request, redirect
 import random, math, os
 
 from game_data import (
@@ -14,6 +14,14 @@ from game_data import (
 )
 
 app = Flask(__name__)
+
+@app.before_request
+def redirect_www():
+    if request.host.startswith('www.'):
+        return redirect(
+            request.url.replace('://www.', '://', 1),
+            code=301
+        )
 
 @app.after_request
 def add_header(response):
@@ -32,6 +40,15 @@ def service_worker():
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Service-Worker-Allowed'] = '/'
     return response
+
+
+# ── Favicon from root path ─────────────────────────────────────────────────────
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'), 'favicon.ico',
+        mimetype='image/vnd.microsoft.icon'
+    )
 
 
 # ── Legal pages ────────────────────────────────────────────────────────────────
