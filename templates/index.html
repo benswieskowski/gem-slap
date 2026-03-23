@@ -43,7 +43,8 @@
         .game-wrap { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 100%; background: #050508; overflow: hidden; }
         @media (min-width: 520px) and (min-height: 600px) { .game-wrap { top: 50%; transform: translate(-50%, -50%); height: 90%; max-height: 850px; border-radius: 1.2rem; border: 1px solid rgba(255,255,255,0.06); } }
 
-        .header { position: absolute; top: 0; left: 0; right: 0; height: 52px; padding-top: env(safe-area-inset-top, 0px); z-index: 100; display: flex; align-items: center; justify-content: space-between; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
+        .header { position: absolute; top: 0; left: 0; right: 0; height: 52px; padding-top: env(safe-area-inset-top, 0px); z-index: 100; display: none; align-items: center; justify-content: space-between; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); }
+        .game-wrap.started .header { display: flex; }
         .h-section { display: flex; flex-direction: column; min-width: 50px; }
         .h-section.left { align-items: flex-start; }
         .h-section.center { align-items: center; flex: 1; }
@@ -71,7 +72,8 @@
         .tier-pill.silver { color: #4ECDC4; background: rgba(78,205,196,0.1); border-color: rgba(78,205,196,0.2); }
         .tier-pill.gold { color: #F9DB6D; background: rgba(249,219,109,0.1); border-color: rgba(249,219,109,0.2); }
 
-        .prog-bar { position: absolute; top: calc(52px + env(safe-area-inset-top, 0px)); left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.04); z-index: 100; }
+        .prog-bar { position: absolute; top: calc(52px + env(safe-area-inset-top, 0px)); left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.04); z-index: 100; display: none; }
+        .game-wrap.started .prog-bar { display: block; }
         .prog-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #1B6B9C, #4DA8DA, #8EEAF4); transition: width 0.3s ease-out; }
 
         #canvas { position: absolute; }
