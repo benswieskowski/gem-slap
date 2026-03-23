@@ -23,7 +23,7 @@
         .h-val .orbs-critical { color: #C41E3A; animation: orb-warn 0.6s ease-in-out infinite alternate; }
         @keyframes orb-warn { 0% { opacity: 0.7; } 100% { opacity: 1; } }
 
-        .h-lbl { font-size: 0.52rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.45; }
+        .h-lbl { font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.5; }
 
         .gs-logo {
             font-size: clamp(1.05rem, 4.6vw, 1.28rem); font-weight: 800;
@@ -48,22 +48,18 @@
 
         .footer { position: absolute; bottom: 0; left: 0; right: 0; height: calc(36px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 510; }
         .footer-timer { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); font-size: 0.9rem; font-weight: 400; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.5); line-height: 1; pointer-events: none; }
-        .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; opacity: 0; }
+        .beat-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.06s ease; }
         .beat-dot.active { background: rgba(255,255,255,0.7); transform: scale(1.4); }
-        .game-started .beat-dot { opacity: 1; transition: opacity 0.3s ease, background 0.06s ease, transform 0.06s ease; }
         .mute-btn { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 1px); width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.82rem; cursor: pointer; z-index: 101; display: flex; align-items: center; justify-content: center; }
         .mute-btn:hover { background: rgba(255,255,255,0.1); }
         .mute-btn.muted { opacity: 0.3; }
 
-        /* ── Footer visibility: timer/mute hidden on intro, shown in-game.
-           Legal links shown on intro only, hidden once game starts (.started). */
         .footer-timer { display: none; }
         .mute-btn     { display: none; }
         .game-wrap.started .footer-timer { display: block; }
         .game-wrap.started .mute-btn     { display: flex; }
         .game-wrap.started .legal-links  { display: none; }
 
-        /* Legal links — intro screen only, readable contrast */
         .legal-links { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 9px); display: flex; gap: 0.8rem; align-items: center; z-index: 101; pointer-events: auto; }
         .legal-link { font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.5); text-decoration: none; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: color 0.2s; padding: 4px 6px; }
         .legal-link:hover { color: rgba(255,255,255,0.85); }
@@ -283,12 +279,12 @@
             margin-bottom: 0.2rem;
         }
         .ef-fail-crys-label {
-            font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase;
-            color: rgba(255,255,255,0.2);
+            font-size: 0.58rem; letter-spacing: 0.18em; text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
         }
         .ef-fail-msg {
             display: none;
-            font-size: 0.62rem; color: rgba(255,255,255,0.32);
+            font-size: 0.66rem; color: rgba(255,255,255,0.48);
             letter-spacing: 0.06em; margin-bottom: 0.85rem;
             text-align: center; line-height: 1.5;
         }
@@ -323,8 +319,8 @@
         }
 
         .ef-pb {
-            font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase;
-            color: rgba(255,255,255,0.28); margin-bottom: 0.55rem;
+            font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase;
+            color: rgba(255,255,255,0.42); margin-bottom: 0.55rem;
             display: flex; align-items: center; gap: 0.4rem;
             min-height: 1em;
         }
@@ -418,7 +414,7 @@
         .ec-tier.c-gold { color: #F9DB6D; } .ec-tier.c-silver { color: #4ECDC4; } .ec-tier.c-bronze { color: #7EC8F0; }
         .ec-tier.c-none { color: rgba(255,255,255,0.2); } .ec-tier.c-fail { color: rgba(255,255,255,0.15); }
 
-        .ec-msg { font-size: 0.62rem; opacity: 0.35; letter-spacing: 0.05em; margin-bottom: 1rem; }
+        .ec-msg { font-size: 0.66rem; opacity: 0.5; letter-spacing: 0.05em; margin-bottom: 1rem; }
 
         .ec-row { display: flex; width: 100%; margin-bottom: 1rem; background: rgba(255,255,255,0.015); border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.03); overflow: hidden; }
         .ec-cell { flex: 1; text-align: center; padding: 0.5rem 0.2rem; }
@@ -426,7 +422,7 @@
 
         .ec-val { font-size: 0.88rem; font-weight: 300; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.7); }
         .ec-val.crystal { color: #7EC8F0; }
-        .ec-lbl { font-size: 0.48rem; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.3; margin-top: 0.12rem; }
+        .ec-lbl { font-size: 0.56rem; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.45; margin-top: 0.12rem; }
 
         .ec-melody { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; margin-bottom: 0.5rem; max-width: 220px; min-height: 6px; }
         .ec-melody .mdot { width: 4px; height: 4px; border-radius: 50%; }
@@ -594,9 +590,9 @@
             flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.06);
         }
         .menu-tab {
-            flex: 1; padding: 0.5rem 0.3rem; font-size: 0.6rem; font-weight: 600;
+            flex: 1; padding: 0.5rem 0.3rem; font-size: 0.64rem; font-weight: 600;
             letter-spacing: 0.14em; text-transform: uppercase;
-            color: rgba(255,255,255,0.3); background: transparent; border: none;
+            color: rgba(255,255,255,0.45); background: transparent; border: none;
             cursor: pointer; border-bottom: 2px solid transparent;
             transition: color 0.2s, border-color 0.2s;
             -webkit-tap-highlight-color: transparent;
@@ -613,8 +609,8 @@
         .menu-pane.active { display: block; }
 
         .mpane-label {
-            font-size: 0.48rem; letter-spacing: 0.22em; text-transform: uppercase;
-            color: rgba(255,255,255,0.25); margin-bottom: 0.7rem; margin-top: 1.1rem;
+            font-size: 0.58rem; letter-spacing: 0.22em; text-transform: uppercase;
+            color: rgba(255,255,255,0.45); margin-bottom: 0.7rem; margin-top: 1.1rem;
         }
         .mpane-label:first-child { margin-top: 0; }
 
@@ -626,7 +622,7 @@
             font-size: 3rem; font-weight: 100; line-height: 1;
             color: rgba(255,255,255,0.9); font-variant-numeric: tabular-nums;
         }
-        .mp-level-lbl { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.3); }
+        .mp-level-lbl { font-size: 0.64rem; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
 
         .medal-grid {
             display: grid; grid-template-columns: repeat(10, 1fr);
@@ -642,8 +638,8 @@
         .medal-emoji.cleared { opacity: 0.18; font-size: 0.6rem; }
         .medal-emoji.locked  { opacity: 0.07; font-size: 0.5rem; }
         .medal-batch-label {
-            font-size: 0.42rem; letter-spacing: 0.14em; text-transform: uppercase;
-            color: rgba(255,255,255,0.2); margin-bottom: 0.35rem; margin-top: 0.7rem;
+            font-size: 0.52rem; letter-spacing: 0.14em; text-transform: uppercase;
+            color: rgba(255,255,255,0.4); margin-bottom: 0.35rem; margin-top: 0.7rem;
         }
         .medal-batch-label:first-child { margin-top: 0; }
 
@@ -658,7 +654,7 @@
             font-size: 1.4rem; font-weight: 200; color: rgba(255,255,255,0.9);
             font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 0.25rem;
         }
-        .stat-lbl { font-size: 0.48rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.3); }
+        .stat-lbl { font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.45); }
 
         .ach-list { display: flex; flex-direction: column; gap: 0.6rem; }
         .ach-item {
@@ -673,8 +669,8 @@
             font-size: 1.2rem; width: 2rem; text-align: center; flex-shrink: 0;
         }
         .ach-text { flex: 1; }
-        .ach-name { font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.88); margin-bottom: 0.15rem; }
-        .ach-desc { font-size: 0.54rem; letter-spacing: 0.06em; color: rgba(255,255,255,0.35); }
+        .ach-name { font-size: 0.76rem; font-weight: 600; color: rgba(255,255,255,0.9); margin-bottom: 0.15rem; }
+        .ach-desc { font-size: 0.62rem; letter-spacing: 0.06em; color: rgba(255,255,255,0.5); }
         .ach-check {
             font-size: 0.9rem; color: rgba(192,132,252,0.8); flex-shrink: 0;
             opacity: 0; transition: opacity 0.3s;
@@ -692,7 +688,7 @@
             transition: width 0.4s ease;
         }
         .ach-progress-label {
-            font-size: 0.48rem; color: rgba(255,255,255,0.3);
+            font-size: 0.56rem; color: rgba(255,255,255,0.45);
             letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
         }
 
@@ -763,8 +759,8 @@
 
         .ls-batch-label {
             position: sticky; top: 0;
-            font-size: 0.44rem; letter-spacing: 0.2em; text-transform: uppercase;
-            color: rgba(255,255,255,0.25);
+            font-size: 0.54rem; letter-spacing: 0.2em; text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
             padding: 0.7rem 0 0.4rem;
             background: rgba(4,3,14,0.98);
             z-index: 2;
@@ -789,8 +785,8 @@
             display: flex; align-items: flex-start; justify-content: space-between;
         }
         .ls-card-num {
-            font-size: 0.56rem; font-weight: 600; letter-spacing: 0.1em;
-            color: rgba(255,255,255,0.28); line-height: 1;
+            font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.45); line-height: 1;
         }
         .ls-medal-icon { font-size: 0.9rem; line-height: 1; flex-shrink: 0; }
         .ls-medal-dot {
@@ -801,7 +797,7 @@
         .ls-medal-dot.locked  { background: rgba(255,255,255,0.05); }
 
         .ls-card-name {
-            font-size: 0.66rem; font-weight: 600; color: rgba(255,255,255,0.82);
+            font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.85);
             line-height: 1.25; flex: 1;
             overflow: hidden; display: -webkit-box;
             -webkit-line-clamp: 2; -webkit-box-orient: vertical;
@@ -809,8 +805,8 @@
         .ls-card-name.unknown { color: rgba(255,255,255,0.25); font-style: italic; font-weight: 400; }
 
         .ls-card-time {
-            font-size: 0.52rem; font-variant-numeric: tabular-nums;
-            color: rgba(255,255,255,0.35); text-align: right; line-height: 1;
+            font-size: 0.58rem; font-variant-numeric: tabular-nums;
+            color: rgba(255,255,255,0.45); text-align: right; line-height: 1;
             margin-top: auto;
         }
         .ls-card-time.gold   { color: rgba(249,219,109,0.7); }
@@ -858,7 +854,7 @@
             margin-bottom: 0.2rem;
         }
         .ls-footer-meta {
-            font-size: 0.56rem; color: rgba(255,255,255,0.4);
+            font-size: 0.62rem; color: rgba(255,255,255,0.5);
             letter-spacing: 0.06em;
         }
         .ls-play-btn {
@@ -892,7 +888,6 @@
         <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
         <canvas id="canvas"></canvas>
 
-        <!-- PATCH 2: Footer with legal links -->
         <div class="footer">
             <div class="footer-timer" id="h-time">0.0s</div>
             <div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div><div class="beat-dot"></div>
@@ -1613,7 +1608,6 @@
     $('start-screen').addEventListener('click', () => { audio.unlock(); if (!state.started) startGame(); });
     $('play-btn').addEventListener('click', (e) => { e.stopPropagation(); audio.unlock(); if (!state.started) startGame(); });
 
-    // PATCH 3: Stop legal link clicks from bubbling up to start-screen
     document.querySelectorAll('.legal-link').forEach(link => {
         link.addEventListener('click', e => e.stopPropagation());
         link.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
@@ -1837,7 +1831,6 @@
     //  GAME FLOW
     // ═══════════════════════════════════════
 
-    // 5-track rotation: Fourside → Dawnbreak → Prism → Bright Flash → Makou Energy
     const STYLE_ORDER = [5,9,6,2,8,3,4,1,7,0];
 
     function prefetchLevels(fromLevel) {
@@ -1861,7 +1854,6 @@
             shockwaves = []; crystalShards = []; energyMotes = []; crystalDust = []; bursts = [];
             screenShake.intensity = 0;
 
-            // 5-track rotation: Fourside → Dawnbreak → Prism → Bright Flash → Makou Energy
             const bassParam = state.favBassStyle !== null ? state.favBassStyle : STYLE_ORDER[(n - 1) % 10];
             const url = `/api/level/${n}/bass/${bassParam}`;
             const res = await fetch(url);
@@ -1964,9 +1956,7 @@
         introState.running = false;
         await audio.init(); resize();
         $('start-screen').classList.add('hidden');
-        document.querySelector('.game-wrap').classList.add('game-started');
         document.getElementById('intro-menu-btn').style.display = 'none';
-        // Mark game as started: reveals timer/mute, hides legal links (intro-only)
         document.querySelector('.game-wrap').classList.add('started');
         const p = loadProgress();
         const today = new Date().toISOString().slice(0,10);
