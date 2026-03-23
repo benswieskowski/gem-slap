@@ -10,6 +10,23 @@
 
       gtag('config', 'G-NQ4B3MYSZX');
     </script>
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '4037985246440927');
+    fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=4037985246440927&ev=PageView&noscript=1"
+    /></noscript>
+    <!-- End Meta Pixel Code -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1095,6 +1112,20 @@
     }
 
     // ═══════════════════════════════════════
+    //  ANALYTICS & AD TRACKING
+    // ═══════════════════════════════════════
+    function trackOnce(key, gaName, gaParams, metaEvent, metaParams) {
+        const p = loadProgress();
+        const fired = p.firedPixels || {};
+        if (fired[key]) return false;
+        fired[key] = true;
+        saveProgress({ firedPixels: fired });
+        try { gtag('event', gaName, gaParams || {}); } catch(e) {}
+        if (metaEvent) { try { fbq('track', metaEvent, metaParams || {}); } catch(e) {} }
+        return true;
+    }
+
+    // ═══════════════════════════════════════
     //  DOM & CANVAS SETUP
     // ═══════════════════════════════════════
     const $ = id => document.getElementById(id);
@@ -1965,6 +1996,12 @@
         const days = p.daysPlayed || [];
         if (!days.includes(today)) days.push(today);
         saveProgress({ sessions: (p.sessions||0) + 1, daysPlayed: days, sessionClears: 0, sessionGolds: 0 });
+
+        // ── Tracking ──
+        try { gtag('event', 'game_start'); } catch(e) {}
+        trackOnce('lead', 'game_start_first', {}, 'Lead');
+        if (days.length > 1) { try { gtag('event', 'return_session', { days_played: days.length }); } catch(e) {} }
+
         const resumeLevel = Math.max(1, p.resumeLevel || p.highestLevel || 1);
         await loadLevel(resumeLevel); startCountdown();
     }
@@ -2071,6 +2108,13 @@
             checkAndToastAchievements(_lp, loadProgress());
         }
 
+        // ── Tracking ──
+        try { gtag('event', 'level_complete', { level: state.level, tier, time: Math.round(time * 10) / 10, pattern_name: state.patternName }); } catch(e) {}
+        trackOnce('first_clear', 'first_level_complete', { level: state.level }, 'ViewContent', { content_name: state.patternName, content_id: String(state.level) });
+        if ((loadProgress().highestLevel || 0) >= 5) {
+            trackOnce('retained', 'milestone', { level: 5 }, 'CompleteRegistration');
+        }
+
         const card = $('ef-card');
         card.className = `ef-card tier-${tier}`;
         $('ef-level').innerHTML = levelLabel('end');
@@ -2122,6 +2166,7 @@
         $('ef-fail-crys-val').textContent = `${broken}/${total}`;
         $('ef-fail-msg').textContent = msg;
         audio.fail();
+        try { gtag('event', 'level_fail', { level: state.level, crystals_broken: broken, crystals_total: total }); } catch(e) {}
         $('end-float').classList.add('show');
     }
 
