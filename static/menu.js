@@ -123,19 +123,20 @@
 
     function getMenuProgress() { return loadProgress(); }
 
-    const BATCH_NAMES = ['Awakening','Emergence','Ascension','Transcendence','Infinity','Revelation','Zenith','Eclipse','Nexus','Apex'];
+    function batchRangeLabel(batch) {
+        return `Levels ${batch * 10 + 1} – ${batch * 10 + 10}`;
+    }
 
     function buildMedalGrid(p) {
         const container = document.getElementById('mp-medal-grid');
         container.innerHTML = '';
         const highest = p.highestLevel || 1;
         const tiers = p.bestTiers || {};
-        // Show up to highest level reached + a few locked, grouped in batches of 10
         const showUpTo = Math.ceil(highest / 10) * 10;
         for (let batch = 0; batch < Math.ceil(showUpTo / 10); batch++) {
             const lbl = document.createElement('div');
             lbl.className = 'medal-batch-label';
-            lbl.textContent = BATCH_NAMES[batch] || `Batch ${batch+1}`;
+            lbl.textContent = batchRangeLabel(batch);
             container.appendChild(lbl);
             const grid = document.createElement('div');
             grid.className = 'medal-grid';
@@ -187,7 +188,6 @@
             const item = document.createElement('div');
             item.className = `ach-item${unlocked ? '' : ' locked'}`;
 
-            // Build progress bar HTML for locked countable achievements
             let progressHtml = '';
             if (!unlocked && ach.progress) {
                 const { val, max, suffix } = ach.progress(p);
@@ -222,7 +222,6 @@
         buildAchievements(p);
         document.getElementById('menu-overlay').classList.add('show');
         document.getElementById('menu-panel').classList.add('show');
-        // (level select button needs no reset state)
     }
 
     function closeMenu() {
@@ -230,7 +229,6 @@
         document.getElementById('menu-panel').classList.remove('show');
     }
 
-    // Tab switching
     document.querySelectorAll('.menu-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
@@ -240,7 +238,6 @@
         });
     });
 
-    // Open via menu button (upper right) or logo tap
     function toggleMenu() {
         if (document.getElementById('menu-panel').classList.contains('show')) closeMenu();
         else openMenu();
@@ -249,7 +246,6 @@
     document.getElementById('intro-menu-btn').addEventListener('click', () => { toggleMenu(); });
     document.getElementById('gs-logo').addEventListener('click', toggleMenu);
 
-    // Close via overlay or X
     document.getElementById('menu-overlay').addEventListener('click', closeMenu);
     document.getElementById('menu-close').addEventListener('click', closeMenu);
 
@@ -265,14 +261,11 @@
         const panel  = document.getElementById('ls-panel');
         const footer = document.getElementById('ls-footer');
         const overlay = document.getElementById('ls-overlay');
-        // Reset
         footer.classList.remove('show');
         document.getElementById('ls-scroll').innerHTML = '';
         buildLevelSelect();
-        // Step 1: make display:flex (via .animating) so transition can play
         panel.classList.add('animating');
         overlay.classList.add('show');
-        // Step 2: on next frame, add .show to trigger the slide-up transition
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 panel.classList.add('show');
@@ -288,9 +281,7 @@
         const overlay = document.getElementById('ls-overlay');
         footer.classList.remove('show');
         overlay.classList.remove('show');
-        panel.classList.remove('show'); // triggers slide-down transition
-        // Remove any previously-registered cleanup listener before adding the new one
-        // (prevents stacking up if closeLevelSelect is called multiple times rapidly)
+        panel.classList.remove('show');
         if (panel._lsCleanupFn) {
             panel.removeEventListener('transitionend', panel._lsCleanupFn);
             panel._lsCleanupFn = null;
@@ -303,17 +294,14 @@
         };
         panel._lsCleanupFn = cleanup;
         panel.addEventListener('transitionend', cleanup);
-        // Safety fallback in case transitionend doesn't fire (e.g. tab hidden)
         setTimeout(cleanup, 500);
     }
 
     function selectLsCard(lvl, cardEl) {
-        // Deselect previous
         document.querySelectorAll('.ls-card.selected').forEach(c => c.classList.remove('selected'));
         _lsSelectedLevel = lvl;
         cardEl.classList.add('selected');
 
-        // Populate footer
         const p = loadProgress();
         const name  = (p.levelNames || {})[lvl] || `Level ${lvl}`;
         const tier  = (p.bestTiers || {})[lvl] || null;
@@ -343,7 +331,7 @@
         for (let batch = 0; batch < Math.ceil(showUpTo / 10); batch++) {
             const lbl = document.createElement('div');
             lbl.className = 'ls-batch-label';
-            lbl.textContent = BATCH_NAMES[batch] || `Batch ${batch + 1}`;
+            lbl.textContent = batchRangeLabel(batch);
             scroll.appendChild(lbl);
 
             const grid = document.createElement('div');
@@ -363,7 +351,6 @@
                     ;
                 card.dataset.level = lvl;
 
-                // Medal indicator: emoji or dim dot
                 const medalEl = medal
                     ? `<span class="ls-medal-icon">${medal}</span>`
                     : `<span class="ls-medal-dot ${locked ? 'locked' : (tier === 'none' || !tier) ? 'cleared' : ''}"></span>`;
@@ -384,7 +371,6 @@
             scroll.appendChild(grid);
         }
 
-        // Reset button at very bottom
         const resetWrap = document.createElement('div');
         resetWrap.className = 'ls-reset-wrap';
         const resetBtn = document.createElement('button');
@@ -404,8 +390,6 @@
             } else {
                 clearTimeout(this._confirmTimer);
                 try { localStorage.removeItem('gs_progress'); } catch {}
-                // resetGameUI first — kills ls-panel display:none immediately,
-                // no race with the close animation
                 resetGameUI();
                 closeLevelSelect(); closeMenu();
                 setTimeout(async () => { await loadLevel(1); startCountdown(); }, 50);
@@ -415,7 +399,6 @@
         scroll.appendChild(resetWrap);
     }
 
-    // Play button — handles both: game already running, and launching from home screen
     document.getElementById('ls-play-btn').addEventListener('click', async () => {
         if (!_lsSelectedLevel) return;
         const lvl = _lsSelectedLevel;
@@ -424,7 +407,6 @@
         closeMenu();
         if (state.started) resetGameUI();
         if (!state.started) {
-            // Game hasn't started yet — full startup path
             state.started = true;
             introState.running = false;
             await audio.init();
@@ -444,30 +426,17 @@
 
     // ═══════════════════════════════════════════════════════════════════════
     //  ACHIEVEMENT TOAST SYSTEM
-    //
-    //  checkAndToastAchievements(prevP, newP)
-    //    Called after every saveProgress in showFloatingEnd.
-    //    Diffs the two snapshots to find achievements that flipped from
-    //    locked → unlocked in this exact save, then queues them.
-    //
-    //  Queue: multiple achievements can unlock simultaneously (e.g. Hat Trick
-    //    + Golden Touch on the same gold). They show one at a time, 600ms apart.
     // ═══════════════════════════════════════════════════════════════════════
 
     const _toastQueue  = [];
     let   _toastActive = false;
 
     function checkAndToastAchievements(prevP, newP) {
-        // earnedAchievements is the permanent record of every achievement
-        // that has ever fired. Once an id is in here it never fires again,
-        // regardless of whether the underlying check value fluctuates
-        // (e.g. goldStreak resets to 0 then rises to 3 again — Hat Trick
-        // should only ever fire once).
         const alreadyEarned = newP.earnedAchievements || {};
         const newlyEarned   = {};
 
         ACHIEVEMENTS.forEach(ach => {
-            if (alreadyEarned[ach.id]) return;   // already earned — never re-fire
+            if (alreadyEarned[ach.id]) return;
             const wasUnlocked = ach.check(prevP);
             const nowUnlocked = ach.check(newP);
             if (!wasUnlocked && nowUnlocked) {
@@ -476,7 +445,6 @@
             }
         });
 
-        // Persist immediately so a rapid double-call can't re-queue the same ach
         if (Object.keys(newlyEarned).length > 0) {
             saveProgress({ earnedAchievements: { ...alreadyEarned, ...newlyEarned } });
         }
@@ -489,7 +457,6 @@
         _toastActive = true;
         const ach = _toastQueue.shift();
         _showToast(ach, () => {
-            // 600ms gap between consecutive toasts
             setTimeout(_drainToastQueue, 600);
         });
     }
@@ -501,29 +468,23 @@
         const desc  = document.getElementById('ach-toast-desc');
         if (!el) { onDone(); return; }
 
-        // Populate
         icon.textContent = ach.icon;
         name.textContent = ach.name;
         desc.textContent = ach.desc;
 
-        // Reset to hidden state instantly (no transition), then trigger show
         el.classList.remove('show', 'hide');
         el.style.transition = 'none';
-        // Force reflow so removing classes takes effect before we add 'show'
         void el.offsetHeight;
         el.style.transition = '';
 
-        // Drop in
         requestAnimationFrame(() => {
             el.classList.add('show');
         });
 
-        // Hold for 2.8s then exit
         const HOLD_MS = 4500;
         setTimeout(() => {
             el.classList.remove('show');
             el.classList.add('hide');
-            // After exit transition (~300ms), clean up and call onDone
             setTimeout(() => {
                 el.classList.remove('hide');
                 onDone();
