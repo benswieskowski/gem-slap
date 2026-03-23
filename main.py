@@ -42,12 +42,26 @@ def service_worker():
     return response
 
 
-# ── Favicon from root path ─────────────────────────────────────────────────────
+# ── Root-level static files ────────────────────────────────────────────────────
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(
         os.path.join(app.root_path, 'static'), 'favicon.ico',
         mimetype='image/vnd.microsoft.icon'
+    )
+
+@app.route('/sitemap.xml')
+def sitemap():
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'), 'sitemap.xml',
+        mimetype='application/xml'
+    )
+
+@app.route('/robots.txt')
+def robots():
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'), 'robots.txt',
+        mimetype='text/plain'
     )
 
 
