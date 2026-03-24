@@ -1530,7 +1530,7 @@
         const _op = loadProgress();
         saveProgress({ totalOrbsHit: (_op.totalOrbsHit||0) + 1 });
 
-        const vol = rating === 'perfect' ? 0.28 : rating === 'great' ? 0.24 : rating === 'good' ? 0.20 : 0.18;
+        const vol = rating === 'perfect' ? 0.25 : rating === 'great' ? 0.21 : rating === 'good' ? 0.17 : 0.15;
         audio.tone(orb.note, 0.95, vol);
 
         const { brightness: hitBrightness } = getBrightness(orb, now);
