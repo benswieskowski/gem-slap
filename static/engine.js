@@ -94,8 +94,6 @@ function getBrightness(orb, time) {
 //  PENTATONIC HARMONY SYSTEM
 // ═══════════════════════════════════════
 const PENTATONIC = [0, 3, 5, 7, 10]; // C minor pentatonic: C Eb F G Bb
-// All music styles use C minor pentatonic so orb/crystal tones
-// always harmonise with the background music regardless of style.
 
 function snapToPentatonic(note) {
     const octave = Math.floor(note / 12);
@@ -174,7 +172,7 @@ class Audio {
         if (this.ctx.state === 'suspended') await this.ctx.resume();
 
         this.master = this.ctx.createGain();
-        this.master.gain.value = 0.78;
+        this.master.gain.value = 0.70;
         this.limiter = this.ctx.createDynamicsCompressor();
         this.limiter.threshold.value = -3;
         this.limiter.knee.value       = 2;
@@ -185,26 +183,26 @@ class Audio {
         this.limiter.connect(this.ctx.destination);
 
         this.musicOut = this.ctx.createGain();
-        this.musicOut.gain.value = 0.82;
+        this.musicOut.gain.value = 0.90;
         this.musicOut.connect(this.ctx.destination);
 
         this.bassFilter = this.ctx.createBiquadFilter();
         this.bassFilter.type = 'lowpass'; this.bassFilter.frequency.value = 500; this.bassFilter.Q.value = 0.7;
-        this.bassGain = this.ctx.createGain(); this.bassGain.gain.value = 0.44;
+        this.bassGain = this.ctx.createGain(); this.bassGain.gain.value = 0.50;
         this.bassFilter.connect(this.bassGain); this.bassGain.connect(this.musicOut);
 
-        this.drumGain = this.ctx.createGain(); this.drumGain.gain.value = 0.38;
+        this.drumGain = this.ctx.createGain(); this.drumGain.gain.value = 0.44;
         this.drumGain.connect(this.musicOut);
 
-        this.hihatGain = this.ctx.createGain(); this.hihatGain.gain.value = 0.26;
+        this.hihatGain = this.ctx.createGain(); this.hihatGain.gain.value = 0.30;
         this.hihatGain.connect(this.musicOut);
 
         this.chordFilter = this.ctx.createBiquadFilter();
         this.chordFilter.type = 'lowpass'; this.chordFilter.frequency.value = 1500; this.chordFilter.Q.value = 0.7;
-        this.chordGain = this.ctx.createGain(); this.chordGain.gain.value = 0.38;
+        this.chordGain = this.ctx.createGain(); this.chordGain.gain.value = 0.42;
         this.chordFilter.connect(this.chordGain); this.chordGain.connect(this.musicOut);
 
-        this.texGain = this.ctx.createGain(); this.texGain.gain.value = 0.10;
+        this.texGain = this.ctx.createGain(); this.texGain.gain.value = 0.12;
         this.texGain.connect(this.musicOut);
 
         this._distCurve = this._makeDistCurve(20);
